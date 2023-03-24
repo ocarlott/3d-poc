@@ -6,6 +6,7 @@
   "directories": {
     "lib": "lib"
   },
+  "types": "",
   "devDependencies": {
     "image-pal": "^1.2.2",
     "three": "^0.150.1",
@@ -13,7 +14,7 @@
     "typescript": "^4.9.3"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc --project tsconfig.json"
   },
   "author": "",
   "license": "MIT"
