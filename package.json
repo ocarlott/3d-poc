@@ -2,11 +2,11 @@
   "name": "microstore-3d",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "./lib/index.js",
   "directories": {
     "lib": "lib"
   },
-  "types": "",
+  "types": "./types/index.d.ts",
   "devDependencies": {
     "image-pal": "^1.2.2",
     "three": "^0.150.1",
