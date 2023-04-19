@@ -106,10 +106,7 @@ export class Viewer3D {
     objectToCheck: THREE.Object3D
   ) => {
     this._raycaster.setFromCamera(
-      {
-        x: mouseX,
-        y: mouseY,
-      },
+      new THREE.Vector2(mouseX, mouseY),
       this._camera
     );
     return this._raycaster.intersectObject(objectToCheck);
