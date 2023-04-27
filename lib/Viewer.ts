@@ -508,9 +508,16 @@ export class Viewer3D {
 
   changeColor = (layerName: string, color: string) => {
     if (this._model) {
-      const entries = this._layerMap.get(layerName) || [];
+      const entries = new Map<string, THREE.Mesh[]>(
+        Array.from(this._layerMap.entries()).filter(([key, value]) => {
+          // Return true to keep this entry in the filtered map, or false to remove it.
+          return value[0].userData.name == layerName;
+        })
+      );
       for (let entry of entries) {
-        (entry.material as THREE.MeshStandardMaterial).color.set(color);
+        const value = entry[1];
+        const value1 = value as THREE.MeshStandardMaterial;
+        value1[0].material.color.set(color);
       }
     }
   };
