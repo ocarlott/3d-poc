@@ -515,9 +515,9 @@ export class Viewer3D {
         })
       );
       for (let entry of entries) {
-        const value = entry[1];
-        const value1 = value as THREE.MeshStandardMaterial;
-        value1[0].material.color.set(color);
+        const value = entry[1][0];
+        // const value1 = value as THREE.MeshStandardMaterial;
+        (value.material as THREE.MeshStandardMaterial).color.set(color);
       }
     }
   };
