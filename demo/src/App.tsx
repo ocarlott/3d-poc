@@ -10,7 +10,7 @@ function App() {
     if (canvasRef.current) {
       const viewer = new Viewer3D(canvasRef.current);
       setViewer(viewer);
-      viewer.loadModel('hoodie.glb', () => {})
+      viewer.loadModel('https://microstore.vercel.app/assets/hoodie.glb', () => {})
     }
   }, [setViewer]);
 

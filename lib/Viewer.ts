@@ -29,7 +29,13 @@ export class Viewer3D {
   };
   private _controls: OrbitControls;
   private _boundaryList: Boundary[] = [];
-  private _layerMap: Map<string, THREE.Mesh[]> = new Map();
+  private _layerMap: Map<
+    string,
+    {
+      displayName: string;
+      mesh: THREE.Mesh;
+    }
+  > = new Map();
   private _loader = new GLTFLoader();
   private _selectedBoundary: Boundary | null = null;
   private _isPointerDown = false;
@@ -382,18 +388,24 @@ export class Viewer3D {
               if (result != null) {
                 const [groupName] = result;
                 const startIndex = result.index || 0;
-                child.name = child.name
+                let name = child.name
                   .slice(startIndex)
                   .replace(`${groupName}_`, "")
                   .replace("_", " ");
-                child.name =
-                  child.name[0].toLocaleUpperCase() + child.name.slice(1);
+                name = name[0].toLocaleUpperCase() + name.slice(1);
                 (
                   (child as THREE.Mesh).material as THREE.MeshStandardMaterial
                 ).color.set("white");
-                const group = this._layerMap.get(groupName) || [];
-                group.push(child as THREE.Mesh);
-                this._layerMap.set(groupName, group);
+                if (this._layerMap.get(groupName)) {
+                  console.log(
+                    "Object is not valid. Trying our best to render it"
+                  );
+                } else {
+                  this._layerMap.set(child.name, {
+                    displayName: name,
+                    mesh: child as THREE.Mesh,
+                  });
+                }
               }
             }
           });
@@ -508,16 +520,9 @@ export class Viewer3D {
 
   changeColor = (layerName: string, color: string) => {
     if (this._model) {
-      const entries = new Map<string, THREE.Mesh[]>(
-        Array.from(this._layerMap.entries()).filter(([key, value]) => {
-          // Return true to keep this entry in the filtered map, or false to remove it.
-          return value[0].userData.name == layerName;
-        })
-      );
-      for (let entry of entries) {
-        const value = entry[1][0];
-        // const value1 = value as THREE.MeshStandardMaterial;
-        (value.material as THREE.MeshStandardMaterial).color.set(color);
+      const entry = this._layerMap.get(layerName);
+      if (entry) {
+        (entry.mesh.material as THREE.MeshStandardMaterial).color.set(color);
       }
     }
   };
