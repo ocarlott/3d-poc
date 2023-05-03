@@ -115,6 +115,7 @@ export class Boundary {
         ),
         Boundary.imageIconMaterial
       );
+      this.uploadArtworkPlaceholder.visible = false;
       this.uploadArtworkPlaceholder.name = ControlName.UploadArtwork;
       canvas.visible = false;
       this.mouseHelper.visible = false;
@@ -210,11 +211,6 @@ export class Boundary {
       this.translateControl.name = ControlName.TranslationControl;
       this.translateControl.visible = false;
       this.group.add(this.translateControl);
-      console.log({
-        size,
-        min: boundingBox.min,
-        max: boundingBox.max,
-      });
     }
   };
 
@@ -281,8 +277,18 @@ export class Boundary {
     }
   };
 
-  hidePlaceholder = () => {
+  hide = () => {
     this.uploadArtworkPlaceholder.visible = false;
+    (this.canvas.material as THREE.MeshStandardMaterial).setValues({
+      opacity: 0.4,
+    });
+  };
+
+  show = () => {
+    this.uploadArtworkPlaceholder.visible = false;
+    (this.canvas.material as THREE.MeshStandardMaterial).setValues({
+      opacity: 0.4,
+    });
   };
 
   computeArtworkOnBoundary = () => {

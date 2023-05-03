@@ -354,19 +354,18 @@ export class Viewer3D {
           boundingBox.setFromObject(obj);
           let size = boundingBox.getSize(new THREE.Vector3());
           obj.traverse((child) => {
+            const castedChild = child as THREE.Mesh;
             const boundaryIndex = child.name
               .toLocaleLowerCase()
               .search("boundary");
-            if ((child as THREE.Mesh).isMesh && boundaryIndex !== -1) {
-              child.name = child.name
+            if (castedChild.isMesh && boundaryIndex !== -1) {
+              castedChild.name = castedChild.name
                 .slice(boundaryIndex)
                 .replace("boundary_", "");
-              (
-                (child as THREE.Mesh).material as THREE.MeshStandardMaterial
-              ).setValues({
+              (castedChild.material as THREE.MeshStandardMaterial).setValues({
                 color: "#ccc",
                 transparent: true,
-                opacity: 0.4,
+                opacity: 0,
               });
               // const material = new ProjectedMaterial({
               //   camera: this.camera,
@@ -375,35 +374,31 @@ export class Viewer3D {
               //   cover: true,
               // })
               // const mesh = new THREE.Mesh((child as THREE.Mesh).geometry, material);
-              const bd = new Boundary(
-                this._camera,
-                child as THREE.Mesh,
-                size.z
-              );
+              const bd = new Boundary(this._camera, castedChild, size.z);
               // this.modelGroup.add(mesh);
               this._modelGroup.add(bd.group);
               this._boundaryList.push(bd);
             } else {
-              const result = child.name.match(changeableRegex);
+              const result = castedChild.name.match(changeableRegex);
               if (result != null) {
                 const [groupName] = result;
                 const startIndex = result.index || 0;
-                let name = child.name
+                let name = castedChild.name
                   .slice(startIndex)
                   .replace(`${groupName}_`, "")
                   .replace("_", " ");
                 name = name[0].toLocaleUpperCase() + name.slice(1);
-                (
-                  (child as THREE.Mesh).material as THREE.MeshStandardMaterial
-                ).color.set("white");
+                (castedChild.material as THREE.MeshStandardMaterial).color.set(
+                  "white"
+                );
                 if (this._layerMap.get(groupName)) {
                   console.log(
                     "Object is not valid. Trying our best to render it"
                   );
                 } else {
-                  this._layerMap.set(child.name, {
+                  this._layerMap.set(castedChild.name, {
                     displayName: name,
-                    mesh: child as THREE.Mesh,
+                    mesh: castedChild,
                   });
                 }
               }
@@ -463,7 +458,24 @@ export class Viewer3D {
       artworkUrl: string;
       textureApplication: { color: string; textureOption: TextureOption }[];
     }[];
-  }) => {};
+  }) => {
+    const { colorMap } = options;
+    colorMap.forEach((colorConfig) => {
+      this.changeColor(colorConfig.layerName, colorConfig.color);
+    });
+  };
+
+  hideAllBoundaries = () => {
+    this._boundaryList.forEach((boundary) => {
+      boundary.hide();
+    });
+  };
+
+  showAllBoundaries = () => {
+    this._boundaryList.forEach((boundary) => {
+      boundary.show();
+    });
+  };
 
   validate = (layers: string[], boundaries: string[]) => {};
 
@@ -522,7 +534,9 @@ export class Viewer3D {
     if (this._model) {
       const entry = this._layerMap.get(layerName);
       if (entry) {
-        (entry.mesh.material as THREE.MeshStandardMaterial).color.set(color);
+        (entry.mesh.material as THREE.MeshStandardMaterial).color.set(
+          "#" + color
+        );
       }
     }
   };
