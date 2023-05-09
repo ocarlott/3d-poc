@@ -68,68 +68,90 @@ export class Boundary {
     this.canvas.name = ControlName.Boundary;
     canvas.geometry.computeVertexNormals();
     this.group.name = ControlName.BoundaryGroup;
-    const boundingBox = new THREE.Box3();
-    boundingBox.setFromObject(canvas);
+    const boundingBox = new THREE.Box3().setFromObject(canvas);
     // (canvas.material as THREE.Material).side = THREE.DoubleSide;
     (canvas.material as THREE.MeshStandardMaterial).normalMap =
       new THREE.TextureLoader().load(placeholder);
     this.size = boundingBox.getSize(new THREE.Vector3());
     const { max, min } = boundingBox;
     let mid = canvas.worldToLocal(min.clone().add(max).multiplyScalar(0.5));
-    const normals = (
-      this.canvas.geometry.attributes["normal"] as THREE.BufferAttribute
+    // const normals = (
+    //   this.canvas.geometry.attributes["normal"] as THREE.BufferAttribute
+    // ).array;
+    // for (
+    //   let index = 0;
+    //   index < this.canvas.geometry.attributes["normal"].count / 3;
+    //   index++
+    // ) {
+    //   this.normal.add(
+    //     new THREE.Vector3(
+    //       normals[index * 3],
+    //       normals[index * 3 + 1],
+    //       normals[index * 3 + 2]
+    //     )
+    //   );
+    // }
+    this.center = mid;
+    const positionArray = (
+      canvas.geometry.attributes["position"] as THREE.BufferAttribute
     ).array;
-    for (
-      let index = 0;
-      index < this.canvas.geometry.attributes["normal"].count / 3;
-      index++
-    ) {
-      this.normal.add(
+    const points: THREE.Vector3[] = [];
+    for (let i = 0; i < positionArray.length; i += 3) {
+      points.push(
         new THREE.Vector3(
-          normals[index * 3],
-          normals[index * 3 + 1],
-          normals[index * 3 + 2]
+          positionArray[i],
+          positionArray[i + 1],
+          positionArray[i + 2]
         )
       );
     }
-    this.normal.normalize();
-    this.raycaster.set(mid, this.normal);
-    const objs = this.raycaster.intersectObject(canvas);
-    if (objs.length > 0) {
-      const intersect = objs[0];
-      this.center = intersect.point;
-      if (intersect.face?.normal) {
-        this.normal = intersect.face?.normal;
-        this.normal.transformDirection(canvas.matrixWorld);
-        this.normal.multiplyScalar(10);
-        this.normal.add(this.center);
-        this.mouseHelper.position.copy(this.center);
-        this.mouseHelper.lookAt(this.normal);
-      }
-      this.uploadArtworkPlaceholder = new THREE.Mesh(
-        new DecalGeometry(
-          canvas,
-          this.center,
-          this.mouseHelper.rotation,
-          new THREE.Vector3(2, 2, 2)
-        ),
-        Boundary.imageIconMaterial
-      );
-      this.uploadArtworkPlaceholder.visible = false;
-      this.uploadArtworkPlaceholder.name = ControlName.UploadArtwork;
-      canvas.visible = false;
-      this.mouseHelper.visible = false;
-      this.group.add(this.uploadArtworkPlaceholder, this.mouseHelper);
-      // this.helper.setDirection(this.normal);
-      // this.helper.position.copy(this.center);
-      // this.helper.setColor("green")
-      // this.helper.setLength(10);
-      // this.group.add(this.helper)
-    } else {
-      // TODO: Error
-      this.uploadArtworkPlaceholder = new THREE.Mesh();
-      this.center = new THREE.Vector3();
-    }
+    const boundingSphere = new THREE.Sphere().setFromPoints(points);
+    this.normal = boundingSphere.center.normalize();
+
+    this.uploadArtworkPlaceholder = new THREE.Mesh();
+
+    // this.raycaster.set(mid, this.normal);
+    // const objs = this.raycaster.intersectObject(canvas, true);
+    // if (objs.length > 0) {
+    //   const intersect = objs[0];
+    //   this.center = intersect.point;
+    //   console.log({
+    //     log: "HERE",
+    //     center: this.center,
+    //   });
+    //   if (intersect.face?.normal) {
+    //     this.normal = intersect.face?.normal;
+    //     this.normal.transformDirection(canvas.matrixWorld);
+    //     this.normal.multiplyScalar(10);
+    //     this.normal.add(this.center);
+    //     this.mouseHelper.position.copy(this.center);
+    //     this.mouseHelper.lookAt(this.normal);
+    //   }
+    //   this.uploadArtworkPlaceholder = new THREE.Mesh(
+    //     new DecalGeometry(
+    //       canvas,
+    //       this.center,
+    //       this.mouseHelper.rotation,
+    //       new THREE.Vector3(2, 2, 2)
+    //     ),
+    //     Boundary.imageIconMaterial
+    //   );
+    //   this.uploadArtworkPlaceholder.visible = false;
+    //   this.uploadArtworkPlaceholder.name = ControlName.UploadArtwork;
+    //   canvas.visible = false;
+    //   this.mouseHelper.visible = false;
+    //   this.group.add(this.uploadArtworkPlaceholder, this.mouseHelper);
+
+    //   // this.helper.setDirection(this.normal);
+    //   // this.helper.position.copy(this.center);
+    //   // this.helper.setColor("green")
+    //   // this.helper.setLength(10);
+    //   // this.group.add(this.helper)
+    // } else {
+    //   // TODO: Error
+    //   this.uploadArtworkPlaceholder = new THREE.Mesh();
+    //   this.center = new THREE.Vector3();
+    // }
   }
 
   get id() {
