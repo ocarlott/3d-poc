@@ -366,7 +366,11 @@ export class Viewer3D {
             if (castedChild.name.includes("flat")) {
               castedChild.visible = false;
               this._techPackGroup.push(castedChild);
-            } else {
+            }
+          });
+          obj.traverse((child) => {
+            const castedChild = child as THREE.Mesh;
+            if (!castedChild.name.includes("flat")) {
               const boundaryIndex = child.name
                 .toLocaleLowerCase()
                 .search("boundary");
@@ -383,10 +387,22 @@ export class Viewer3D {
                 //   cover: true,
                 // })
                 // const mesh = new THREE.Mesh((child as THREE.Mesh).geometry, material);
-                const bd = new Boundary(this._camera, castedChild, size.z);
-                // this.modelGroup.add(mesh);
-                this._modelGroup.add(bd.group);
-                this._boundaryList.push(bd);
+                const techPackBoundary: THREE.Mesh | null =
+                  this._techPackGroup.find(
+                    (group) => group.name === castedChild.name + "_flat"
+                  ) ?? null;
+                if (techPackBoundary) {
+                  const bd = new Boundary(
+                    this._camera,
+                    castedChild,
+                    techPackBoundary,
+                    size.z
+                  );
+                  this._modelGroup.add(bd.group);
+                  this._boundaryList.push(bd);
+                } else {
+                  console.error("Invalid 3D model");
+                }
               } else {
                 const result = castedChild.name.match(changeableRegex);
                 if (result != null) {
@@ -575,9 +591,7 @@ export class Viewer3D {
     if (this._model) {
       const entry = this._layerMap.get(layerName);
       if (entry) {
-        (entry.mesh.material as THREE.MeshStandardMaterial).color.set(
-          color as THREE.HexColorString
-        );
+        (entry.mesh.material as THREE.MeshStandardMaterial).color.set(color);
       }
     }
   };

@@ -38,6 +38,7 @@ export class Boundary {
   });
 
   readonly uploadArtworkPlaceholder: THREE.Mesh;
+  readonly ratio: number;
   artwork: THREE.Mesh | null = null;
   artworkSize = new THREE.Vector3(0, 0, 0);
   artworkRatio = 1;
@@ -59,6 +60,7 @@ export class Boundary {
   constructor(
     camera: THREE.PerspectiveCamera,
     canvas: THREE.Mesh,
+    techPackCanvas: THREE.Mesh,
     modelThickness: number
   ) {
     this.camera = camera;
@@ -69,10 +71,18 @@ export class Boundary {
     canvas.geometry.computeVertexNormals();
     this.group.name = ControlName.BoundaryGroup;
     const boundingBox = new THREE.Box3().setFromObject(canvas);
+    const techPackBoundingBox = new THREE.Box3().setFromObject(techPackCanvas);
     // (canvas.material as THREE.Material).side = THREE.DoubleSide;
     (canvas.material as THREE.MeshStandardMaterial).normalMap =
       new THREE.TextureLoader().load(placeholder);
     this.size = boundingBox.getSize(new THREE.Vector3());
+    const techPackSize = techPackBoundingBox.getSize(new THREE.Vector3());
+    const estimateWHRatio = this.size.y / this.size.x;
+    const smallerSide = Math.min(techPackSize.x, techPackSize.z);
+    const biggerSide = Math.max(techPackSize.x, techPackSize.z);
+    const width = estimateWHRatio > 1 ? biggerSide : smallerSide;
+    const height = estimateWHRatio > 1 ? smallerSide : biggerSide;
+    this.ratio = width / height;
     const { max, min } = boundingBox;
     let mid = canvas.worldToLocal(min.clone().add(max).multiplyScalar(0.5));
     // const normals = (
