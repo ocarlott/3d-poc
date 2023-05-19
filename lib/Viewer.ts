@@ -19,16 +19,7 @@ export class Viewer3D {
   private _model?: THREE.Object3D;
   private _modelGroup = new THREE.Group();
   private _techPackGroup: THREE.Mesh[] = [];
-  private _raycaster = new THREE.Raycaster();
-  private _mouseHelper = new THREE.Mesh(
-    new THREE.BoxGeometry(1, 1, 10),
-    new THREE.MeshNormalMaterial()
-  );
   private _renderer?: THREE.WebGLRenderer;
-  private _intersection = {
-    point: new THREE.Vector3(),
-    normal: new THREE.Vector3(),
-  };
   private _controls: OrbitControls;
   private _boundaryList: Boundary[] = [];
   private _layerMap: Map<
@@ -40,14 +31,11 @@ export class Viewer3D {
   > = new Map();
   private _loader = new GLTFLoader();
   private _selectedBoundary: Boundary | null = null;
-  private _isPointerDown = false;
-  private _textureLoader = new THREE.TextureLoader();
   private _crystalizeStyleList = [
     TextureOption.ScreenPrint,
     TextureOption.Metallic,
     TextureOption.Crystals,
   ];
-  private _decalTexture: THREE.Texture | null = null;
   private _canvasWidth = 100;
   private _canvasHeight = 100;
   private _onBoundarySelectionChanged?: () => void;
@@ -84,8 +72,6 @@ export class Viewer3D {
     this._scene.add(this._ambientLight);
     this._scene.add(this._light, this._lightBack);
     // this.scene.add(helper, backHelper);
-    this._mouseHelper.visible = false;
-    this._scene.add(this._mouseHelper);
     this._camera.position.z = 3;
     this._camera.lookAt(new THREE.Vector3(0, 0, 0));
     // this._camera.quaternion._onChangeCallback = () => {
@@ -94,9 +80,6 @@ export class Viewer3D {
     //   });
     // };
     this.show();
-    canvas.addEventListener("mousedown", this._onMouseDown);
-    canvas.addEventListener("mouseup", this._onMouseUp);
-    canvas.addEventListener("mouseover", this._onMouseOver);
   }
 
   private _onCanvasSizeUpdated = (entries: ResizeObserverEntry[]) => {
@@ -109,42 +92,6 @@ export class Viewer3D {
 
     this._renderer?.setSize(this._canvasWidth, this._canvasHeight);
     this._renderer?.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  };
-
-  private _getIntersects = (
-    mouseX: number,
-    mouseY: number,
-    objectToCheck: THREE.Object3D
-  ) => {
-    this._raycaster.setFromCamera(
-      new THREE.Vector2(mouseX, mouseY),
-      this._camera
-    );
-    return this._raycaster.intersectObject(objectToCheck);
-  };
-
-  private _getPointerIntersection = (
-    screenX: number,
-    screenY: number,
-    objectToCheck: THREE.Object3D
-  ) => {
-    const { mouseX, mouseY } = this._getMousePosition(screenX, screenY);
-    const intersects = this._getIntersects(mouseX, mouseY, objectToCheck);
-    let p: THREE.Vector3 | null = null;
-    let n: THREE.Vector3 | null = null;
-    if (intersects.length > 0) {
-      p = intersects[0].point;
-      if (!!intersects[0].face?.normal) {
-        n = intersects[0].face?.normal.clone();
-        n.transformDirection(objectToCheck.matrixWorld);
-        n.multiplyScalar(10);
-        n.add(intersects[0].point);
-      }
-    }
-    return {
-      point: p,
-      normal: n,
-    };
   };
 
   private _enableControls = () => {
@@ -179,116 +126,6 @@ export class Viewer3D {
     }
   };
 
-  private _getMousePosition = (screenX: number, screenY: number) => {
-    const mouseX = (screenX / this._canvasWidth) * 2 - 1;
-    const mouseY = -(screenY / this._canvasHeight) * 2 + 1;
-    return {
-      mouseX,
-      mouseY,
-    };
-  };
-
-  private _onMouseUp = () => {
-    this._isPointerDown = false;
-    this._enableControls();
-  };
-
-  private _onMouseDown = (e: MouseEvent) => {
-    const { clientX: screenX, clientY: screenY } = e;
-    const { mouseX, mouseY } = this._getMousePosition(screenX, screenY);
-    const intersects = this._getIntersects(mouseX, mouseY, this._modelGroup);
-    const uploadArtworkControl = this._getControl(
-      intersects,
-      ControlName.UploadArtwork
-    );
-    if (uploadArtworkControl) {
-      const boundary =
-        this._boundaryList.find((boundary) =>
-          boundary.hasPlaceholderId(uploadArtworkControl.object.id)
-        ) ?? null;
-      if (boundary) {
-        if (this._decalTexture) {
-          boundary.addArtwork(this._decalTexture);
-        } else {
-          // this.onError("Please select an artwork!");
-        }
-      }
-      return;
-    }
-    const translationControl = this._getControl(
-      intersects,
-      ControlName.TranslationControl
-    );
-    if (translationControl && this._selectedBoundary) {
-      // Move artwork
-      this._isPointerDown = true;
-      this._disableControls();
-      return;
-    }
-    const artworkIntersect = this._getControl(intersects, ControlName.Artwork);
-    if (artworkIntersect) {
-      // Select artwork
-      this._onArtworkClick(artworkIntersect.object.id);
-      return;
-    }
-    this._selectedBoundary?.toggleEditting(false);
-    this._selectedBoundary = null;
-  };
-
-  private _onMouseOver = (e: MouseEvent) => {
-    const { clientX: screenX, clientY: screenY } = e;
-    if (this._isPointerDown) {
-      if (this._selectedBoundary) {
-        const { point, normal } = this._getPointerIntersection(
-          screenX,
-          screenY,
-          this._selectedBoundary.canvas
-        );
-        if (point) {
-          this._mouseHelper.position.copy(point);
-          this._intersection.point.copy(point);
-          if (normal) {
-            this._intersection.normal.copy(normal);
-            this._mouseHelper.lookAt(normal);
-            this._selectedBoundary.updateArtworkPosition(
-              point,
-              this._mouseHelper.rotation
-            );
-          }
-        }
-      }
-    }
-  };
-
-  private _onArtworkClick = (artworkId: number) => {
-    this._selectedBoundary =
-      this._boundaryList.find((boundary) => boundary.hasArtwork(artworkId)) ??
-      null;
-    if (!this._selectedBoundary?.isEditing) {
-      this._selectedBoundary?.toggleEditting();
-      // this.selectedBoundary = null;
-    }
-  };
-
-  private _loadDecalTexture = (url: string) => {
-    this._decalTexture = this._textureLoader.load(url);
-  };
-
-  private _getControl = (
-    intersects: THREE.Intersection<THREE.Object3D<THREE.Event>>[],
-    control: ControlName
-  ) => {
-    if (intersects.length > 0) {
-      return (
-        intersects.find(
-          (intersect) =>
-            intersect.object.name === control && intersect.object.visible
-        ) ?? null
-      );
-    }
-    return null;
-  };
-
   private _generateViewerCopy = () => {
     const renderer = new THREE.WebGLRenderer({
       preserveDrawingBuffer: true,
@@ -320,10 +157,7 @@ export class Viewer3D {
 
   private _prepareForScreenshot = (modelGroup: THREE.Group) => {
     modelGroup.traverse((child) => {
-      if (
-        child.name === ControlName.UploadArtwork ||
-        child.name === ControlName.Boundary
-      ) {
+      if (child.name === ControlName.Boundary) {
         child.visible = false;
       }
     });
@@ -539,19 +373,28 @@ export class Viewer3D {
         })
         .start();
     }
+    return selectingBoundary;
   };
 
   unselectBoundary = () => {
     this._selectedBoundary = null;
   };
 
-  changeArtwork = (options: {
+  changeArtwork = async (options: {
     boundary: string;
-    coodinate: { x: number; y: number; z: number };
-    rotation: number;
-    size: number;
+    canvas?: HTMLCanvasElement;
+    coodinate?: { xRatio: number; yRatio: number };
+    sizeRatio?: number;
     artworkUrl: string;
-  }) => {};
+  }) => {
+    const { boundary, coodinate, sizeRatio, artworkUrl, canvas } = options;
+    const boundaryObj = this.selectBoundary(boundary);
+    if (canvas) {
+      boundaryObj?.select(canvas);
+    }
+    await boundaryObj?.addArtwork(artworkUrl);
+    return boundaryObj;
+  };
 
   resetArtworkToDefault = (boundary: string) => {
     const currentBoundary = this._selectedBoundary;
@@ -591,7 +434,9 @@ export class Viewer3D {
     if (this._model) {
       const entry = this._layerMap.get(layerName);
       if (entry) {
-        (entry.mesh.material as THREE.MeshStandardMaterial).color.set(color);
+        (entry.mesh.material as THREE.MeshStandardMaterial).color.set(
+          `#${color.replace(/#/g, "")}`
+        );
       }
     }
   };

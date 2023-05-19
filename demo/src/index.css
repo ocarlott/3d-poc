@@ -72,3 +72,8 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+.lower-canvas {
+  position: relative !important;
+  border: 1px solid #f9f9f9;
+}
