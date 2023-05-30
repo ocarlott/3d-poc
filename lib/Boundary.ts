@@ -118,7 +118,16 @@ export class Boundary {
     return this.canvas.id;
   }
 
-  addArtwork = async (artworkUrl: string, angle = 0): Promise<void> => {
+  addArtwork = async (options: {
+    artworkUrl: string;
+    xRatio: number;
+    yRatio: number;
+    rotation: number;
+    sizeRatio: number;
+    showControl: boolean;
+  }): Promise<void> => {
+    const { artworkUrl, xRatio, yRatio, rotation, sizeRatio, showControl } =
+      options;
     this._artworkUrl = artworkUrl;
     const canvasWidth = this.workingCanvas2D?.getWidth() ?? 0;
     const canvasHeight = this.workingCanvas2D?.getHeight() ?? 0;
@@ -128,15 +137,15 @@ export class Boundary {
         (img) => {
           if (this.ratio > 1) {
             img.scaleToWidth(
-              this._getClipPathWidth(canvasWidth, canvasHeight) / 2
+              this._getClipPathWidth(canvasWidth, canvasHeight) * sizeRatio
             );
           } else {
             img.scaleToHeight(
-              this._getClipPathHeight(canvasWidth, canvasHeight) / 2
+              this._getClipPathHeight(canvasWidth, canvasHeight) * sizeRatio
             );
           }
           img.setPositionByOrigin(
-            new fabric.Point(canvasWidth / 2, canvasHeight / 2),
+            new fabric.Point(canvasWidth * xRatio, canvasHeight * yRatio),
             "center",
             "center"
           );
@@ -147,10 +156,12 @@ export class Boundary {
             mr: false,
           });
           img.set({
-            angle,
+            angle: rotation,
           });
           this.workingCanvas2D?.add(img);
-          this.workingCanvas2D?.setActiveObject(img);
+          if (showControl) {
+            this.workingCanvas2D?.setActiveObject(img);
+          }
           resolve();
         },
         {
@@ -253,16 +264,22 @@ export class Boundary {
     }
   };
 
-  select = (canvas: HTMLCanvasElement) => {
-    this.workingCanvas2D = new fabric.Canvas(canvas);
+  select = (canvas?: HTMLCanvasElement) => {
+    const workingCanvas = canvas || window.document.createElement("canvas");
+    if (!canvas) {
+      workingCanvas.width = 500;
+      workingCanvas.height = 500;
+    }
+    this.workingCanvas2D = new fabric.Canvas(workingCanvas);
     this.workingCanvas2D.on("after:render", this._renderCanvasOnBoundary);
     this.workingCanvas2D.on("object:moving", this._onArtworkMove);
     this.workingCanvas2D.on("object:scaling", this._onArtworkResize);
     this.workingCanvas2D.on("object:rotating", this._onArtworkRotate);
     this.workingCanvas2D.clipPath = this._getClipPath(
-      canvas.width / 2,
-      canvas.height / 2
+      workingCanvas.width / 2,
+      workingCanvas.height / 2
     );
+    this.show();
   };
 
   unselect = () => {

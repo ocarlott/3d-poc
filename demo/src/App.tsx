@@ -16,6 +16,15 @@ function App() {
       (async () => {
         setViewer(viewer);
         await viewer.loadModel('https://microstore.vercel.app/assets/tshirt.glb', () => {});
+        viewer.configureModel({
+          colorMap: [],
+          artworkMap: [{
+            boundaryName: 'CropT_boundary_back',
+            artworkUrl: 'https://microstore.vercel.app/assets/logo.png',
+            xRatio: 0.5,
+            rotation: 90
+          }]
+        })
       })();
 
     }

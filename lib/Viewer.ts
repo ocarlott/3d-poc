@@ -313,17 +313,47 @@ export class Viewer3D {
     colorMap: { layerName: string; color: string }[];
     artworkMap: {
       boundaryName: string;
-      coodinate: { x: number; y: number; z: number };
-      rotation: number;
-      size: number;
       artworkUrl: string;
-      textureApplication: { color: string; textureOption: TextureOption }[];
+      canvas?: HTMLCanvasElement;
+      textureApplication?: { color: string; textureOption: TextureOption }[];
+      xRatio?: number;
+      yRatio?: number;
+      rotation?: number;
+      sizeRatio?: number;
     }[];
   }) => {
-    const { colorMap } = options;
+    const { colorMap, artworkMap } = options;
     colorMap.forEach((colorConfig) => {
       this.changeColor(colorConfig.layerName, colorConfig.color);
     });
+    artworkMap.forEach(
+      ({
+        artworkUrl,
+        textureApplication = [],
+        canvas,
+        boundaryName,
+        xRatio,
+        yRatio,
+        rotation,
+        sizeRatio,
+      }) => {
+        this.changeArtwork(
+          {
+            artworkUrl,
+            canvas,
+            boundary: boundaryName,
+            xRatio,
+            yRatio,
+            rotation,
+            sizeRatio,
+          },
+          false
+        );
+        textureApplication.forEach((app) => {
+          this.changeArtworkTexture(boundaryName, app.color, app.textureOption);
+        });
+      }
+    );
   };
 
   hideAllBoundaries = () => {
@@ -347,7 +377,7 @@ export class Viewer3D {
     return allLayersFound && allBoundariesFound;
   };
 
-  selectBoundary = (boundary: string) => {
+  private _animateSelectBoundary = (boundary: string) => {
     const selectingBoundary =
       this._boundaryList.find((bd) => bd.name === boundary) ?? null;
     if (
@@ -380,46 +410,70 @@ export class Viewer3D {
     this._selectedBoundary = null;
   };
 
-  changeArtwork = async (options: {
-    boundary: string;
-    canvas?: HTMLCanvasElement;
-    coodinate?: { xRatio: number; yRatio: number };
-    sizeRatio?: number;
-    artworkUrl: string;
-  }) => {
-    const { boundary, coodinate, sizeRatio, artworkUrl, canvas } = options;
-    const boundaryObj = this.selectBoundary(boundary);
-    if (canvas) {
-      boundaryObj?.select(canvas);
+  changeArtwork = async (
+    options: {
+      boundary: string;
+      canvas?: HTMLCanvasElement;
+      artworkUrl: string;
+      xRatio?: number;
+      yRatio?: number;
+      rotation?: number;
+      sizeRatio?: number;
+    },
+    withAnimation = true
+  ) => {
+    const {
+      boundary,
+      xRatio = 0.5,
+      yRatio = 0.5,
+      rotation = 0,
+      sizeRatio = 0.5,
+      artworkUrl,
+      canvas,
+    } = options;
+    let boundaryObj: Boundary | null = null;
+    if (withAnimation) {
+      boundaryObj = this._animateSelectBoundary(boundary);
+    } else {
+      boundaryObj =
+        this._boundaryList.find((bd) => bd.name === boundary) ?? null;
     }
-    await boundaryObj?.addArtwork(artworkUrl);
+    boundaryObj?.select(canvas);
+    await boundaryObj?.addArtwork({
+      artworkUrl,
+      xRatio,
+      yRatio,
+      rotation,
+      sizeRatio,
+      showControl: withAnimation,
+    });
     return boundaryObj;
   };
 
   resetArtworkToDefault = (boundary: string) => {
     const currentBoundary = this._selectedBoundary;
-    this.selectBoundary(boundary);
+    this._animateSelectBoundary(boundary);
     // Do work
     this._selectedBoundary = currentBoundary;
   };
 
   removeArtwork = (boundary: string) => {
     const currentBoundary = this._selectedBoundary;
-    this.selectBoundary(boundary);
+    this._animateSelectBoundary(boundary);
     // Do work
     this._selectedBoundary = currentBoundary;
   };
 
   resetArtworkTextureToDefault = (boundary: string) => {
     const currentBoundary = this._selectedBoundary;
-    this.selectBoundary(boundary);
+    this._animateSelectBoundary(boundary);
     // Do work
     this._selectedBoundary = currentBoundary;
   };
 
   resizeArtworkOnBoundary = (boundary: string, size: number) => {
     const currentBoundary = this._selectedBoundary;
-    this.selectBoundary(boundary);
+    this._animateSelectBoundary(boundary);
     // Do work
     this._selectedBoundary = currentBoundary;
   };
