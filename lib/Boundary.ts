@@ -91,8 +91,12 @@ export class Boundary {
   }
 
   private _getClipPathSize() {
-    const canvasWidth = this.workingCanvas2D?.getWidth() ?? 0;
-    const canvasHeight = this.workingCanvas2D?.getHeight() ?? 0;
+    const canvasWidth = Math.ceil(
+      (this.workingCanvas2D?.getWidth() ?? 0) / window.devicePixelRatio
+    );
+    const canvasHeight = Math.ceil(
+      (this.workingCanvas2D?.getHeight() ?? 0) / window.devicePixelRatio
+    );
     const clipPathWidth = this._getClipPathWidth(canvasWidth, canvasHeight);
     const clipPathHeight = this._getClipPathHeight(canvasWidth, canvasHeight);
     return {
@@ -103,7 +107,7 @@ export class Boundary {
     };
   }
 
-  private _getClipPath(canvasWidth: number, canvasHeight: number) {
+  private _generateClipPath(canvasWidth: number, canvasHeight: number) {
     const clipPathWidth = this._getClipPathWidth(canvasWidth, canvasHeight);
     const clipPathHeight = this._getClipPathHeight(canvasWidth, canvasHeight);
     return new fabric.Rect({
@@ -275,9 +279,9 @@ export class Boundary {
     this.workingCanvas2D.on("object:moving", this._onArtworkMove);
     this.workingCanvas2D.on("object:scaling", this._onArtworkResize);
     this.workingCanvas2D.on("object:rotating", this._onArtworkRotate);
-    this.workingCanvas2D.clipPath = this._getClipPath(
-      workingCanvas.width / 2,
-      workingCanvas.height / 2
+    this.workingCanvas2D.clipPath = this._generateClipPath(
+      Math.ceil(workingCanvas.width / window.devicePixelRatio),
+      Math.ceil(workingCanvas.height / window.devicePixelRatio)
     );
     this.show();
   };
