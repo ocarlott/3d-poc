@@ -22,7 +22,6 @@ function App() {
             boundaryName: 'CropT_boundary_back',
             artworkUrl: 'https://microstore.vercel.app/assets/logo.png',
             xRatio: 0.5,
-            rotation: 90
           }]
         })
       })();
@@ -41,7 +40,10 @@ function App() {
           const boundary = await viewer?.changeArtwork({
             boundary: 'CropT_boundary_back',
             canvas: canvas2DContainerRef.current ?? undefined,
-            artworkUrl: 'https://microstore.vercel.app/assets/logo.png'
+            artworkUrl: 'https://microstore.vercel.app/assets/logo.png',
+            sizeRatio: 0.5,
+            xRatio: 0.5,
+            yRatio: 0.5
           }) ?? null;
           setCurrentBoundary(boundary);
         }}>

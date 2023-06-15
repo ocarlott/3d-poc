@@ -38,9 +38,14 @@ export class Viewer3D {
   ];
   private _canvasWidth = 100;
   private _canvasHeight = 100;
-  private _onBoundarySelectionChanged?: () => void;
-  private _onArtworkSelectionChanged?: () => void;
-  private _onArtworkMove?: () => void;
+  private _onArtworkChanged?: (params: {
+    forBoundary: string;
+    xRatio: number;
+    yRatio: number;
+    whRatio: number;
+    sizeRatio: number;
+    rotation: number;
+  }) => void;
   private _isInDeveloperMode = false;
   private _shouldRotate = false;
   private _resizeObserver: ResizeObserver;
@@ -155,14 +160,6 @@ export class Viewer3D {
   //   document.body.removeChild(link);
   // };
 
-  private _prepareForScreenshot = (modelGroup: THREE.Group) => {
-    modelGroup.traverse((child) => {
-      if (child.name === ControlName.Boundary) {
-        child.visible = false;
-      }
-    });
-  };
-
   show = () => {
     this._rFID = requestAnimationFrame(this.show);
     if (this._shouldRotate) {
@@ -210,7 +207,7 @@ export class Viewer3D {
                 .search("boundary");
               if (castedChild.isMesh && boundaryIndex !== -1) {
                 (castedChild.material as THREE.MeshStandardMaterial).setValues({
-                  color: "#ccc",
+                  color: "#ffffff",
                   transparent: true,
                   opacity: 0,
                 });
@@ -226,12 +223,7 @@ export class Viewer3D {
                     (group) => group.name === castedChild.name + "_flat"
                   ) ?? null;
                 if (techPackBoundary) {
-                  const bd = new Boundary(
-                    this._camera,
-                    castedChild,
-                    techPackBoundary,
-                    size.z
-                  );
+                  const bd = new Boundary(castedChild, techPackBoundary);
                   this._modelGroup.add(bd.group);
                   this._boundaryList.push(bd);
                 } else {
@@ -285,18 +277,17 @@ export class Viewer3D {
   };
 
   addEventListeners = (options: {
-    onBoundarySelectionChanged: () => void;
-    onArtworkSelectionChanged: () => void;
-    onArtworkMoved: () => void;
+    onArtworkChanged: (params: {
+      forBoundary: string;
+      xRatio: number;
+      yRatio: number;
+      whRatio: number;
+      sizeRatio: number;
+      rotation: number;
+    }) => void;
   }) => {
-    const {
-      onArtworkMoved,
-      onArtworkSelectionChanged,
-      onBoundarySelectionChanged,
-    } = options;
-    this._onArtworkMove = onArtworkMoved;
-    this._onBoundarySelectionChanged = onBoundarySelectionChanged;
-    this._onArtworkSelectionChanged = onArtworkSelectionChanged;
+    const { onArtworkChanged } = options;
+    this._onArtworkChanged = onArtworkChanged;
   };
 
   toggleDeveloperMode = () => {
@@ -356,18 +347,6 @@ export class Viewer3D {
     );
   };
 
-  hideAllBoundaries = () => {
-    this._boundaryList.forEach((boundary) => {
-      boundary.hide();
-    });
-  };
-
-  showAllBoundaries = () => {
-    this._boundaryList.forEach((boundary) => {
-      boundary.show();
-    });
-  };
-
   validate = (layers: string[], boundaries: string[]) => {
     const allLayersFound = layers.every((layer) => !!this._layerMap.get(layer));
     const allBoundariesFound = boundaries.every(
@@ -385,7 +364,6 @@ export class Viewer3D {
       selectingBoundary !== null
     ) {
       this._selectedBoundary = selectingBoundary;
-      this._selectedBoundary.show();
       const boundaryPosition = this._selectedBoundary.center;
       const boundaryNormal = this._selectedBoundary.normal;
       const cameraPosition = boundaryPosition
@@ -438,14 +416,14 @@ export class Viewer3D {
       boundaryObj =
         this._boundaryList.find((bd) => bd.name === boundary) ?? null;
     }
-    boundaryObj?.select(canvas);
     await boundaryObj?.addArtwork({
+      workingCanvas: canvas,
       artworkUrl,
       xRatio,
       yRatio,
       rotation,
       sizeRatio,
-      showControl: withAnimation,
+      onArtworkChanged: this._onArtworkChanged,
     });
     return boundaryObj;
   };
@@ -460,18 +438,11 @@ export class Viewer3D {
   removeArtwork = (boundary: string) => {
     const currentBoundary = this._selectedBoundary;
     this._animateSelectBoundary(boundary);
-    // Do work
+    currentBoundary?.resetBoundary();
     this._selectedBoundary = currentBoundary;
   };
 
   resetArtworkTextureToDefault = (boundary: string) => {
-    const currentBoundary = this._selectedBoundary;
-    this._animateSelectBoundary(boundary);
-    // Do work
-    this._selectedBoundary = currentBoundary;
-  };
-
-  resizeArtworkOnBoundary = (boundary: string, size: number) => {
     const currentBoundary = this._selectedBoundary;
     this._animateSelectBoundary(boundary);
     // Do work
@@ -496,19 +467,15 @@ export class Viewer3D {
   };
 
   takeScreenShot = () => {
-    this._selectedBoundary?.toggleEditting(false);
-    const { renderer, scene, modelGroup } = this._generateViewerCopy();
-    this._prepareForScreenshot(modelGroup);
+    const { renderer, scene } = this._generateViewerCopy();
     renderer.render(scene, this._camera.clone());
     const strMime = "image/jpeg";
     return renderer.domElement.toDataURL(strMime);
   };
 
   takeScreenShotAt = (angleY: number) => {
-    this._selectedBoundary?.toggleEditting(false);
     const camera = this._camera.clone();
     const { renderer, scene, modelGroup } = this._generateViewerCopy();
-    this._prepareForScreenshot(modelGroup);
     modelGroup.rotation.y = angleY;
     camera.position.set(
       this._modelCenter.x,
@@ -523,11 +490,8 @@ export class Viewer3D {
   };
 
   takeScreenShotAuto = () => {
-    this._selectedBoundary?.toggleEditting(false);
     const camera = this._camera.clone();
     const { renderer, scene, modelGroup } = this._generateViewerCopy();
-    this._prepareForScreenshot(modelGroup);
-    // modelGroup.rotation.copy(this.controls.object.rotation);
     modelGroup.rotation.y = 0;
     camera.position.set(
       this._modelCenter.x,
