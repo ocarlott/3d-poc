@@ -18,7 +18,8 @@ export class Viewer3D {
   private _ambientLight = new THREE.AmbientLight("white", 0.6);
   private _model?: THREE.Object3D;
   private _modelGroup = new THREE.Group();
-  private _techPackGroup: THREE.Mesh[] = [];
+  private _techPackGroup = new THREE.Group();
+  private _workingAssetGroup = new THREE.Group();
   private _renderer?: THREE.WebGLRenderer;
   private _controls: OrbitControls;
   private _boundaryList: Boundary[] = [];
@@ -46,7 +47,7 @@ export class Viewer3D {
     sizeRatio: number;
     rotation: number;
   }) => void;
-  private _isInDeveloperMode = false;
+  private _isInDeveloperMode = true;
   private _shouldRotate = false;
   private _resizeObserver: ResizeObserver;
   private _modelCenter = new THREE.Vector3();
@@ -62,28 +63,17 @@ export class Viewer3D {
     this._resizeObserver.observe(canvas);
     const controls = new OrbitControls(this._camera, canvas);
     this._controls = controls;
-    // this._controls.addEventListener('')
     this._renderer = new THREE.WebGLRenderer({
       canvas,
       antialias: true,
     });
-    // this.renderer.setSize(sizes.width, sizes.height);
-    // this.scene.add(new THREE.AxesHelper(10));
     this._light.position.set(0, 15, 15);
     this._lightBack.position.set(0, 15, -15);
-    // const helper = new THREE.DirectionalLightHelper(this.light, 20, "green");
-    // const backHelper = new THREE.DirectionalLightHelper(lightBack, 20, "green");
     this._scene.background = new THREE.Color("#eee");
     this._scene.add(this._ambientLight);
     this._scene.add(this._light, this._lightBack);
-    // this.scene.add(helper, backHelper);
     this._camera.position.z = 3;
     this._camera.lookAt(new THREE.Vector3(0, 0, 0));
-    // this._camera.quaternion._onChangeCallback = () => {
-    //   console.log({
-    //     cameraQuaternion: this._camera.quaternion,
-    //   });
-    // };
     this.show();
   }
 
@@ -111,24 +101,49 @@ export class Viewer3D {
     }
   };
 
-  private _fitCameraToObject = (obj: THREE.Object3D) => {
+  private _getSizeAndCenter = (obj: THREE.Object3D) => {
     const boundingBox = new THREE.Box3();
     boundingBox.setFromObject(obj);
     let size = boundingBox.getSize(new THREE.Vector3());
     boundingBox.setFromObject(obj);
     const center = boundingBox.getCenter(new THREE.Vector3());
-    this._modelCenter = center;
+    return {
+      size,
+      center,
+    };
+  };
+
+  private _fitCameraToObject = (
+    camera: THREE.PerspectiveCamera,
+    obj: THREE.Object3D,
+    controls?: OrbitControls
+  ) => {
+    const { center, size } = this._getSizeAndCenter(obj);
     const largerDim = Math.max(size.x, size.y) / 2;
     const safeDistance = largerDim * 1.2;
-    const zNeeded = safeDistance / Math.tan(this._camera.fov / 2);
-    this._camera.position.set(center.x, center.y, zNeeded);
-    this._camera.lookAt(center);
-    this._camera.updateProjectionMatrix();
-    if (this._controls) {
-      this._controls.target = center;
-      this._controls.maxDistance = largerDim * 2;
-      this._controls.saveState();
+    const zNeeded = safeDistance / Math.tan(camera.fov / 2);
+    camera.position.set(center.x, center.y, zNeeded);
+    camera.lookAt(center);
+    camera.updateProjectionMatrix();
+    if (controls) {
+      controls.target = center;
+      controls.maxDistance = largerDim * 2;
+      controls.saveState();
     }
+    return center;
+  };
+
+  private _fitCameraToTechPack = (
+    camera: THREE.PerspectiveCamera,
+    obj: THREE.Object3D
+  ) => {
+    const { center, size } = this._getSizeAndCenter(obj);
+    const largerDim = Math.max(size.x, size.z) / 2;
+    const safeDistance = largerDim;
+    const yNeeded = safeDistance / Math.tan(camera.fov);
+    camera.position.set(center.x, yNeeded, center.z);
+    camera.lookAt(center);
+    camera.updateProjectionMatrix();
   };
 
   private _generateViewerCopy = () => {
@@ -141,6 +156,10 @@ export class Viewer3D {
     newScene.add(this._ambientLight.clone());
     newScene.add(this._light.clone(), this._lightBack.clone());
     const newGroup = this._modelGroup.clone();
+    const techPackGroup = newGroup.getObjectByName(ControlName.TechPackGroup);
+    const workingAssetGroup = newGroup.getObjectByName(
+      ControlName.WorkingAssetGroup
+    );
     newScene.add(newGroup);
     renderer.setSize(this._canvasWidth, this._canvasHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -148,6 +167,8 @@ export class Viewer3D {
       renderer,
       scene: newScene,
       modelGroup: newGroup,
+      workingAssetGroup,
+      techPackGroup,
     };
   };
 
@@ -183,7 +204,10 @@ export class Viewer3D {
     this._scene.remove(this._modelGroup);
     this._modelGroup.removeFromParent();
     this._modelGroup = new THREE.Group();
-    this._techPackGroup = [];
+    this._techPackGroup = new THREE.Group();
+    this._techPackGroup.name = ControlName.TechPackGroup;
+    this._workingAssetGroup = new THREE.Group();
+    this._workingAssetGroup.name = ControlName.WorkingAssetGroup;
     return new Promise((resolve, reject) => {
       this._loader.load(
         url,
@@ -191,17 +215,25 @@ export class Viewer3D {
           const obj = gltf.scene;
           const boundingBox = new THREE.Box3();
           boundingBox.setFromObject(obj);
-          let size = boundingBox.getSize(new THREE.Vector3());
+          const techPackList: THREE.Mesh[] = [];
+          const workingAssets: (THREE.Mesh | THREE.Group)[] = [];
+          this._modelGroup.add(this._techPackGroup);
+          this._modelGroup.add(this._workingAssetGroup);
+          this._techPackGroup.visible = false;
+          this._modelCenter = this._fitCameraToObject(
+            this._camera,
+            obj,
+            this._controls
+          );
           obj.traverse((child) => {
             const castedChild = child as THREE.Mesh;
-            if (castedChild.name.includes("flat")) {
-              castedChild.visible = false;
-              this._techPackGroup.push(castedChild);
+            if (castedChild.name.includes("_flat")) {
+              techPackList.push(castedChild);
             }
           });
           obj.traverse((child) => {
             const castedChild = child as THREE.Mesh;
-            if (!castedChild.name.includes("flat")) {
+            if (!castedChild.name.includes("_flat")) {
               const boundaryIndex = child.name
                 .toLocaleLowerCase()
                 .search("boundary");
@@ -211,21 +243,15 @@ export class Viewer3D {
                   transparent: true,
                   opacity: 0,
                 });
-                // const material = new ProjectedMaterial({
-                //   camera: this.camera,
-                //   texture,
-                //   textureScale: 0.8,
-                //   cover: true,
-                // })
-                // const mesh = new THREE.Mesh((child as THREE.Mesh).geometry, material);
                 const techPackBoundary: THREE.Mesh | null =
-                  this._techPackGroup.find(
+                  techPackList.find(
                     (group) => group.name === castedChild.name + "_flat"
                   ) ?? null;
                 if (techPackBoundary) {
                   const bd = new Boundary(castedChild, techPackBoundary);
                   this._modelGroup.add(bd.group);
                   this._boundaryList.push(bd);
+                  workingAssets.push(bd.group);
                 } else {
                   console.error("Invalid 3D model");
                 }
@@ -252,16 +278,25 @@ export class Viewer3D {
                       mesh: castedChild,
                     });
                   }
+                  workingAssets.push(castedChild);
                 }
               }
             }
           });
+          techPackList.forEach((child) => {
+            this._techPackGroup.add(child);
+          });
+          workingAssets.forEach((child) => {
+            this._workingAssetGroup.add(child);
+          });
+          this._boundaryList.forEach((child) => {
+            child.organizeGroup();
+          });
           this._model = obj;
           this._model.name = ControlName.Model;
-          this._fitCameraToObject(obj);
           this._modelGroup.add(obj);
           this._scene.add(this._modelGroup);
-          // this.toggleDeveloperMode();
+          this.toggleDeveloperMode();
           onProgress(100);
           resolve();
         },
@@ -354,6 +389,19 @@ export class Viewer3D {
         this._boundaryList.findIndex((b) => b.name === boundary) !== -1
     );
     return allLayersFound && allBoundariesFound;
+  };
+
+  validateModel = () => {
+    const boundaries = this._boundaryList.map((bd) => bd.name);
+    const techPacks = this._techPackGroup.children.map((c) => c.name);
+    const workingAssets = this._workingAssetGroup.children
+      .filter((c) => c.name !== ControlName.BoundaryGroup)
+      .map((c) => c.name);
+    return {
+      boundaries,
+      techPacks,
+      workingAssets,
+    };
   };
 
   private _animateSelectBoundary = (boundary: string) => {
@@ -453,7 +501,9 @@ export class Viewer3D {
     this._shouldRotate = !this._shouldRotate;
   };
 
-  exportData = () => {};
+  exportData = () => {
+    return this._boundaryList.map((bd) => bd.exportArtworkData());
+  };
 
   changeColor = (layerName: string, color: string) => {
     if (this._model) {
@@ -510,6 +560,21 @@ export class Viewer3D {
       images.push(imgData);
     }
     return images;
+  };
+
+  createTechPack = () => {
+    const camera = this._camera.clone();
+    const { renderer, scene, modelGroup, techPackGroup, workingAssetGroup } =
+      this._generateViewerCopy();
+    if (techPackGroup && workingAssetGroup) {
+      techPackGroup.visible = true;
+      workingAssetGroup.visible = false;
+      this._fitCameraToTechPack(camera, techPackGroup);
+    }
+    modelGroup.rotation.y = 0;
+    renderer.render(scene, camera);
+    const strMime = "image/jpeg";
+    return renderer.domElement.toDataURL(strMime);
   };
 
   changeArtworkTexture = (

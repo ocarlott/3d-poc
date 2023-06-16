@@ -5,6 +5,8 @@ export enum ControlName {
   BoundaryGroup = "BoundaryGroup",
   Boundary = "Boundary",
   Model = "Model",
+  WorkingAssetGroup = "WorkingAssetGroup",
+  TechPackGroup = "TechPackGroup",
 }
 
 export type UploadImageData = {

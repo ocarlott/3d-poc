@@ -30,7 +30,6 @@ export class Boundary {
   constructor(canvas: THREE.Mesh, techPackCanvas: THREE.Mesh) {
     this._canvas = canvas;
     this.name = canvas.name;
-    this._canvas.name = ControlName.Boundary;
     canvas.geometry.computeVertexNormals();
     this.group.name = ControlName.BoundaryGroup;
     const boundingBox = new THREE.Box3().setFromObject(canvas);
@@ -125,6 +124,10 @@ export class Boundary {
       this._canvasWidth,
       this._canvasHeight
     );
+  };
+
+  organizeGroup = () => {
+    this.group.add(this._canvas);
   };
 
   addArtwork = async (options: {
@@ -251,7 +254,27 @@ export class Boundary {
   }, 20);
 
   resetBoundary = () => {
+    this._workingCanvas2D?.clear();
     this._workingCanvas2D = undefined;
     (this._canvas.material as THREE.MeshStandardMaterial).map = null;
+  };
+
+  hasArtwork = () => {
+    return !!this._workingCanvas2D;
+  };
+
+  exportArtworkData = () => {
+    return {
+      boundary: this.name,
+      data: this.hasArtwork()
+        ? {
+            xRatio: this._xRatio,
+            yRatio: this._yRatio,
+            sizeRatio: this._sizeRatio,
+            whRatio: this._boundaryRatio,
+            rotation: this._rotation,
+          }
+        : null,
+    };
   };
 }

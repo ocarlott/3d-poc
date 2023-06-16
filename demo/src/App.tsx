@@ -38,7 +38,7 @@ function App() {
         </Button>
         <Button onClick={async () => {
           const boundary = await viewer?.changeArtwork({
-            boundary: 'CropT_boundary_back',
+            boundary: 'CropT_boundary_front',
             canvas: canvas2DContainerRef.current ?? undefined,
             artworkUrl: 'https://microstore.vercel.app/assets/logo.png',
             sizeRatio: 0.5,
@@ -48,6 +48,12 @@ function App() {
           setCurrentBoundary(boundary);
         }}>
           Add Artwork
+        </Button>
+        <Button onClick={() => {
+          viewer?.removeArtwork('CropT_boundary_front');
+          setCurrentBoundary(null);
+        }}>
+          Remove Artwork
         </Button>
         <Button onClick={() => {
           if (viewer) {
@@ -72,6 +78,22 @@ function App() {
           }
         }}>
           Take Snapshot Auto
+        </Button>
+        <Button onClick={() => {
+          if (viewer) {
+            const newImages = viewer.createTechPack();
+            setImages(images.concat(newImages));
+          }
+        }}>
+          Create Teck Pack
+        </Button>
+        <Button onClick={() => {
+          if (viewer) {
+            const result = viewer.validateModel();
+            console.log(result);
+          }
+        }}>
+          Validate Model
         </Button>
         <canvas ref={canvas2DContainerRef} hidden={!currentBoundary} width={300} height={300} ></canvas>
         <ImageList>
