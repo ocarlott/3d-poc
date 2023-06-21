@@ -155,6 +155,7 @@ export class Boundary {
       workingCanvas,
       onArtworkChanged,
     } = options;
+    this.resetBoundary();
     this._onArtworkChanged = onArtworkChanged;
     this._configure2DCanvas(workingCanvas);
     const { canvasHeight, canvasWidth, clipPathHeight, clipPathWidth } =
