@@ -255,6 +255,7 @@ export class Boundary {
 
   resetBoundary = () => {
     this._workingCanvas2D?.clear();
+    this._workingCanvas2D?.dispose();
     this._workingCanvas2D = undefined;
     (this._canvas.material as THREE.MeshStandardMaterial).map = null;
   };
