@@ -248,7 +248,7 @@ export class Boundary {
         const texture = new THREE.CanvasTexture(original);
         texture.wrapS = THREE.RepeatWrapping;
         texture.wrapT = THREE.RepeatWrapping;
-        texture.repeat.set(-1, -1);
+        texture.repeat.set(Math.sign(this.normal.z) || 1, -1);
         (this._canvas.material as THREE.MeshStandardMaterial).map = texture;
       });
     }
