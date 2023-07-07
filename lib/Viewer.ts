@@ -485,8 +485,8 @@ export class Viewer3D {
 
   removeArtwork = (boundary: string) => {
     const currentBoundary = this._selectedBoundary;
-    this._animateSelectBoundary(boundary);
-    currentBoundary?.resetBoundary();
+    const rBoundary = this._animateSelectBoundary(boundary);
+    rBoundary?.resetBoundary();
     this._selectedBoundary = currentBoundary;
   };
 
