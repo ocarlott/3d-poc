@@ -55,33 +55,33 @@ function App() {
         }}>
           Remove Artwork
         </Button>
-        <Button onClick={() => {
+        <Button onClick={async () => {
           if (viewer) {
-            const image = viewer.takeScreenShot();
+            const image = await viewer.takeScreenShot();
             setImages(images.concat(image));
           }
         }}>
           Take Snapshot
         </Button>
-        <Button onClick={() => {
+        <Button onClick={async () => {
           if (viewer) {
-            const image = viewer.takeScreenShotAt(Math.PI / 4);
+            const image = await viewer.takeScreenShotAt(Math.PI / 4);
             setImages(images.concat(image));
           }
         }}>
           Take Snapshot At 45
         </Button>
-        <Button onClick={() => {
+        <Button onClick={async () => {
           if (viewer) {
-            const newImages = viewer.takeScreenShotAuto();
+            const newImages = await viewer.takeScreenShotAuto();
             setImages(images.concat(newImages));
           }
         }}>
           Take Snapshot Auto
         </Button>
-        <Button onClick={() => {
+        <Button onClick={async () => {
           if (viewer) {
-            const newImages = viewer.createTechPack();
+            const newImages = await viewer.createTechPack();
             setImages(images.concat(newImages));
           }
         }}>

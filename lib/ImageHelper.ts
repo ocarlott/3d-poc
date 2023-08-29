@@ -96,31 +96,38 @@ export class ImageHelper {
     return new Promise<{
       computed: string;
       colors: string[];
+      colorList: number[][];
     }>(async (resolve) => {
       const { imageData, width, height } =
         await ImageHelper.getImageDataForImage(url);
+      const data = imageData.data;
+      const newData = new Uint8ClampedArray(data.length);
+      const totalPixels = width * height;
       const colors = getColors(imageData.data, {
         hasAlpha: true,
         maxColors: limit,
         mean: false,
       }).map((color) => color.rgb.map((value) => Math.floor(value)));
       const labList = colors.map((color) => ImageHelper.rgb2lab(color));
-      const data = imageData.data;
-      const newData = new Uint8ClampedArray(data.length);
-      const totalPixels = width * height;
       for (let i = 0; i < totalPixels; i++) {
-        const color = ImageHelper.rgb2lab([
-          data[i * 4],
-          data[i * 4 + 1],
-          data[i * 4 + 2],
-        ]);
-        const index = ImageHelper.findClosetIndexColorFromLabColorList(
-          labList,
-          color
-        );
-        newData[i * 4] = colors[index][0];
-        newData[i * 4 + 1] = colors[index][1];
-        newData[i * 4 + 2] = colors[index][2];
+        if (data[i * 4 + 3] > 0) {
+          const color = ImageHelper.rgb2lab([
+            data[i * 4],
+            data[i * 4 + 1],
+            data[i * 4 + 2],
+          ]);
+          const index = ImageHelper.findClosetIndexColorFromLabColorList(
+            labList,
+            color
+          );
+          newData[i * 4] = colors[index][0];
+          newData[i * 4 + 1] = colors[index][1];
+          newData[i * 4 + 2] = colors[index][2];
+        } else {
+          newData[i * 4] = data[i * 4];
+          newData[i * 4 + 1] = data[i * 4 + 1];
+          newData[i * 4 + 2] = data[i * 4 + 2];
+        }
         newData[i * 4 + 3] = data[i * 4 + 3];
       }
       const newDataUrl = await ImageHelper.getDataURLForImageData(
@@ -133,6 +140,7 @@ export class ImageHelper {
         colors: colors.map(
           (color) => `rgb(${color[0]}, ${color[1]}, ${color[2]})`
         ),
+        colorList: colors,
       });
     });
   };
@@ -187,9 +195,7 @@ export class ImageHelper {
   static getImageDataForImage = async (
     uri: string,
     xResult: number = 0,
-    yResult: number = 0,
-    wResult?: number,
-    hResult?: number
+    yResult: number = 0
   ) => {
     return new Promise<{
       imageData: ImageData;
@@ -206,15 +212,16 @@ export class ImageHelper {
         const imgData = imageCxt.getImageData(
           xResult,
           yResult,
-          wResult || img.width,
-          hResult || img.height
+          img.width,
+          img.height
         );
         return resolve({
           imageData: imgData,
-          width: xResult || img.width,
-          height: hResult || img.height,
+          width: img.width,
+          height: img.height,
         });
       };
+      img.crossOrigin = "anonymous";
       img.src = uri;
     });
   };
@@ -247,10 +254,51 @@ export class ImageHelper {
     }
     const { imageCxt } = await ImageHelper.generateCanvas(width, height);
     imageCxt.putImageData(imageData, 0, 0);
-    const imgData = imageCxt.getImageData(0, 0, finalWidth, finalHeight);
-    const { imageCanvas, imageCxt: newImageContext } =
-      await ImageHelper.generateCanvas(finalWidth, finalHeight);
-    newImageContext.putImageData(imgData, 0, 0);
-    return imageCanvas.toDataURL();
+    const imgData = imageCxt.getImageData(
+      Math.round((width - finalWidth) / 2),
+      Math.round((height - finalHeight) / 2),
+      finalWidth,
+      finalHeight
+    );
+    return ImageHelper.getDataURLForImageData(
+      imgData.data,
+      finalWidth,
+      finalHeight
+    );
+  };
+
+  static toHex = (color: number[]) => {
+    return `${color[0].toString(16).padStart(2, "0")}${color[1]
+      .toString(16)
+      .padStart(2, "0")}${color[2].toString(16).padStart(2, "0")}`;
+  };
+
+  static keepOnlyColor = async (uri: string, color: number[]) => {
+    const { width, height, imageData } = await ImageHelper.getImageDataForImage(
+      uri
+    );
+    const data = imageData.data;
+    const totalPixels = width * height;
+    const newData = new Uint8ClampedArray(data.length);
+    for (let i = 0; i < totalPixels; i++) {
+      if (
+        data[i * 4] === color[0] &&
+        data[i * 4 + 1] === color[1] &&
+        data[i * 4 + 1] === color[2]
+      ) {
+        newData[i * 4] = color[0];
+        newData[i * 4 + 1] = color[1];
+        newData[i * 4 + 2] = color[2];
+        newData[i * 4 + 3] = 255;
+      } else {
+        newData[i * 4 + 3] = 0;
+      }
+    }
+    const dataUri = await ImageHelper.getDataURLForImageData(
+      newData,
+      width,
+      height
+    );
+    return dataUri;
   };
 }

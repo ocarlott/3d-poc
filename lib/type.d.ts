@@ -39,3 +39,20 @@ declare module "image-pal" {
     }
   ): Color[];
 }
+
+namespace fabric {
+  namespace fabric {
+    namespace Image {
+      namespace filters {
+        export interface KeepColor {
+          new (options?: { color: string }): any;
+          /**
+           * Returns filter instance from an object representation
+           * @param object Object to create an instance from
+           */
+          fromObject(object: any): any;
+        }
+      }
+    }
+  }
+}
