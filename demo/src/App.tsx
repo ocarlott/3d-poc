@@ -44,7 +44,7 @@ function App() {
             sizeRatio: 0.5,
             xRatio: 0.5,
             yRatio: 0.5
-          }) ?? null;
+          }, false) ?? null;
           setCurrentBoundary(boundary);
         }}>
           Add Artwork

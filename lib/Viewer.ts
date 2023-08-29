@@ -227,15 +227,13 @@ export class Viewer3D {
 
   show = () => {
     const delta = this._clock.getDelta();
-    const updated = this._controls.update(delta);
+    this._controls.update(delta);
     this._rFID = requestAnimationFrame(this.show);
     if (this._shouldRotate) {
       this._modelGroup.rotation.y += 0.01;
     }
-    if (updated) {
-      TWEEN.update();
-      this._renderer?.render(this._scene, this._camera);
-    }
+    TWEEN.update();
+    this._renderer?.render(this._scene, this._camera);
   };
 
   hide = () => {
@@ -422,18 +420,15 @@ export class Viewer3D {
         rotation,
         sizeRatio,
       }) => {
-        this.changeArtwork(
-          {
-            artworkUrl,
-            canvas,
-            boundary: boundaryName,
-            xRatio,
-            yRatio,
-            rotation,
-            sizeRatio,
-          },
-          false
-        );
+        this.changeArtwork({
+          artworkUrl,
+          canvas,
+          boundary: boundaryName,
+          xRatio,
+          yRatio,
+          rotation,
+          sizeRatio,
+        });
         textureApplication.forEach((app) => {
           this.changeArtworkTexture(boundaryName, app.color, app.textureOption);
         });
@@ -506,7 +501,7 @@ export class Viewer3D {
       rotation?: number;
       sizeRatio?: number;
     },
-    withAnimation = true
+    disableEditting = true
   ) => {
     const {
       boundary,
@@ -519,7 +514,7 @@ export class Viewer3D {
       textureApplication,
     } = options;
     let boundaryObj: Boundary | null = null;
-    if (withAnimation) {
+    if (!disableEditting) {
       boundaryObj = this._animateSelectBoundary(boundary);
     } else {
       boundaryObj =
@@ -534,6 +529,7 @@ export class Viewer3D {
       sizeRatio,
       onArtworkChanged: this._onArtworkChanged,
       textureApplication,
+      disableEditting,
     });
     return boundaryObj;
   };
