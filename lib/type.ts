@@ -4,7 +4,6 @@ export enum ControlName {
   Artwork = "Artwork",
   BoundaryGroup = "BoundaryGroup",
   Boundary = "Boundary",
-  Model = "Model",
   WorkingAssetGroup = "WorkingAssetGroup",
   TechPackGroup = "TechPackGroup",
 }

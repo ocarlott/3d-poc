@@ -9,11 +9,10 @@ import { OutlinePass } from "three/examples/jsm/postprocessing/OutlinePass";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass";
 import CameraControls from "camera-controls";
 import { ImageHelper } from "./ImageHelper";
+import { Utils } from "./Utils";
 
 CameraControls.install({ THREE: THREE });
 const strMime = "image/png";
-
-const changeableRegex = /changeable_group_\d{1,2}/;
 export class Viewer3D {
   private _rFID = -1;
   private _camera: THREE.PerspectiveCamera;
@@ -52,7 +51,7 @@ export class Viewer3D {
     sizeRatio: number;
     rotation: number;
   }) => void;
-  private _isInDeveloperMode = true;
+  private _isInDeveloperMode = false;
   private _shouldRotate = false;
   private _resizeObserver: ResizeObserver;
   private _modelCenter = new THREE.Vector3();
@@ -78,6 +77,8 @@ export class Viewer3D {
     this._scene.background = new THREE.Color("#eee");
     this._scene.add(this._ambientLight);
     this._scene.add(this._light, this._lightBack);
+    this._controls.minPolarAngle = Math.PI / 2;
+    this._controls.maxPolarAngle = Math.PI / 2;
     this.show();
   }
 
@@ -129,7 +130,6 @@ export class Viewer3D {
         left: 20,
         right: 20,
       });
-      // controls.fitToBox(obj, false, { cover: true });
     }
   };
 
@@ -253,6 +253,8 @@ export class Viewer3D {
     this._techPackGroup.name = ControlName.TechPackGroup;
     this._workingAssetGroup = new THREE.Group();
     this._workingAssetGroup.name = ControlName.WorkingAssetGroup;
+    this._boundaryList = [];
+    this._layerMap.clear();
     return new Promise((resolve, reject) => {
       this._loader.load(
         url,
@@ -264,7 +266,7 @@ export class Viewer3D {
           const workingAssets: (THREE.Mesh | THREE.Group)[] = [];
           this._modelGroup.add(this._techPackGroup);
           this._modelGroup.add(this._workingAssetGroup);
-          this._techPackGroup.visible = false;
+          this._techPackGroup.visible = this._isInDeveloperMode;
           obj.traverse((child) => {
             const castedChild = child as THREE.Mesh;
             if (castedChild.name.includes("_flat")) {
@@ -273,13 +275,19 @@ export class Viewer3D {
           });
           obj.traverse((child) => {
             const castedChild = child as THREE.Mesh;
+            const castedChildMaterial =
+              castedChild.material as THREE.MeshStandardMaterial;
+            if (castedChild.isMesh && !!castedChildMaterial) {
+              castedChildMaterial.setValues({
+                color: "white",
+              });
+            }
             if (!castedChild.name.includes("_flat")) {
               const boundaryIndex = child.name
                 .toLocaleLowerCase()
                 .search("boundary");
               if (castedChild.isMesh && boundaryIndex !== -1) {
-                (castedChild.material as THREE.MeshStandardMaterial).setValues({
-                  color: "#ffffff",
+                castedChildMaterial.setValues({
                   transparent: true,
                   opacity: 0,
                 });
@@ -296,28 +304,18 @@ export class Viewer3D {
                   console.error("Invalid 3D model");
                 }
               } else {
-                const result = castedChild.name.match(changeableRegex);
-                if (result != null) {
-                  const [groupName] = result;
-                  const startIndex = result.index || 0;
-                  let name = castedChild.name
-                    .slice(startIndex)
-                    .replace(`${groupName}_`, "")
-                    .replace("_", " ");
-                  name = name[0].toLocaleUpperCase() + name.slice(1);
-                  (
-                    castedChild.material as THREE.MeshStandardMaterial
-                  ).setValues({
-                    color: "white",
-                    // wireframe: true,
-                  });
-                  if (this._layerMap.get(groupName)) {
+                const displayNameForChangableGroup =
+                  Utils.getDisplayNameIfChangeableGroup(castedChild.name);
+                if (displayNameForChangableGroup) {
+                  if (
+                    this._layerMap.get(displayNameForChangableGroup.groupName)
+                  ) {
                     console.log(
                       "Object is not valid. Trying our best to render it"
                     );
                   } else {
                     this._layerMap.set(castedChild.name, {
-                      displayName: name,
+                      displayName: displayNameForChangableGroup.displayName,
                       mesh: castedChild,
                     });
                   }
@@ -344,7 +342,6 @@ export class Viewer3D {
           this._modelCenter = center;
           this._modelRatio = Math.abs(size.x / size.y);
           this._model = obj;
-          this._model.name = ControlName.Model;
           this._modelGroup.add(obj);
           this._scene.add(this._modelGroup);
           // this.toggleDeveloperMode();
@@ -378,6 +375,7 @@ export class Viewer3D {
 
   toggleDeveloperMode = () => {
     this._isInDeveloperMode = !this._isInDeveloperMode;
+    this._techPackGroup.visible = this._isInDeveloperMode;
     this._controls.mouseButtons.wheel =
       this._controls.mouseButtons.wheel === CameraControls.ACTION.NONE
         ? CameraControls.ACTION.ZOOM
@@ -445,16 +443,73 @@ export class Viewer3D {
     return allLayersFound && allBoundariesFound;
   };
 
-  validateModel = () => {
-    const boundaries = this._boundaryList.map((bd) => bd.name);
-    const techPacks = this._techPackGroup.children.map((c) => c.name);
-    const workingAssets = this._workingAssetGroup.children
-      .filter((c) => c.name !== ControlName.BoundaryGroup)
-      .map((c) => c.name);
+  validateModel = async () => {
+    const colors = Utils.getShuffledColors();
+    const boundaries: string[] = [];
+    const techPacks: string[] = [];
+    const layers: string[] = [];
+    this._modelGroup.traverse((child) => {
+      if (child.name.includes("flat")) {
+        techPacks.push(child.name);
+      } else if (child.name.includes("boundary")) {
+        boundaries.push(child.name);
+      } else if (child.name.includes("changeable")) {
+        layers.push(child.name);
+      }
+    });
+    const layerList = Array.from(this._layerMap.values());
+    layerList.forEach((layer, index) => {
+      this.changeColor(layer.mesh.name, colors[index]);
+    });
+    const materialMatches: {
+      boundaryName: string;
+      result: boolean;
+    }[] = boundaries.map((bd) => {
+      if (!techPacks.includes(bd + "_flat")) {
+        return {
+          boundaryName: bd,
+          result: false,
+        };
+      }
+      const bdMaterial = (this._modelGroup.getObjectByName(bd) as THREE.Mesh)
+        .material as THREE.MeshStandardMaterial;
+      const techpackMaterial = (
+        this._modelGroup.getObjectByName(bd + "_flat") as THREE.Mesh
+      ).material as THREE.MeshBasicMaterial;
+      return {
+        boundaryName: bd,
+        result: bdMaterial.id === techpackMaterial.id,
+      };
+    });
+    await Promise.all(
+      this._boundaryList.map((bd) => {
+        return this.changeArtwork({
+          boundary: bd.name,
+          artworkUrl: "https://microstore.vercel.app/assets/logo.png",
+        });
+      })
+    );
+    const screenshots = await this.takeScreenShotAuto();
+    const techpackImages = await this.createTechPack();
+    this._boundaryList.map((bd) => {
+      return this.removeArtwork(bd.name);
+    });
+    this._modelGroup.traverse((child) => {
+      if (child.isObject3D && (child as THREE.Mesh).isMesh) {
+        (
+          (child as THREE.Mesh).material as THREE.MeshStandardMaterial
+        ).setValues({
+          color: "white",
+        });
+      }
+    });
     return {
       boundaries,
       techPacks,
-      workingAssets,
+      layers,
+      screenshots,
+      techpackImages,
+      materialMatches,
     };
   };
 

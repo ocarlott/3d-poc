@@ -17,6 +17,34 @@ export const SideBar = styled.div`
   flex-direction: column;
   align-items: center;
   width: 20%;
+  background-color: #242424;
+`;
+
+export const ImageContainer = styled.div`
+  display: flex;
+  width: 100%;
+  flex-wrap: wrap;
+  justify-content: space-between;
+`;
+
+export const Warning = styled.p`
+  color: #FFC436;
+  display: inline-block;
+`;
+
+export const Error = styled.p`
+  color: #fd5c63;
+  display: inline-block;
+`;
+
+export const Info = styled.p`
+  color: #6CB4EE;
+  display: inline-block;
+`;
+
+export const Success = styled.p`
+  color: #4FFFB0;
+  display: inline-block;
 `;
 
 export const Button = styled.div`
@@ -42,4 +70,5 @@ export const ImageList = styled.div`
 export const Image = styled.img`
   width: 45%;
   margin-bottom: 5px;
+  object-fit: contain
 `;

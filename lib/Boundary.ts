@@ -12,6 +12,7 @@ export class Boundary {
   private _boundaryRatio: number;
   readonly center: THREE.Vector3;
   private _canvas: THREE.Mesh;
+  private _canvasMaterial: THREE.MeshStandardMaterial;
   private _canvasList: THREE.Mesh[] = [];
   private _useWidthToScale = false;
   readonly normal = new THREE.Vector3(0, 0, 0);
@@ -41,13 +42,14 @@ export class Boundary {
 
   constructor(canvas: THREE.Mesh, techPackCanvas: THREE.Mesh) {
     this._canvas = canvas;
+    this._canvasMaterial = canvas.material as THREE.MeshStandardMaterial;
     this.name = canvas.name;
     canvas.geometry.computeVertexNormals();
     this.group.name = ControlName.BoundaryGroup;
     const boundingBox = new THREE.Box3().setFromObject(canvas);
     const techPackBoundingBox = new THREE.Box3().setFromObject(techPackCanvas);
-    (canvas.material as THREE.Material).side = THREE.DoubleSide;
-    (canvas.material as THREE.Material).transparent = true;
+    this._canvasMaterial.side = THREE.DoubleSide;
+    this._canvasMaterial.transparent = true;
     const size = boundingBox.getSize(new THREE.Vector3());
     const techPackSize = techPackBoundingBox.getSize(new THREE.Vector3());
     const estimateWHRatio = size.x / size.y;
@@ -175,7 +177,6 @@ export class Boundary {
     this.resetBoundary();
     this._textureApplication = textureApplication || [];
     this._onArtworkChanged = onArtworkChanged;
-    // this._shouldReduceArtworkColor = shouldReduceColor;
     const { computed: computedArtworkUrl, colorList } =
       await ImageHelper.reduceImageColor(artworkUrl);
     this._canvasList.forEach((c) => {
@@ -220,7 +221,7 @@ export class Boundary {
     if (!disableEditting) {
       this._workingCanvas2D?.setActiveObject(img);
     }
-    (this._canvas.material as THREE.MeshStandardMaterial).setValues({
+    this._canvasMaterial.setValues({
       opacity: 1,
     });
     await this._renderCanvasOnBoundary();
@@ -253,7 +254,7 @@ export class Boundary {
   }, 300);
 
   private _onArtworkRotate = _.throttle((e: fabric.TEvent<MouseEvent>) => {
-    // this._rotation = e.transform?.target?.angle ?? 0;
+    this._rotation = (e as any).target.angle ?? 0;
     this._updateListener();
   }, 300);
 
@@ -275,27 +276,7 @@ export class Boundary {
       texture.wrapS = THREE.RepeatWrapping;
       texture.wrapT = THREE.RepeatWrapping;
       texture.repeat.set(Math.sign(this.normal.z) || 1, -1);
-      (this._canvas.material as THREE.MeshStandardMaterial).map = texture;
-      // this._workingCanvas2D.clone((copy: fabric.Canvas) => {
-      //   // const filter = this._colorFilters?.[0];
-      //   // console.log({
-      //   //   filters,
-      //   //   artwork,
-      //   // });
-      //   // artwork?.filters?.push(filter);
-      //   // artwork?.applyFilters();
-      //   // copy.requestRenderAll();
-      //   // const colorCanvases = this._workingColors.map((color, index) => {
-      //   //   const canvas = copy.clone();
-      //   //   canvas
-      //   // });
-      //   const original = copy.getElement();
-      //   const texture = new THREE.CanvasTexture(original);
-      //   texture.wrapS = THREE.RepeatWrapping;
-      //   texture.wrapT = THREE.RepeatWrapping;
-      //   texture.repeat.set(Math.sign(this.normal.z) || 1, -1);
-      //   (this._canvas.material as THREE.MeshStandardMaterial).map = texture;
-      // });
+      this._canvasMaterial.map = texture;
     }
   }, 20);
 
@@ -304,27 +285,37 @@ export class Boundary {
       const copy = await this._workingCanvas2D.clone(["elements"]);
       const original = copy.toCanvasElement();
       const uri = original.toDataURL();
+      const { imageData } = await ImageHelper.getImageDataForImage(uri);
       const textureUris = await Promise.all(
-        this._workingColors.map((c) => ImageHelper.keepOnlyColor(uri, c))
+        this._workingColors.map((c) => ImageHelper.keepOnlyColor(imageData, c))
       );
-      // console.log(textureUris);
-      // const texture = new THREE.CanvasTexture(original);
-      // texture.wrapS = THREE.RepeatWrapping;
-      // texture.wrapT = THREE.RepeatWrapping;
-      // texture.repeat.set(Math.sign(this.normal.z) || 1, -1);
-      (this._canvas.material as THREE.MeshStandardMaterial).map =
-        new THREE.TextureLoader().load(textureUris[1]);
-      // this._canvas.visible = false;
-      // (this._canvasList[0].material as THREE.MeshStandardMaterial).map =
-      //   new THREE.TextureLoader().load(textureUris[0]);
+      const textures = textureUris.map((uri) => {
+        const texture = new THREE.TextureLoader().load(uri);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(Math.sign(this.normal.z) || 1, -1);
+        return texture;
+      });
+      console.log({
+        colorList: this._workingColors,
+        textureUris,
+      });
+      this._canvasMaterial.map = textures[1];
     }
+    // rgb(0, 255, 255)
+    // rgb(53, 132, 198)
+    // rgb(78, 124, 170)
+    // rgb(50, 114, 186)
   };
 
   resetBoundary = () => {
     this._workingCanvas2D?.clear();
     this._workingCanvas2D?.dispose();
     this._workingCanvas2D = undefined;
-    (this._canvas.material as THREE.MeshStandardMaterial).map = null;
+    this._canvasMaterial.setValues({
+      map: null,
+      opacity: 0,
+    });
   };
 
   hasArtwork = () => {

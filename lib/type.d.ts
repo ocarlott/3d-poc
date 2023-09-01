@@ -34,8 +34,9 @@ declare module "image-pal" {
     imageData: Uint8ClampedArray,
     options: {
       hasAlpha: boolean;
-      maxColors: number;
-      mean: boolean;
+      minDensity?: number;
+      maxColors?: number;
+      mean?: boolean;
     }
   ): Color[];
 }
