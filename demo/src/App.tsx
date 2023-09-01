@@ -24,6 +24,7 @@ function App() {
         boundaryName: string,
         result: boolean
       }[];
+      materialErrors: string[][];
   } | null>(null);
   const validationRef = useRef<HTMLDivElement>(null);
 
@@ -32,12 +33,12 @@ function App() {
       const viewer = new Viewer3D(canvasRef.current);
       (async () => {
         setViewer(viewer);
-        await viewer.loadModel('https://microstore.vercel.app/assets/tshirt.glb', () => {});
+        await viewer.loadModel('./tshirt.glb', () => {});
         viewer.configureModel({
           colorMap: [],
           artworkMap: [{
             boundaryName: 'CropT_boundary_back',
-            artworkUrl: 'https://microstore.vercel.app/assets/logo.png',
+            artworkUrl: './logo.png',
             xRatio: 0.5,
           }]
         })
@@ -114,18 +115,18 @@ function App() {
             <ol>
               {validationResults.layers.map((item, index) => <li key={item + index}>{computeLayerResult(item)}</li>)}
             </ol>
-            <h4>Tech Packs</h4>
-            {validationResults.techPacks.length === 0 ? <Warning>Could not find any flat changeable group! Please make sure that the model doesn't have any</Warning> : null}
-            <ol>
-              {validationResults.techPacks.filter(item => item.includes('changeable')).map((item, index) => <li key={item + index}>{Utils.isTechPackChangeableGroupNameValid(item) ? <Success>{item}</Success> : <Error>{`${item} -> Error. Please check naming convention`}</Error>}</li>)}
-              {validationResults.techPacks.filter(item => item.includes('boundary')).map((item, index) => <li key={item + index}>{Utils.isTechPackBoundaryNameValid(item) ? <Success>{item}</Success> : <Error>{`${item} -> Error. Please check naming convention`}</Error>}</li>)}
-            </ol>
-            <h4>Relationships</h4>
+            <h4>Tech Packs (Flat layers)</h4>
             <ol>
               {validationResults.layers.map((item, index) => <li key={item + index}>{validationResults.techPacks.includes(`${item}_flat`) ? <Success>{item} has a matching flat version {item}_flat</Success> : <Error>Could not find flat version of {item}</Error>}</li>)}
               {validationResults.boundaries.map((item, index) => <li key={item + index}>{validationResults.techPacks.includes(`${item}_flat`) ? <Success>{item} has a matching flat version {item}_flat</Success> : <Error>Could not find flat version of {item}</Error>}</li>)}
               {validationResults.materialMatches.map((item) => <li key={item.boundaryName}>{item.result ? <Success>{item.boundaryName} is using the same material as {item.boundaryName}_flat</Success> : <Error>{item.boundaryName} is not using the same material as {item.boundaryName}_flat</Error>}</li>)}
             </ol>
+            {validationResults.materialErrors.length === 0 ? null : <>
+              <h4>Relationship Errors</h4>
+              <ol>
+                {validationResults.materialErrors.map((meshes, index) => <li key={'meshes' + index}><Error>These are sharing the same material: {meshes.join(', ')}</Error></li>)}
+              </ol>
+            </>}
             <h4>Screenshots</h4>
             <Info>
               Please make sure all layers have colors other than light gray
@@ -155,7 +156,7 @@ function App() {
           const boundary = await viewer?.changeArtwork({
             boundary: 'CropT_boundary_front',
             canvas: canvas2DContainerRef.current ?? undefined,
-            artworkUrl: 'https://microstore.vercel.app/assets/logo.png',
+            artworkUrl: './logo.png',
             sizeRatio: 0.5,
             xRatio: 0.5,
             yRatio: 0.5
@@ -225,7 +226,7 @@ function App() {
             const file = fileRef.current.files?.[0];
             if (file) {
               const res = file.name.split('.')
-              setWorkingModel(res[res.length - 1]);
+              setWorkingModel(res[0]);
               const uri = URL.createObjectURL(file);
               await viewer.loadModel(uri, () => {}); 
             }

@@ -461,31 +461,52 @@ export class Viewer3D {
     layerList.forEach((layer, index) => {
       this.changeColor(layer.mesh.name, colors[index]);
     });
+    const materialMap = new Map<
+      number,
+      {
+        hasError: boolean;
+        meshes: string[];
+      }
+    >();
     const materialMatches: {
       boundaryName: string;
       result: boolean;
-    }[] = boundaries.map((bd) => {
-      if (!techPacks.includes(bd + "_flat")) {
-        return {
-          boundaryName: bd,
-          result: false,
-        };
-      }
+    }[] = [];
+    boundaries.forEach((bd) => {
       const bdMaterial = (this._modelGroup.getObjectByName(bd) as THREE.Mesh)
         .material as THREE.MeshStandardMaterial;
-      const techpackMaterial = (
-        this._modelGroup.getObjectByName(bd + "_flat") as THREE.Mesh
-      ).material as THREE.MeshBasicMaterial;
-      return {
-        boundaryName: bd,
-        result: bdMaterial.id === techpackMaterial.id,
-      };
+      if (!techPacks.includes(bd + "_flat")) {
+        materialMap.set(bdMaterial.id, {
+          hasError: materialMap.has(bdMaterial.id),
+          meshes: [...(materialMap.get(bdMaterial.id)?.meshes ?? []), bd],
+        });
+        materialMatches.push({
+          boundaryName: bd,
+          result: false,
+        });
+      } else {
+        const techpackMaterial = (
+          this._modelGroup.getObjectByName(bd + "_flat") as THREE.Mesh
+        ).material as THREE.MeshBasicMaterial;
+        materialMatches.push({
+          boundaryName: bd,
+          result: bdMaterial.id === techpackMaterial.id,
+        });
+        materialMap.set(bdMaterial.id, {
+          hasError: materialMap.has(bdMaterial.id),
+          meshes: [
+            ...(materialMap.get(bdMaterial.id)?.meshes ?? []),
+            bd,
+            bd + "_flat",
+          ],
+        });
+      }
     });
     await Promise.all(
       this._boundaryList.map((bd) => {
         return this.changeArtwork({
           boundary: bd.name,
-          artworkUrl: "https://microstore.vercel.app/assets/logo.png",
+          artworkUrl: "./logo.png",
         });
       })
     );
@@ -510,6 +531,9 @@ export class Viewer3D {
       screenshots,
       techpackImages,
       materialMatches,
+      materialErrors: Array.from(materialMap.values())
+        .filter((item) => item.hasError)
+        .map((item) => item.meshes),
     };
   };
 
