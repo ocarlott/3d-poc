@@ -141,6 +141,10 @@ export class Viewer3D {
       right: number;
       bottom: number;
       left: number;
+    },
+    rotation?: {
+      azimuthAngle?: number;
+      polarAngle?: number;
     }
   ) => {
     const { top, right, bottom, left } = padding;
@@ -186,6 +190,10 @@ export class Viewer3D {
       paddingBottom: paddingBottom,
       paddingTop: paddingTop,
     });
+
+    if (rotation) {
+      controls.rotateTo(rotation.azimuthAngle || 0, rotation.polarAngle || 0);
+    }
   };
 
   private _generateViewerCopy = () => {
@@ -657,12 +665,21 @@ export class Viewer3D {
     const camera = this._camera.clone();
     const { renderer, scene, workingAssetGroup } = this._generateViewerCopy();
     const controls = new CameraControls(camera, renderer.domElement);
-    this._paddingInCssPixel(controls, workingAssetGroup, {
-      top: 20,
-      bottom: 20,
-      left: 20,
-      right: 20,
-    });
+    const { azimuthAngle, polarAngle } = this._controls;
+    this._paddingInCssPixel(
+      controls,
+      workingAssetGroup,
+      {
+        top: 20,
+        bottom: 20,
+        left: 20,
+        right: 20,
+      },
+      {
+        azimuthAngle,
+        polarAngle,
+      }
+    );
     const delta = this._clock.getDelta();
     controls.update(delta);
     renderer.render(scene, camera);
