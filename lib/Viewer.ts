@@ -753,6 +753,22 @@ export class Viewer3D {
       const layerList = techPackGroup.children.filter((child) =>
         child.name.includes("changeable")
       );
+      controls.fitToBox(techPackGroup, false, {
+        paddingBottom: 4,
+        paddingLeft: 4,
+        paddingRight: 4,
+        paddingTop: 4,
+      });
+      const { size } = this._getSizeAndCenter(techPackGroup);
+      const ratio = Math.abs(size.x / size.z);
+      const delta = this._clock.getDelta();
+      controls.update(delta);
+      renderer.render(scene, camera);
+      const img = await ImageHelper.cropImageToRatio(
+        renderer.domElement.toDataURL(strMime),
+        ratio
+      );
+      result.push(img);
       for (let child of layerList) {
         controls.fitToBox(child, false, {
           paddingBottom: 4,
