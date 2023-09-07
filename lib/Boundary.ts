@@ -178,7 +178,9 @@ export class Boundary {
     this._textureApplication = textureApplication || [];
     this._onArtworkChanged = onArtworkChanged;
     const { computed: computedArtworkUrl, colorList } =
-      await ImageHelper.reduceImageColor(artworkUrl);
+      await ImageHelper.reduceImageColor({
+        url: artworkUrl,
+      });
     this._canvasList.forEach((c) => {
       c.removeFromParent();
     });

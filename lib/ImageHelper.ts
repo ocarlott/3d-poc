@@ -2,12 +2,24 @@ import getColors from "image-pal";
 import { Utils } from "./Utils";
 
 export class ImageHelper {
-  static reduceImageColor = async (url: string, limit: number = 4) => {
+  static reduceImageColor = async (params: {
+    url: string;
+    limit?: number;
+    minDensity?: number;
+  }) => {
+    let { url, limit = 4, minDensity = 0.05 } = params;
     return new Promise<{
       computed: string;
       colors: string[];
       colorList: number[][];
+      percentages: number[];
     }>(async (resolve) => {
+      if (minDensity >= 1 || minDensity < 0) {
+        console.error(
+          "Invalid minDensity. It should be in the range of [0, 1). Using default value."
+        );
+        minDensity = 0.05;
+      }
       const { imageData, width, height } =
         await ImageHelper.getImageDataForImage(url);
       const data = imageData.data;
@@ -20,12 +32,12 @@ export class ImageHelper {
       }
       const colors = getColors(imageData.data, {
         hasAlpha: true,
-        minDensity: 0.05,
+        minDensity,
         maxColors: limit,
         mean: false,
       }).map((color) => color.rgb.map((value) => Math.floor(value)));
       const labList = colors.map((color) => Utils.rgb2lab(color));
-      const listCount = colors.map(() => 0);
+      let listCount = colors.map(() => 0);
       for (let i = 0; i < totalPixels; i++) {
         if (data[i * 4 + 3] > 0) {
           const color = Utils.rgb2lab([
@@ -48,22 +60,32 @@ export class ImageHelper {
         }
         newData[i * 4 + 3] = data[i * 4 + 3];
       }
-      const minorLabColors = labList.filter((_, index) => {
-        const percentage = listCount[index] / totalPixels;
-        return percentage < 0.05;
-      });
+      const percentages = listCount.map((ls) => ls / totalPixels);
       const majorLabColors = labList.filter((_, index) => {
         const percentage = listCount[index] / totalPixels;
-        return percentage >= 0.05;
+        return percentage >= minDensity;
       });
       const majorColors = colors.filter((_, index) => {
-        const percentage = listCount[index] / totalPixels;
-        return percentage >= 0.05;
+        return percentages[index] >= minDensity;
       });
-      const replacementMajorColorIndexes = minorLabColors.map((_, index) => {
-        const percentage = listCount[index] / totalPixels;
-        return percentage < 0.05;
-      });
+      listCount = majorColors.map(() => 0);
+      for (let i = 0; i < totalPixels; i++) {
+        if (newData[i * 4 + 3] > 0) {
+          const color = Utils.rgb2lab([
+            newData[i * 4],
+            newData[i * 4 + 1],
+            newData[i * 4 + 2],
+          ]);
+          const index = Utils.findClosetIndexColorFromLabColorList(
+            majorLabColors,
+            color
+          );
+          listCount[index] += 1;
+          newData[i * 4] = majorColors[index][0];
+          newData[i * 4 + 1] = majorColors[index][1];
+          newData[i * 4 + 2] = majorColors[index][2];
+        }
+      }
       const newDataUrl = await ImageHelper.getDataURLForImageData(
         newData,
         width,
@@ -71,6 +93,7 @@ export class ImageHelper {
       );
       return resolve({
         computed: newDataUrl,
+        percentages: listCount.map((i) => i / totalPixels),
         colors: majorColors.map(
           (color) => `rgb(${color[0]}, ${color[1]}, ${color[2]})`
         ),
