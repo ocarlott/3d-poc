@@ -224,12 +224,6 @@ export class ImageHelper {
     );
   };
 
-  static toHex = (color: number[]) => {
-    return `${color[0].toString(16).padStart(2, "0")}${color[1]
-      .toString(16)
-      .padStart(2, "0")}${color[2].toString(16).padStart(2, "0")}`;
-  };
-
   static keepOnlyColor = async (imageData: ImageData, color: number[]) => {
     const { data, width, height } = imageData;
     const totalPixels = width * height;

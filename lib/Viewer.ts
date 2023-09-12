@@ -51,12 +51,13 @@ export class Viewer3D {
     sizeRatio: number;
     rotation: number;
   }) => void;
-  private _isInDeveloperMode = false;
+  private _isInDeveloperMode = true;
   private _shouldRotate = false;
   private _resizeObserver: ResizeObserver;
   private _modelCenter = new THREE.Vector3();
   private _modelRatio = 1;
   private _clock = new THREE.Clock();
+  private _axesHelper = new THREE.AxesHelper(30);
 
   constructor(canvas: HTMLCanvasElement) {
     this._camera = new THREE.PerspectiveCamera(
@@ -77,6 +78,7 @@ export class Viewer3D {
     this._scene.background = new THREE.Color("#eee");
     this._scene.add(this._ambientLight);
     this._scene.add(this._light, this._lightBack);
+    this._scene.add(this._axesHelper);
     this._controls.minPolarAngle = Math.PI / 2;
     this._controls.maxPolarAngle = Math.PI / 2;
     this.show();
@@ -288,6 +290,7 @@ export class Viewer3D {
             if (castedChild.isMesh && !!castedChildMaterial) {
               castedChildMaterial.setValues({
                 color: "white",
+                // wireframe: true,
               });
             }
             if (!castedChild.name.includes("_flat")) {
@@ -352,7 +355,7 @@ export class Viewer3D {
           this._model = obj;
           this._modelGroup.add(obj);
           this._scene.add(this._modelGroup);
-          // this.toggleDeveloperMode();
+          this.toggleDeveloperMode();
           onProgress(100);
           resolve();
         },
@@ -396,6 +399,10 @@ export class Viewer3D {
     this._controls.maxPolarAngle = this._isInDeveloperMode
       ? Math.PI
       : Math.PI / 2;
+    this._boundaryList.forEach((bd) =>
+      bd.setDeveloperMode(this._isInDeveloperMode)
+    );
+    this._axesHelper.visible = this._isInDeveloperMode;
   };
 
   configureModel = (options: {
@@ -555,20 +562,21 @@ export class Viewer3D {
       this._selectedBoundary = selectingBoundary;
       const boundaryPosition = this._selectedBoundary.center;
       const boundaryNormal = this._selectedBoundary.normal;
-      const cameraPosition = boundaryPosition
-        .clone()
-        .add(
-          boundaryNormal
-            .clone()
-            .multiplyScalar(this._controls.maxDistance * 0.65)
-        );
-      new TWEEN.Tween(this._camera.position)
-        .to(cameraPosition)
-        .easing(TWEEN.Easing.Quadratic.InOut)
-        .onUpdate(() => {
-          this._camera.lookAt(boundaryPosition);
-        })
-        .start();
+      // this._controls.setLookAt
+      // const cameraPosition = boundaryPosition
+      //   .clone()
+      //   .add(
+      //     boundaryNormal
+      //       .clone()
+      //       .multiplyScalar(this._controls.maxDistance * 0.65)
+      //   );
+      // new TWEEN.Tween(this._camera.position)
+      //   .to(cameraPosition)
+      //   .easing(TWEEN.Easing.Quadratic.InOut)
+      //   .onUpdate(() => {
+      //     this._camera.lookAt(boundaryPosition);
+      //   })
+      //   .start();
     }
     return selectingBoundary;
   };
@@ -693,13 +701,13 @@ export class Viewer3D {
     const camera = this._camera.clone();
     const { renderer, scene, workingAssetGroup } = this._generateViewerCopy();
     const controls = new CameraControls(camera, renderer.domElement);
-    controls.rotateAzimuthTo(angleY, false);
     this._paddingInCssPixel(controls, workingAssetGroup, {
       top: 20,
       bottom: 20,
       left: 20,
       right: 20,
     });
+    controls.rotateAzimuthTo(angleY, false);
     const delta = this._clock.getDelta();
     controls.update(delta);
     renderer.render(scene, camera);

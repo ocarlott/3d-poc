@@ -4,6 +4,7 @@ import * as fabric from "fabric";
 import _ from "underscore";
 import { ImageHelper } from "./ImageHelper";
 import { KeepColor } from "./KeepColorFilter";
+import { Utils } from "./Utils";
 // import { Texture, Sprite } from "pixi.js";
 // import { MultiColorReplaceFilter } from "@pixi/filter-multi-color-replace";
 
@@ -39,6 +40,10 @@ export class Boundary {
     color: string;
     textureOption: TextureOption;
   }[] = [];
+  private _normalPositionHelper: THREE.ArrowHelper;
+  private _normalUVHelper: THREE.ArrowHelper;
+  private _normalUV: THREE.Vector3;
+  public breakdownTextures: string[] = [];
 
   constructor(canvas: THREE.Mesh, techPackCanvas: THREE.Mesh) {
     this._canvas = canvas;
@@ -63,9 +68,11 @@ export class Boundary {
     const positionArray = (
       canvas.geometry.attributes["position"] as THREE.BufferAttribute
     ).array;
-    const points: THREE.Vector3[] = [];
+    const uvArray = (canvas.geometry.attributes["uv"] as THREE.BufferAttribute)
+      .array;
+    const positionPoints: THREE.Vector3[] = [];
     for (let i = 0; i < positionArray.length; i += 3) {
-      points.push(
+      positionPoints.push(
         new THREE.Vector3(
           positionArray[i],
           positionArray[i + 1],
@@ -73,8 +80,30 @@ export class Boundary {
         )
       );
     }
-    const boundingSphere = new THREE.Sphere().setFromPoints(points);
+    const uvPoints: THREE.Vector3[] = [];
+    for (let i = 0; i < uvArray.length; i += 3) {
+      uvPoints.push(
+        new THREE.Vector3(uvArray[i], uvArray[i + 1], uvArray[i + 2])
+      );
+    }
+    const boundingSphere = new THREE.Sphere().setFromPoints(positionPoints);
+    const boundingUVSphere = new THREE.Sphere().setFromPoints(uvPoints);
     this.normal = boundingSphere.center.normalize();
+    this._normalPositionHelper = new THREE.ArrowHelper(
+      this.normal,
+      new THREE.Vector3(0, 0, 0),
+      20
+    );
+    this._normalUV = boundingUVSphere.center.normalize();
+    this._normalUVHelper = new THREE.ArrowHelper(
+      this._normalUV,
+      new THREE.Vector3(0, 0, 0),
+      30,
+      "purple"
+    );
+    this._normalPositionHelper.visible = false;
+    this._normalUVHelper.visible = false;
+    this.group.add(this._normalPositionHelper, this._normalUVHelper);
   }
 
   private _getClipPathWidth(canvasWidth: number, canvasHeight: number) {
@@ -139,6 +168,7 @@ export class Boundary {
       this._canvasWidth,
       this._canvasHeight
     );
+    this._workingCanvas2D.backgroundColor = "rgba(0, 0, 0, 0.3)";
   };
 
   organizeGroup = () => {
@@ -175,7 +205,10 @@ export class Boundary {
       disableEditting = true,
     } = options;
     this.resetBoundary();
-    this._textureApplication = textureApplication || [];
+    this._textureApplication = (textureApplication || []).map((app) => ({
+      ...app,
+      color: app.color.toUpperCase(),
+    }));
     this._onArtworkChanged = onArtworkChanged;
     const { computed: computedArtworkUrl, colorList } =
       await ImageHelper.reduceImageColor({
@@ -184,7 +217,11 @@ export class Boundary {
     this._canvasList.forEach((c) => {
       c.removeFromParent();
     });
-    this._canvasList = colorList.map(() => this._canvas.clone());
+    this._canvasList = colorList.map(() => {
+      const canvas = this._canvas.clone();
+      canvas.material = this._canvasMaterial.clone();
+      return canvas;
+    });
     this.group.add(...this._canvasList);
     this._workingColors = colorList;
     this._configure2DCanvas(workingCanvas);
@@ -273,11 +310,15 @@ export class Boundary {
   private _renderCanvasOnBoundary = _.throttle(async () => {
     if (this._workingCanvas2D) {
       const copy = await this._workingCanvas2D.clone(["elements"]);
+      copy.backgroundColor = "rgba(0, 0, 0, 0)";
       const original = copy.toCanvasElement();
       const texture = new THREE.CanvasTexture(original);
       texture.wrapS = THREE.RepeatWrapping;
       texture.wrapT = THREE.RepeatWrapping;
-      texture.repeat.set(Math.sign(this.normal.z) || 1, -1);
+      texture.repeat.set(
+        Math.sign(this._normalUV.x),
+        -Math.sign(this._normalUV.y)
+      );
       this._canvasMaterial.map = texture;
     }
   }, 20);
@@ -291,6 +332,8 @@ export class Boundary {
       const textureUris = await Promise.all(
         this._workingColors.map((c) => ImageHelper.keepOnlyColor(imageData, c))
       );
+      const colors = this._workingColors.map(Utils.rgb2hex);
+      this.breakdownTextures = textureUris;
       const textures = textureUris.map((uri) => {
         const texture = new THREE.TextureLoader().load(uri);
         texture.wrapS = THREE.RepeatWrapping;
@@ -298,16 +341,33 @@ export class Boundary {
         texture.repeat.set(Math.sign(this.normal.z) || 1, -1);
         return texture;
       });
-      console.log({
-        colorList: this._workingColors,
-        textureUris,
+      // console.log({
+      //   colorList: colors,
+      //   textureUris,
+      // });
+      this._canvasList.forEach((geo, index) => {
+        if (index % 2 == 0) {
+          geo.material = new THREE.MeshPhongMaterial();
+          (geo.material as THREE.MeshPhongMaterial).setValues({
+            shininess: 1,
+            color: "white",
+            map: textures[index],
+            opacity: 1,
+            reflectivity: 1,
+            transparent: true,
+          });
+        } else {
+          const material = geo.material as THREE.MeshStandardMaterial;
+          material.map = textures[index];
+          material.setValues({
+            // color: "pink",
+            opacity: 1,
+          });
+        }
+        // console.log(material.id);
       });
-      this._canvasMaterial.map = textures[1];
+      this._canvas.visible = false;
     }
-    // rgb(0, 255, 255)
-    // rgb(53, 132, 198)
-    // rgb(78, 124, 170)
-    // rgb(50, 114, 186)
   };
 
   resetBoundary = () => {
@@ -337,5 +397,10 @@ export class Boundary {
           }
         : null,
     };
+  };
+
+  setDeveloperMode = (value: boolean) => {
+    this._normalPositionHelper.visible = value;
+    this._normalUVHelper.visible = value;
   };
 }

@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import { Button,  Canvas, Container, Error, Image, ImageContainer, ImageList, Info, SideBar, Success, Warning } from './AppStyles';
-import { Viewer3D } from 'microstore-3d';
+import { TextureOption, Viewer3D } from 'microstore-3d';
 import { Boundary } from 'microstore-3d/lib/Boundary';
 import Modal from 'react-modal';
 import { Utils } from 'microstore-3d/lib/Utils';
@@ -40,6 +40,10 @@ function App() {
             boundaryName: 'CropT_boundary_back',
             artworkUrl: './logo.png',
             xRatio: 0.5,
+            textureApplication: [{
+              color: '3584C6',
+              textureOption: TextureOption.Metallic
+            }]
           }]
         })
       })();
@@ -154,13 +158,13 @@ function App() {
         </Button>
         <Button onClick={async () => {
           const boundary = await viewer?.changeArtwork({
-            boundary: 'CropT_boundary_front',
+            boundary: 'CropT_boundary_1',
             canvas: canvas2DContainerRef.current ?? undefined,
             artworkUrl: './logo.png',
             sizeRatio: 0.5,
             xRatio: 0.5,
             yRatio: 0.5
-          }, false) ?? null;
+          }, true) ?? null;
           setCurrentBoundary(boundary);
         }}>
           Add Artwork
@@ -235,6 +239,13 @@ function App() {
           width: 0.1,
           height: 0.1
         }} />
+        <Button onClick={() => {
+          if (viewer && currentBoundary) {
+            setImages(images.concat(currentBoundary.breakdownTextures))
+          }
+        }}>
+          Get Breakdown Images
+        </Button>
         <ImageList>
           {images.map((image, index) => (<Image key={index + 'i'} src={image} />))}
         </ImageList>

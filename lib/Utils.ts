@@ -176,4 +176,16 @@ export class Utils {
 
     return array;
   };
+
+  static rgb2hex = (color: number[]) => {
+    if (color.length !== 3) {
+      console.error("Invalid rgb color");
+      return "FFFFFF";
+    }
+    return `${color[0].toString(16).padStart(2, "0")}${color[1]
+      .toString(16)
+      .padStart(2, "0")}${color[2]
+      .toString(16)
+      .padStart(2, "0")}`.toUpperCase();
+  };
 }
