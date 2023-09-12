@@ -51,7 +51,7 @@ export class Viewer3D {
     sizeRatio: number;
     rotation: number;
   }) => void;
-  private _isInDeveloperMode = true;
+  private _isInDeveloperMode = false;
   private _shouldRotate = false;
   private _resizeObserver: ResizeObserver;
   private _modelCenter = new THREE.Vector3();
@@ -73,8 +73,8 @@ export class Viewer3D {
       canvas,
       antialias: true,
     });
-    this._light.position.set(0, 15, 15);
-    this._lightBack.position.set(0, 15, -15);
+    this._light.position.set(0, 15, 30);
+    this._lightBack.position.set(0, 15, -30);
     this._scene.background = new THREE.Color("#eee");
     this._scene.add(this._ambientLight);
     this._scene.add(this._light, this._lightBack);
@@ -355,7 +355,6 @@ export class Viewer3D {
           this._model = obj;
           this._modelGroup.add(obj);
           this._scene.add(this._modelGroup);
-          this.toggleDeveloperMode();
           onProgress(100);
           resolve();
         },

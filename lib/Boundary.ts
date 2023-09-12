@@ -92,13 +92,13 @@ export class Boundary {
     this._normalPositionHelper = new THREE.ArrowHelper(
       this.normal,
       new THREE.Vector3(0, 0, 0),
-      20
+      15
     );
     this._normalUV = boundingUVSphere.center.normalize();
     this._normalUVHelper = new THREE.ArrowHelper(
       this._normalUV,
       new THREE.Vector3(0, 0, 0),
-      30,
+      15,
       "purple"
     );
     this._normalPositionHelper.visible = false;
