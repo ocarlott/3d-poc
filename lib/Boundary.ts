@@ -191,7 +191,7 @@ export class Boundary {
       sizeRatio: number;
       rotation: number;
     }) => void;
-    disableEditting?: boolean;
+    disableEditing?: boolean;
   }): Promise<void> => {
     const {
       artworkUrl,
@@ -202,7 +202,7 @@ export class Boundary {
       workingCanvas,
       onArtworkChanged,
       textureApplication,
-      disableEditting = true,
+      disableEditing = true,
     } = options;
     this.resetBoundary();
     this._textureApplication = (textureApplication || []).map((app) => ({
@@ -254,10 +254,10 @@ export class Boundary {
     });
     img.set({
       angle: rotation,
-      selectable: !disableEditting,
+      selectable: !disableEditing,
     });
     this._workingCanvas2D?.add(img);
-    if (!disableEditting) {
+    if (!disableEditing) {
       this._workingCanvas2D?.setActiveObject(img);
     }
     this._canvasMaterial.setValues({

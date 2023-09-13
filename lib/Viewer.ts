@@ -420,8 +420,9 @@ export class Viewer3D {
       rotation?: number;
       sizeRatio?: number;
     }[];
+    disableEditing?: boolean;
   }) => {
-    const { colorMap, artworkMap } = options;
+    const { colorMap, artworkMap, disableEditing = true } = options;
     colorMap.forEach((colorConfig) => {
       this.changeColor(colorConfig.layerName, colorConfig.color);
     });
@@ -436,15 +437,18 @@ export class Viewer3D {
         rotation,
         sizeRatio,
       }) => {
-        this.changeArtwork({
-          artworkUrl,
-          canvas,
-          boundary: boundaryName,
-          xRatio,
-          yRatio,
-          rotation,
-          sizeRatio,
-        });
+        this.changeArtwork(
+          {
+            artworkUrl,
+            canvas,
+            boundary: boundaryName,
+            xRatio,
+            yRatio,
+            rotation,
+            sizeRatio,
+          },
+          disableEditing
+        );
         textureApplication.forEach((app) => {
           this.changeArtworkTexture(boundaryName, app.color, app.textureOption);
         });
@@ -599,7 +603,7 @@ export class Viewer3D {
       rotation?: number;
       sizeRatio?: number;
     },
-    disableEditting = true
+    disableEditing = true
   ) => {
     const {
       boundary,
@@ -612,7 +616,7 @@ export class Viewer3D {
       textureApplication,
     } = options;
     let boundaryObj: Boundary | null = null;
-    if (!disableEditting) {
+    if (!disableEditing) {
       boundaryObj = this._animateSelectBoundary(boundary);
     } else {
       boundaryObj =
@@ -627,7 +631,7 @@ export class Viewer3D {
       sizeRatio,
       onArtworkChanged: this._onArtworkChanged,
       textureApplication,
-      disableEditting,
+      disableEditing,
     });
     return boundaryObj;
   };
