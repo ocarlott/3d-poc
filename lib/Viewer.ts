@@ -57,7 +57,7 @@ export class Viewer3D {
   private _modelCenter = new THREE.Vector3();
   private _modelRatio = 1;
   private _clock = new THREE.Clock();
-  private _axesHelper = new THREE.AxesHelper(30);
+  private _axesHelper = new THREE.AxesHelper(1);
 
   constructor(canvas: HTMLCanvasElement) {
     this._camera = new THREE.PerspectiveCamera(
@@ -78,7 +78,6 @@ export class Viewer3D {
     this._scene.background = new THREE.Color("#eee");
     this._scene.add(this._ambientLight);
     this._scene.add(this._light, this._lightBack);
-    this._scene.add(this._axesHelper);
     this._controls.minPolarAngle = Math.PI / 2;
     this._controls.maxPolarAngle = Math.PI / 2;
     this.show();
@@ -348,6 +347,11 @@ export class Viewer3D {
           const { size, center } = this._getSizeAndCenter(
             this._workingAssetGroup
           );
+          this._axesHelper = new THREE.AxesHelper(
+            Math.max(size.x, size.y, size.z) / 2 + 2
+          );
+          this._scene.add(this._axesHelper);
+          this._axesHelper.visible = false;
           this._controls.maxDistance = Math.max(size.x, size.y, size.z) * 1.2;
           this._controls.minDistance = Math.min(size.x, size.y, size.z) * 1.2;
           this._modelCenter = center;
