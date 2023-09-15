@@ -5,6 +5,7 @@ import _ from "underscore";
 import { ImageHelper } from "./ImageHelper";
 import { KeepColor } from "./KeepColorFilter";
 import { Utils } from "./Utils";
+import crystalUrl from "./assets/crystal.png";
 // import { Texture, Sprite } from "pixi.js";
 // import { MultiColorReplaceFilter } from "@pixi/filter-multi-color-replace";
 
@@ -43,7 +44,8 @@ export class Boundary {
   private _normalPositionHelper: THREE.ArrowHelper;
   private _normalUVHelper: THREE.ArrowHelper;
   private _normalUV: THREE.Vector3;
-  public breakdownTextures: string[] = [];
+  private _crystalTexture = new THREE.TextureLoader().load(crystalUrl);
+  // public breakdownTextures: string[] = [];
 
   constructor(canvas: THREE.Mesh, techPackCanvas: THREE.Mesh) {
     this._canvas = canvas;
@@ -182,7 +184,6 @@ export class Boundary {
     yRatio: number;
     rotation: number;
     sizeRatio: number;
-    textureApplication?: { color: string; textureOption: TextureOption }[];
     onArtworkChanged?: (params: {
       forBoundary: string;
       xRatio: number;
@@ -201,14 +202,9 @@ export class Boundary {
       sizeRatio,
       workingCanvas,
       onArtworkChanged,
-      textureApplication,
       disableEditing = true,
     } = options;
     this.resetBoundary();
-    this._textureApplication = (textureApplication || []).map((app) => ({
-      ...app,
-      color: app.color.toUpperCase(),
-    }));
     this._onArtworkChanged = onArtworkChanged;
     const { computed: computedArtworkUrl, colorList } =
       await ImageHelper.reduceImageColor({
@@ -264,9 +260,9 @@ export class Boundary {
       opacity: 1,
     });
     await this._renderCanvasOnBoundary();
-    // if (disableEditting) {
-    //   this.finalizeCanvasOnBoundary();
-    // }
+    if (disableEditing) {
+      this.finalizeCanvasOnBoundary();
+    }
   };
 
   private _updateListener = () => {
@@ -326,57 +322,95 @@ export class Boundary {
   finalizeCanvasOnBoundary = async () => {
     if (this._workingCanvas2D) {
       const copy = await this._workingCanvas2D.clone(["elements"]);
+      copy.backgroundColor = "rgba(0, 0, 0, 0)";
       const original = copy.toCanvasElement();
-      const uri = original.toDataURL();
-      const { imageData } = await ImageHelper.getImageDataForImage(uri);
-      const textureUris = await Promise.all(
-        this._workingColors.map((c) => ImageHelper.keepOnlyColor(imageData, c))
+      const url = original.toDataURL();
+      const imagePartUrls = await ImageHelper.generateImageParts(
+        url,
+        this._workingColors
       );
-      const colors = this._workingColors.map(Utils.rgb2hex);
-      this.breakdownTextures = textureUris;
-      const textures = textureUris.map((uri) => {
+      // this.breakdownTextures = imagePartUrls;
+      const textures = imagePartUrls.map((uri) => {
         const texture = new THREE.TextureLoader().load(uri);
         texture.wrapS = THREE.RepeatWrapping;
         texture.wrapT = THREE.RepeatWrapping;
-        texture.repeat.set(Math.sign(this.normal.z) || 1, -1);
+        texture.repeat.set(
+          Math.sign(this._normalUV.x),
+          -Math.sign(this._normalUV.y)
+        );
         return texture;
       });
-      // console.log({
-      //   colorList: colors,
-      //   textureUris,
-      // });
+      const colors = this._workingColors.map((color) => Utils.rgb2hex(color));
       this._canvasList.forEach((geo, index) => {
-        if (index % 2 == 0) {
-          geo.material = new THREE.MeshPhongMaterial();
-          (geo.material as THREE.MeshPhongMaterial).setValues({
-            shininess: 1,
-            color: "white",
+        const entry = this._textureApplication.find((v) =>
+          Utils.testHexMatch(v.color, colors[index])
+        );
+        if (!entry) {
+          // Default screenprint
+          const material = new THREE.MeshPhongMaterial({
+            shininess: 50,
             map: textures[index],
-            opacity: 1,
-            reflectivity: 1,
             transparent: true,
           });
+          geo.material = material;
         } else {
-          const material = geo.material as THREE.MeshStandardMaterial;
-          material.map = textures[index];
-          material.setValues({
-            // color: "pink",
-            opacity: 1,
-          });
+          switch (entry.textureOption) {
+            case TextureOption.Metallic:
+              (geo.material as THREE.MeshStandardMaterial).setValues({
+                metalness: 0.2,
+                roughness: 0.3,
+                opacity: 1,
+                map: textures[index],
+              });
+              break;
+            case TextureOption.Matte:
+              (geo.material as THREE.MeshStandardMaterial).setValues({
+                opacity: 1,
+                map: textures[index],
+              });
+              break;
+            case TextureOption.Crystals:
+              (geo.material as THREE.MeshStandardMaterial).setValues({
+                opacity: 1,
+                map: textures[index],
+                normalMap: this._crystalTexture,
+                transparent: true,
+              });
+              break;
+            case TextureOption.Screenprint:
+            default:
+              const material = new THREE.MeshPhongMaterial({
+                shininess: 50,
+                map: textures[index],
+                transparent: true,
+                opacity: 1,
+              });
+              geo.material = material;
+              break;
+          }
         }
-        // console.log(material.id);
+        (geo.material as THREE.Material).needsUpdate = true;
       });
       this._canvas.visible = false;
     }
   };
 
   resetBoundary = () => {
+    this.resetTextureApplication();
     this._workingCanvas2D?.clear();
     this._workingCanvas2D?.dispose();
     this._workingCanvas2D = undefined;
     this._canvasMaterial.setValues({
       map: null,
       opacity: 0,
+    });
+    this._canvasList.forEach((geo) => {
+      (
+        geo.material as THREE.MeshStandardMaterial | THREE.MeshPhongMaterial
+      ).setValues({
+        map: null,
+        opacity: 0,
+      });
     });
   };
 
@@ -402,5 +436,24 @@ export class Boundary {
   setDeveloperMode = (value: boolean) => {
     this._normalPositionHelper.visible = value;
     this._normalUVHelper.visible = value;
+  };
+
+  applyTextureApplication = (textureApplication: {
+    color: string;
+    textureOption: TextureOption;
+  }) => {
+    const index = this._textureApplication.findIndex((v) =>
+      Utils.testHexMatch(textureApplication.color, v.color)
+    );
+    if (index === -1) {
+      this._textureApplication =
+        this._textureApplication.concat(textureApplication);
+    } else {
+      this._textureApplication.splice(index, 1, textureApplication);
+    }
+  };
+
+  resetTextureApplication = () => {
+    this._textureApplication = [];
   };
 }

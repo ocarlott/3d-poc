@@ -37,12 +37,12 @@ function App() {
         viewer.configureModel({
           colorMap: [],
           artworkMap: [{
-            boundaryName: 'CropT_boundary_back',
+            boundaryName: 'CropT_boundary_1',
             artworkUrl: './logo.png',
             xRatio: 0.5,
             textureApplication: [{
-              color: '3584C6',
-              textureOption: TextureOption.Metallic
+              color: '377abf',
+              textureOption: TextureOption.Crystals
             }]
           }]
         })
@@ -224,6 +224,13 @@ function App() {
         }}>
           Validate Model
         </Button>
+        <Button onClick={() => {
+          if (viewer) {
+            viewer.resetModel();
+          }
+        }}>
+          Reset Model
+        </Button>
         <canvas ref={canvas2DContainerRef} hidden={!currentBoundary} width={300} height={300} ></canvas>
         <input type="file" ref={fileRef} onChange={async () => {
           if (viewer && fileRef.current) {
@@ -239,13 +246,13 @@ function App() {
           width: 0.1,
           height: 0.1
         }} />
-        <Button onClick={() => {
+        {/* <Button onClick={() => {
           if (viewer && currentBoundary) {
             setImages(images.concat(currentBoundary.breakdownTextures))
           }
         }}>
           Get Breakdown Images
-        </Button>
+        </Button> */}
         <ImageList>
           {images.map((image, index) => (<Image key={index + 'i'} src={image} />))}
         </ImageList>

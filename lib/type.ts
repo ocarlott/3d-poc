@@ -15,7 +15,7 @@ export type UploadImageData = {
 };
 
 export enum TextureOption {
-  ScreenPrint = "Screenprint",
+  Screenprint = "Screenprint",
   Metallic = "Metallic",
   Matte = "Matte",
   Crystals = "Crystals",

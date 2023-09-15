@@ -1,5 +1,7 @@
 import getColors from "image-pal";
 import { Utils } from "./Utils";
+import ImageJS from "image-js";
+// import {} from 'image-filter-color';
 
 export class ImageHelper {
   static reduceImageColor = async (params: {
@@ -8,6 +10,10 @@ export class ImageHelper {
     minDensity?: number;
   }) => {
     let { url, limit = 4, minDensity = 0.05 } = params;
+    let img = await ImageJS.load(url);
+    img = img.resize({
+      width: 300,
+    });
     return new Promise<{
       computed: string;
       colors: string[];
@@ -21,16 +27,16 @@ export class ImageHelper {
         minDensity = 0.05;
       }
       const { imageData, width, height } =
-        await ImageHelper.getImageDataForImage(url);
+        await ImageHelper.getImageDataForImage(img.toDataURL());
       const data = imageData.data;
       const newData = new Uint8ClampedArray(data.length);
       const totalPixels = width * height;
       for (let i = 0; i < totalPixels; i++) {
-        if (data[i * 4 + 3] < 20) {
+        if (data[i * 4 + 3] < 10) {
           data[i * 4 + 3] = 0;
         }
       }
-      const colors = getColors(imageData.data, {
+      const colors = getColors(data, {
         hasAlpha: true,
         minDensity,
         maxColors: limit,
@@ -224,29 +230,41 @@ export class ImageHelper {
     );
   };
 
-  static keepOnlyColor = async (imageData: ImageData, color: number[]) => {
-    const { data, width, height } = imageData;
+  static generateImageParts = async (uri: string, colors: number[][]) => {
+    const { width, height, imageData } = await ImageHelper.getImageDataForImage(
+      uri
+    );
+    const labList = colors.map((color) => Utils.rgb2lab(color));
+    const data = imageData.data;
     const totalPixels = width * height;
-    const newData = new Uint8ClampedArray(data.length);
-    for (let i = 0; i < totalPixels; i++) {
-      if (
-        data[i * 4] === color[0] &&
-        data[i * 4 + 1] === color[1] &&
-        data[i * 4 + 2] === color[2]
-      ) {
-        newData[i * 4] = color[0];
-        newData[i * 4 + 1] = color[1];
-        newData[i * 4 + 2] = color[2];
-        newData[i * 4 + 3] = 255;
-      } else {
-        newData[i * 4 + 3] = 0;
+    const imageParts = colors.map(() => new Uint8ClampedArray(data.length));
+    for (let i = 0; i < colors.length; i++) {
+      for (let j = 0; j < data.length; j++) {
+        imageParts[i][j] = 0;
       }
     }
-    const dataUri = await ImageHelper.getDataURLForImageData(
-      newData,
-      width,
-      height
+    for (let i = 0; i < totalPixels; i++) {
+      if (data[i * 4 + 3] > 0) {
+        const labColor = Utils.rgb2lab([
+          data[i * 4],
+          data[i * 4 + 1],
+          data[i * 4 + 2],
+        ]);
+        const index = Utils.findClosetIndexColorFromLabColorList(
+          labList,
+          labColor
+        );
+        imageParts[index][i * 4] = colors[index][0];
+        imageParts[index][i * 4 + 1] = colors[index][1];
+        imageParts[index][i * 4 + 2] = colors[index][2];
+        imageParts[index][i * 4 + 3] = 255;
+      }
+    }
+    const imagePartUrls = await Promise.all(
+      imageParts.map((part) =>
+        ImageHelper.getDataURLForImageData(part, width, height)
+      )
     );
-    return dataUri;
+    return imagePartUrls;
   };
 }

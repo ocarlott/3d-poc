@@ -1,6 +1,5 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { ControlName, TextureOption } from "./type";
 import { Boundary } from "./Boundary";
 import * as TWEEN from "@tweenjs/tween.js";
@@ -36,11 +35,6 @@ export class Viewer3D {
   > = new Map();
   private _loader = new GLTFLoader();
   private _selectedBoundary: Boundary | null = null;
-  private _crystalizeStyleList = [
-    TextureOption.ScreenPrint,
-    TextureOption.Metallic,
-    TextureOption.Crystals,
-  ];
   private _canvasWidth = 100;
   private _canvasHeight = 100;
   private _onArtworkChanged?: (params: {
@@ -54,7 +48,6 @@ export class Viewer3D {
   private _isInDeveloperMode = false;
   private _shouldRotate = false;
   private _resizeObserver: ResizeObserver;
-  private _modelCenter = new THREE.Vector3();
   private _modelRatio = 1;
   private _clock = new THREE.Clock();
   private _axesHelper = new THREE.AxesHelper(1);
@@ -73,8 +66,9 @@ export class Viewer3D {
       canvas,
       antialias: true,
     });
-    this._light.position.set(0, 15, 30);
-    this._lightBack.position.set(0, 15, -30);
+    this._light.position.set(0, 5, 30);
+    this._lightBack.position.set(0, 5, -20);
+    this._light.lookAt(new THREE.Vector3(0, 0, 20));
     this._scene.background = new THREE.Color("#eee");
     this._scene.add(this._ambientLight);
     this._scene.add(this._light, this._lightBack);
@@ -152,7 +146,6 @@ export class Viewer3D {
     const fov = this._camera.fov * THREE.MathUtils.DEG2RAD;
     const rendererHeight =
       this._renderer?.getSize(new THREE.Vector2()).height ?? 0;
-
     const boundingBox = new THREE.Box3().setFromObject(obj);
     const size = boundingBox.getSize(new THREE.Vector3());
     const boundingWidth = size.x;
@@ -344,9 +337,7 @@ export class Viewer3D {
             child.organizeGroup();
           });
           this._fitCameraToObject(this._workingAssetGroup, this._controls);
-          const { size, center } = this._getSizeAndCenter(
-            this._workingAssetGroup
-          );
+          const { size } = this._getSizeAndCenter(this._workingAssetGroup);
           this._axesHelper = new THREE.AxesHelper(
             Math.max(size.x, size.y, size.z) / 2 + 2
           );
@@ -354,7 +345,6 @@ export class Viewer3D {
           this._axesHelper.visible = false;
           this._controls.maxDistance = Math.max(size.x, size.y, size.z) * 1.2;
           this._controls.minDistance = Math.min(size.x, size.y, size.z) * 1.2;
-          this._modelCenter = center;
           this._modelRatio = Math.abs(size.x / size.y);
           this._model = obj;
           this._modelGroup.add(obj);
@@ -465,7 +455,7 @@ export class Viewer3D {
     return allLayersFound && allBoundariesFound;
   };
 
-  validateModel = async () => {
+  validateModel = async (artworkUrl = "./logo.png") => {
     const colors = Utils.getShuffledColors();
     const boundaries: string[] = [];
     const techPacks: string[] = [];
@@ -528,7 +518,7 @@ export class Viewer3D {
       this._boundaryList.map((bd) => {
         return this.changeArtwork({
           boundary: bd.name,
-          artworkUrl: "./logo.png",
+          artworkUrl,
         });
       })
     );
@@ -596,7 +586,6 @@ export class Viewer3D {
     options: {
       boundary: string;
       canvas?: HTMLCanvasElement;
-      textureApplication?: { color: string; textureOption: TextureOption }[];
       artworkUrl: string;
       xRatio?: number;
       yRatio?: number;
@@ -613,7 +602,6 @@ export class Viewer3D {
       sizeRatio = 0.5,
       artworkUrl,
       canvas,
-      textureApplication,
     } = options;
     let boundaryObj: Boundary | null = null;
     if (!disableEditing) {
@@ -630,7 +618,6 @@ export class Viewer3D {
       rotation,
       sizeRatio,
       onArtworkChanged: this._onArtworkChanged,
-      textureApplication,
       disableEditing,
     });
     return boundaryObj;
@@ -811,6 +798,36 @@ export class Viewer3D {
   changeArtworkTexture = (
     boundary: string,
     color: string,
-    textureOption: TextureOption | null
-  ) => {};
+    textureOption: TextureOption
+  ) => {
+    const bd = this._boundaryList.find((b) => b.name === boundary);
+    if (bd) {
+      bd.applyTextureApplication({
+        color,
+        textureOption,
+      });
+    }
+  };
+
+  resetArtworkTexture = (boundary: string) => {
+    const bd = this._boundaryList.find((b) => b.name === boundary);
+    if (bd) {
+      bd.resetTextureApplication();
+    }
+  };
+
+  resetModel = () => {
+    this._modelGroup.traverse((child) => {
+      const castedChild = child as THREE.Mesh;
+      const castedChildMaterial =
+        castedChild.material as THREE.MeshStandardMaterial;
+      if (castedChild.isMesh && !!castedChildMaterial) {
+        castedChildMaterial.setValues({
+          color: "white",
+          // wireframe: true,
+        });
+      }
+    });
+    this._boundaryList.forEach((bd) => bd.resetBoundary());
+  };
 }

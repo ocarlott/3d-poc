@@ -184,8 +184,131 @@ export class Utils {
     }
     return `${color[0].toString(16).padStart(2, "0")}${color[1]
       .toString(16)
-      .padStart(2, "0")}${color[2]
-      .toString(16)
-      .padStart(2, "0")}`.toUpperCase();
+      .padStart(2, "0")}${color[2].toString(16).padStart(2, "0")}`;
+  };
+
+  static testHexMatch = (color1: string, color2: string) => {
+    return (
+      color1.toUpperCase().replace("#", "") ===
+      color2.toUpperCase().replace("#", "")
+    );
   };
 }
+
+interface IColor {
+  r: number | null;
+  b: number | null;
+  g: number | null;
+  a?: number | null;
+}
+
+// class ColorInterval {
+//   readonly from: IColor;
+//   readonly to: IColor;
+//   readonly match: IColor;
+//   readonly noMatch: IColor;
+
+//   constructor(options: any) {
+//     if (!options.from || !options.to) {
+//       throw new Error("image-filter-color:: Invalid ColorInterval");
+//     }
+
+//     if (!options.match && !options.noMatch) {
+//       throw new Error(
+//         "image-filter-color:: Invalid ColorInterval => no match or noMatch provided"
+//       );
+//     }
+
+//     this.from = options.from;
+//     this.to = options.to;
+
+//     if (!ColorInterval.validateInterval(this.from.r, this.to.r)) {
+//       throw new Error(
+//         "image-filter-color:: Invalid ColorInterval => red color"
+//       );
+//     }
+
+//     if (!ColorInterval.validateInterval(this.from.g, this.to.g)) {
+//       throw new Error(
+//         "image-filter-color:: Invalid ColorInterval => green color"
+//       );
+//     }
+
+//     if (!ColorInterval.validateInterval(this.from.b, this.to.b)) {
+//       throw new Error(
+//         "image-filter-color:: Invalid ColorInterval => blue color"
+//       );
+//     }
+
+//     this.match = options.match;
+//     this.noMatch = options.noMatch;
+//   }
+
+//   static isNumeric(n: any): n is number {
+//     return !isNaN(parseFloat(n)) && isFinite(n);
+//   }
+
+//   static validateInterval(from: number | null, to: number | null) {
+//     if (
+//       !ColorInterval.isNumeric(from) ||
+//       !ColorInterval.isNumeric(to) ||
+//       from > to
+//     ) {
+//       return false;
+//     }
+
+//     return true;
+//   }
+// }
+
+// function transform(data: Uint8ClampedArray, length: number, options) {
+//   function isNumeric(n: any): n is number {
+//     return !isNaN(parseFloat(n)) && isFinite(n);
+//   }
+
+//   function applyPixelTransformation(
+//     pixels: Uint8ClampedArray,
+//     index: number,
+//     color
+//   ) {
+//     pixels[index] = !isNumeric(color.r) ? pixels[index] : color.r;
+//     pixels[index + 1] = !isNumeric(color.g) ? pixels[index + 1] : color.g;
+//     pixels[index + 2] = !isNumeric(color.b) ? pixels[index + 2] : color.b;
+//     pixels[index + 3] = !isNumeric(color.a) ? pixels[index + 3] : color.a;
+//   }
+
+//   function evaluatePixel(
+//     data: Uint8ClampedArray,
+//     index: number,
+//     colorInterval: ColorInterval
+//   ) {
+//     var red = data[index];
+//     var green = data[index + 1];
+//     var blue = data[index + 2];
+
+//     if (
+//       red >= colorInterval.from.r &&
+//       red <= colorInterval.to.r &&
+//       green >= colorInterval.from.g &&
+//       green <= colorInterval.to.g &&
+//       blue >= colorInterval.from.b &&
+//       blue <= colorInterval.to.b
+//     ) {
+//       return true;
+//     }
+
+//     return false;
+//   }
+
+//   for (var i = 0; i < length; i += 4) {
+//     options.colorsInterval.forEach(function (colorInterval: ColorInterval) {
+//       var isMatch = evaluatePixel(data, i, colorInterval);
+
+//       if (isMatch && colorInterval.match) {
+//         applyPixelTransformation(data, i, colorInterval.match);
+//       } else if (!isMatch && colorInterval.noMatch) {
+//         applyPixelTransformation(data, i, colorInterval.noMatch);
+//       }
+//     });
+//   }
+// }
