@@ -151,11 +151,20 @@ export class Boundary {
   }
 
   private _configure2DCanvas = (workingCanvas?: HTMLCanvasElement) => {
+    if (
+      this._workingCanvas2D &&
+      workingCanvas &&
+      this._workingCanvas2D.lowerCanvasEl.id === workingCanvas.id
+    ) {
+      return;
+    }
+    this.clearWorkingCanvas();
     const wCanvas = workingCanvas || window.document.createElement("canvas");
     if (!workingCanvas) {
       wCanvas.width = 300;
       wCanvas.height = 300;
     }
+    wCanvas.id = self.crypto.randomUUID();
     this._canvasWidth = wCanvas.width;
     this._canvasHeight = wCanvas.height;
     this._workingCanvas2D?.removeListeners();
@@ -204,7 +213,7 @@ export class Boundary {
       onArtworkChanged,
       disableEditing = true,
     } = options;
-    this.resetBoundary();
+    this.resetBoundary(false);
     this._onArtworkChanged = onArtworkChanged;
     const { computed: computedArtworkUrl, colorList } =
       await ImageHelper.reduceImageColor({
@@ -395,11 +404,17 @@ export class Boundary {
     }
   };
 
-  resetBoundary = () => {
-    this.resetTextureApplication();
+  clearWorkingCanvas = () => {
     this._workingCanvas2D?.clear();
     this._workingCanvas2D?.dispose();
     this._workingCanvas2D = undefined;
+  };
+
+  resetBoundary = (disposeCanvas = true) => {
+    this.resetTextureApplication();
+    if (disposeCanvas) {
+      this.clearWorkingCanvas();
+    }
     this._canvasMaterial.setValues({
       map: null,
       opacity: 0,
