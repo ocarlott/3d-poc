@@ -158,7 +158,7 @@ function App() {
         </Button>
         <Button onClick={async () => {
           const boundary = await viewer?.changeArtwork({
-            boundary: 'CropT_boundary_1',
+            boundary: 'CropT_boundary_2',
             canvas: canvas2DContainerRef.current ?? undefined,
             artworkUrl: './logo.png',
             sizeRatio: 0.5,
@@ -231,7 +231,7 @@ function App() {
         }}>
           Reset Model
         </Button>
-        <canvas ref={canvas2DContainerRef} hidden={!currentBoundary} width={300} height={300} ></canvas>
+        <canvas ref={canvas2DContainerRef} hidden={!currentBoundary} width={500} height={500} ></canvas>
         <input type="file" ref={fileRef} onChange={async () => {
           if (viewer && fileRef.current) {
             const file = fileRef.current.files?.[0];

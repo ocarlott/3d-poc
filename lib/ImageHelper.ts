@@ -120,12 +120,16 @@ export class ImageHelper {
       const newData = new Uint8ClampedArray(data.length);
       const totalPixels = width * height;
       for (let i = 0; i < totalPixels; i++) {
-        if (data[i * 4 + 3] > 10) {
+        if (data[i * 4 + 3] > 1) {
           newData[i * 4] = 255;
           newData[i * 4 + 1] = 255;
           newData[i * 4 + 2] = 255;
-          newData[i * 4 + 3] = 255;
+        } else {
+          newData[i * 4] = 0;
+          newData[i * 4 + 1] = 0;
+          newData[i * 4 + 2] = 0;
         }
+        newData[i * 4 + 3] = 255;
       }
       const dataUri = await ImageHelper.getDataURLForImageData(
         newData,
@@ -138,6 +142,33 @@ export class ImageHelper {
         height,
       });
     });
+  };
+
+  static mergeAlphaMap = async (uri1: string, uri2: string) => {
+    const [data1, data2] = await Promise.all([
+      ImageHelper.getImageDataForImage(uri1),
+      ImageHelper.getImageDataForImage(uri2),
+    ]);
+    if (data1.width !== data2.width || data1.height !== data2.height) {
+      throw Error("Dimensions don't match");
+    }
+    const totalPixels = data1.width * data1.height;
+    const imageData1 = data1.imageData.data;
+    const imageData2 = data2.imageData.data;
+    const finalData = new Uint8ClampedArray(totalPixels * 4);
+    for (let i = 0; i < totalPixels; i++) {
+      if (imageData1[i * 4] > 200 && imageData2[i * 4] > 200) {
+        finalData[i * 4] = 255;
+        finalData[i * 4 + 1] = 255;
+        finalData[i * 4 + 2] = 255;
+      } else {
+        finalData[i * 4] = 0;
+        finalData[i * 4 + 1] = 0;
+        finalData[i * 4 + 2] = 0;
+      }
+      finalData[i * 4 + 3] = 255;
+    }
+    return this.getDataURLForImageData(finalData, data1.width, data1.height);
   };
 
   static getDataURLForImageData = async (
@@ -203,13 +234,18 @@ export class ImageHelper {
     return Promise.reject(null);
   };
 
-  static cropImageToRatio = async (uri: string, whRatio: number) => {
+  static cropImageToRatio = async (
+    uri: string,
+    whRatio: number,
+    maxWidth?: number,
+    maxHeight?: number
+  ) => {
     const { width, height, imageData } = await ImageHelper.getImageDataForImage(
       uri
     );
     const shouldCropWidth = width / height > whRatio;
-    let finalWidth = width;
-    let finalHeight = height;
+    let finalWidth = maxWidth || width;
+    let finalHeight = maxHeight || height;
     if (shouldCropWidth) {
       finalWidth = height * whRatio;
     } else {
@@ -228,6 +264,32 @@ export class ImageHelper {
       finalWidth,
       finalHeight
     );
+  };
+
+  static resize = async (uri: string, width?: number, height?: number) => {
+    let img = await ImageJS.load(uri);
+    img = img.resize({
+      width,
+      height,
+    });
+    return img.toDataURL();
+  };
+
+  static crop = async (
+    uri: string,
+    width: number,
+    height: number,
+    x?: number,
+    y?: number
+  ) => {
+    let img = await ImageJS.load(uri);
+    img = img.crop({
+      width,
+      height,
+      x: x || 0,
+      y: y || 0,
+    });
+    return img.toDataURL();
   };
 
   static generateImageParts = async (uri: string, colors: number[][]) => {

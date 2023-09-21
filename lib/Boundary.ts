@@ -5,13 +5,16 @@ import _ from "underscore";
 import { ImageHelper } from "./ImageHelper";
 import { KeepColor } from "./KeepColorFilter";
 import { Utils } from "./Utils";
-import crystalUrl from "./assets/crystal.png";
+import crystalAlpha from "./assets/crystal_alpha.webp";
+import crystalNormal from "./assets/crystal_diffuse.webp";
+import crystalDiffuse from "./assets/crystal_diffuse.webp";
 // import { Texture, Sprite } from "pixi.js";
 // import { MultiColorReplaceFilter } from "@pixi/filter-multi-color-replace";
 
 export class Boundary {
   readonly group = new THREE.Group();
   private _boundaryRatio: number;
+  // private _textureLoader = new THREE.TextureLoader();
   readonly center: THREE.Vector3;
   private _canvas: THREE.Mesh;
   private _canvasMaterial: THREE.MeshStandardMaterial;
@@ -42,9 +45,14 @@ export class Boundary {
     textureOption: TextureOption;
   }[] = [];
   private _normalPositionHelper: THREE.ArrowHelper;
-  private _normalUVHelper: THREE.ArrowHelper;
-  private _normalUV: THREE.Vector3;
-  private _crystalTexture = new THREE.TextureLoader().load(crystalUrl);
+  // private _normalUVHelper: THREE.ArrowHelper;
+  // private _normalUV: THREE.Vector3;
+  // private _crystalNormalTexture?: THREE.Texture;
+  // private _crystalDiffuseTexture?: THREE.Texture;
+  // private _crystalAlphaTexture?: THREE.Texture;
+  // static crystalAlphaTexture = new THREE.TextureLoader().load(crystalAlpha);
+  static crystalNormalTexture = new THREE.TextureLoader().load(crystalNormal);
+  static crystalDiffuseTexture = new THREE.TextureLoader().load(crystalDiffuse);
   // public breakdownTextures: string[] = [];
 
   constructor(canvas: THREE.Mesh, techPackCanvas: THREE.Mesh) {
@@ -89,23 +97,24 @@ export class Boundary {
       );
     }
     const boundingSphere = new THREE.Sphere().setFromPoints(positionPoints);
-    const boundingUVSphere = new THREE.Sphere().setFromPoints(uvPoints);
+    // const boundingUVSphere = new THREE.Sphere().setFromPoints(uvPoints);
     this.normal = boundingSphere.center.normalize();
     this._normalPositionHelper = new THREE.ArrowHelper(
       this.normal,
       new THREE.Vector3(0, 0, 0),
       biggerSide + 1
     );
-    this._normalUV = boundingUVSphere.center.normalize();
-    this._normalUVHelper = new THREE.ArrowHelper(
-      this._normalUV,
-      new THREE.Vector3(0, 0, 0),
-      biggerSide + 2,
-      "purple"
-    );
+    // this._normalUV = boundingUVSphere.center.normalize();
+    // this._normalUVHelper = new THREE.ArrowHelper(
+    //   this._normalUV,
+    //   new THREE.Vector3(0, 0, 0),
+    //   biggerSide + 2,
+    //   "purple"
+    // );
     this._normalPositionHelper.visible = false;
-    this._normalUVHelper.visible = false;
-    this.group.add(this._normalPositionHelper, this._normalUVHelper);
+    // this._normalUVHelper.visible = false;
+    // this.group.add(this._normalUVHelper);
+    this.group.add(this._normalPositionHelper);
   }
 
   private _getClipPathWidth(canvasWidth: number, canvasHeight: number) {
@@ -246,6 +255,8 @@ export class Boundary {
     } else {
       img.scaleToHeight(clipPathHeight * sizeRatio);
     }
+    img.originX = "center";
+    img.originY = "center";
     img.setPositionByOrigin(
       new fabric.Point(canvasWidth * xRatio, canvasHeight * yRatio),
       "center",
@@ -320,10 +331,11 @@ export class Boundary {
       const texture = new THREE.CanvasTexture(original);
       texture.wrapS = THREE.RepeatWrapping;
       texture.wrapT = THREE.RepeatWrapping;
-      texture.repeat.set(
-        Math.sign(this._normalUV.x),
-        -Math.sign(this._normalUV.y)
-      );
+      texture.flipY = false;
+      // texture.repeat.set(
+      //   Math.sign(this._normalUV.x),
+      //   -Math.sign(this._normalUV.y)
+      // );
       this._canvasMaterial.map = texture;
     }
   }, 20);
@@ -343,14 +355,15 @@ export class Boundary {
         const texture = new THREE.TextureLoader().load(uri);
         texture.wrapS = THREE.RepeatWrapping;
         texture.wrapT = THREE.RepeatWrapping;
-        texture.repeat.set(
-          Math.sign(this._normalUV.x),
-          -Math.sign(this._normalUV.y)
-        );
+        texture.flipY = false;
+        // texture.repeat.set(
+        //   Math.sign(this._normalUV.x),
+        //   -Math.sign(this._normalUV.y)
+        // );
         return texture;
       });
       const colors = this._workingColors.map((color) => Utils.rgb2hex(color));
-      this._canvasList.forEach((geo, index) => {
+      this._canvasList.forEach(async (geo, index) => {
         const entry = this._textureApplication.find((v) =>
           Utils.testHexMatch(v.color, colors[index])
         );
@@ -379,10 +392,23 @@ export class Boundary {
               });
               break;
             case TextureOption.Crystals:
+              const { uri: alphaUri } = await ImageHelper.generateAlphaMap(
+                imagePartUrls[index]
+              );
+              const finalAlphaUri = await ImageHelper.mergeAlphaMap(
+                alphaUri,
+                crystalAlpha
+              );
+              const alphaTexture = new THREE.TextureLoader().load(
+                finalAlphaUri
+              );
+              alphaTexture.flipY = false;
               (geo.material as THREE.MeshStandardMaterial).setValues({
                 opacity: 1,
-                map: textures[index],
-                normalMap: this._crystalTexture,
+                // color: `#${colors[index]}`,
+                map: Boundary.crystalDiffuseTexture,
+                normalMap: Boundary.crystalNormalTexture,
+                alphaMap: alphaTexture,
                 transparent: true,
               });
               break;
@@ -450,7 +476,7 @@ export class Boundary {
 
   setDeveloperMode = (value: boolean) => {
     this._normalPositionHelper.visible = value;
-    this._normalUVHelper.visible = value;
+    // this._normalUVHelper.visible = value;
   };
 
   applyTextureApplication = (textureApplication: {
