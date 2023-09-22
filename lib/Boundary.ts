@@ -37,20 +37,15 @@ export class Boundary {
   private _rotation = 0;
   private _canvasWidth = 0;
   private _canvasHeight = 0;
-  // private _shouldReduceArtworkColor = true;
   private _workingColors: number[][] = [];
-  // private _colorFilters: any[] = [];
   private _textureApplication: {
     color: string;
     textureOption: TextureOption;
   }[] = [];
+  private _artworkUrl = "";
   private _normalPositionHelper: THREE.ArrowHelper;
-  // private _normalUVHelper: THREE.ArrowHelper;
-  // private _normalUV: THREE.Vector3;
-  // private _crystalNormalTexture?: THREE.Texture;
-  // private _crystalDiffuseTexture?: THREE.Texture;
-  // private _crystalAlphaTexture?: THREE.Texture;
-  // static crystalAlphaTexture = new THREE.TextureLoader().load(crystalAlpha);
+  private _normalUVHelper: THREE.ArrowHelper;
+  private _normalUV: THREE.Vector3;
   static crystalNormalTexture = new THREE.TextureLoader().load(crystalNormal);
   static crystalDiffuseTexture = new THREE.TextureLoader().load(crystalDiffuse);
   // public breakdownTextures: string[] = [];
@@ -97,23 +92,23 @@ export class Boundary {
       );
     }
     const boundingSphere = new THREE.Sphere().setFromPoints(positionPoints);
-    // const boundingUVSphere = new THREE.Sphere().setFromPoints(uvPoints);
+    const boundingUVSphere = new THREE.Sphere().setFromPoints(uvPoints);
     this.normal = boundingSphere.center.normalize();
     this._normalPositionHelper = new THREE.ArrowHelper(
       this.normal,
       new THREE.Vector3(0, 0, 0),
       biggerSide + 1
     );
-    // this._normalUV = boundingUVSphere.center.normalize();
-    // this._normalUVHelper = new THREE.ArrowHelper(
-    //   this._normalUV,
-    //   new THREE.Vector3(0, 0, 0),
-    //   biggerSide + 2,
-    //   "purple"
-    // );
+    this._normalUV = boundingUVSphere.center.normalize();
+    this._normalUVHelper = new THREE.ArrowHelper(
+      this._normalUV,
+      new THREE.Vector3(0, 0, 0),
+      biggerSide + 2,
+      "purple"
+    );
     this._normalPositionHelper.visible = false;
-    // this._normalUVHelper.visible = false;
-    // this.group.add(this._normalUVHelper);
+    this._normalUVHelper.visible = false;
+    this.group.add(this._normalUVHelper);
     this.group.add(this._normalPositionHelper);
   }
 
@@ -160,20 +155,11 @@ export class Boundary {
   }
 
   private _configure2DCanvas = (workingCanvas?: HTMLCanvasElement) => {
-    if (
-      this._workingCanvas2D &&
-      workingCanvas &&
-      this._workingCanvas2D.lowerCanvasEl.id === workingCanvas.id
-    ) {
-      return;
-    }
-    this.clearWorkingCanvas();
     const wCanvas = workingCanvas || window.document.createElement("canvas");
     if (!workingCanvas) {
       wCanvas.width = 300;
       wCanvas.height = 300;
     }
-    wCanvas.id = self.crypto.randomUUID();
     this._canvasWidth = wCanvas.width;
     this._canvasHeight = wCanvas.height;
     this._workingCanvas2D?.removeListeners();
@@ -188,7 +174,7 @@ export class Boundary {
       this._canvasWidth,
       this._canvasHeight
     );
-    this._workingCanvas2D.backgroundColor = "rgba(0, 0, 0, 0.3)";
+    this._workingCanvas2D.backgroundColor = "rgba(0, 0, 0, 0.1)";
   };
 
   organizeGroup = () => {
@@ -222,22 +208,26 @@ export class Boundary {
       onArtworkChanged,
       disableEditing = true,
     } = options;
-    this.resetBoundary(false);
+    this.resetBoundary();
     this._onArtworkChanged = onArtworkChanged;
-    const { computed: computedArtworkUrl, colorList } =
-      await ImageHelper.reduceImageColor({
+    let computedArtworkUrl = artworkUrl;
+    if (this._artworkUrl !== artworkUrl) {
+      const { computed, colorList } = await ImageHelper.reduceImageColor({
         url: artworkUrl,
       });
-    this._canvasList.forEach((c) => {
-      c.removeFromParent();
-    });
-    this._canvasList = colorList.map(() => {
-      const canvas = this._canvas.clone();
-      canvas.material = this._canvasMaterial.clone();
-      return canvas;
-    });
-    this.group.add(...this._canvasList);
-    this._workingColors = colorList;
+      computedArtworkUrl = computed;
+      this._canvasList.forEach((c) => {
+        c.removeFromParent();
+      });
+      this._canvasList = colorList.map(() => {
+        const canvas = this._canvas.clone();
+        canvas.material = this._canvasMaterial.clone();
+        return canvas;
+      });
+      this.group.add(...this._canvasList);
+      this._workingColors = colorList;
+    }
+    this._artworkUrl = artworkUrl;
     this._configure2DCanvas(workingCanvas);
     const { canvasHeight, canvasWidth, clipPathHeight, clipPathWidth } =
       this._getClipPathSize();
@@ -331,11 +321,10 @@ export class Boundary {
       const texture = new THREE.CanvasTexture(original);
       texture.wrapS = THREE.RepeatWrapping;
       texture.wrapT = THREE.RepeatWrapping;
-      texture.flipY = false;
-      // texture.repeat.set(
-      //   Math.sign(this._normalUV.x),
-      //   -Math.sign(this._normalUV.y)
-      // );
+      texture.repeat.set(
+        Math.sign(this._normalUV.x),
+        -Math.sign(this._normalUV.y)
+      );
       this._canvasMaterial.map = texture;
     }
   }, 20);
@@ -355,11 +344,10 @@ export class Boundary {
         const texture = new THREE.TextureLoader().load(uri);
         texture.wrapS = THREE.RepeatWrapping;
         texture.wrapT = THREE.RepeatWrapping;
-        texture.flipY = false;
-        // texture.repeat.set(
-        //   Math.sign(this._normalUV.x),
-        //   -Math.sign(this._normalUV.y)
-        // );
+        texture.repeat.set(
+          Math.sign(this._normalUV.x),
+          -Math.sign(this._normalUV.y)
+        );
         return texture;
       });
       const colors = this._workingColors.map((color) => Utils.rgb2hex(color));
@@ -405,7 +393,7 @@ export class Boundary {
               alphaTexture.flipY = false;
               (geo.material as THREE.MeshStandardMaterial).setValues({
                 opacity: 1,
-                // color: `#${colors[index]}`,
+                color: `#${colors[index]}`,
                 map: Boundary.crystalDiffuseTexture,
                 normalMap: Boundary.crystalNormalTexture,
                 alphaMap: alphaTexture,
@@ -430,19 +418,16 @@ export class Boundary {
     }
   };
 
-  clearWorkingCanvas = () => {
+  resetBoundary = () => {
+    this.resetTextureApplication();
     this._workingCanvas2D?.clear();
     this._workingCanvas2D?.dispose();
     this._workingCanvas2D = undefined;
-  };
-
-  resetBoundary = (disposeCanvas = true) => {
-    this.resetTextureApplication();
-    if (disposeCanvas) {
-      this.clearWorkingCanvas();
-    }
     this._canvasMaterial.setValues({
+      color: "rgba(0, 0, 0, 0)",
       map: null,
+      normalMap: null,
+      alphaMap: null,
       opacity: 0,
     });
     this._canvasList.forEach((geo) => {
@@ -450,7 +435,10 @@ export class Boundary {
         geo.material as THREE.MeshStandardMaterial | THREE.MeshPhongMaterial
       ).setValues({
         map: null,
+        color: "rgba(0, 0, 0, 0)",
         opacity: 0,
+        normalMap: null,
+        alphaMap: null,
       });
     });
   };
