@@ -3,7 +3,6 @@ import { ControlName, TextureOption } from "./type";
 import * as fabric from "fabric";
 import _ from "underscore";
 import { ImageHelper } from "./ImageHelper";
-import { KeepColor } from "./KeepColorFilter";
 import { Utils } from "./Utils";
 import crystalAlpha from "./assets/crystal_alpha.webp";
 import crystalNormal from "./assets/crystal_diffuse.webp";
@@ -14,10 +13,9 @@ import crystalDiffuse from "./assets/crystal_diffuse.webp";
 export class Boundary {
   readonly group = new THREE.Group();
   private _boundaryRatio: number;
-  // private _textureLoader = new THREE.TextureLoader();
   readonly center: THREE.Vector3;
   private _canvas: THREE.Mesh;
-  private _canvasMaterial: THREE.MeshStandardMaterial;
+  private _canvasMaterial: THREE.MeshPhysicalMaterial;
   private _canvasList: THREE.Mesh[] = [];
   private _useWidthToScale = false;
   readonly normal = new THREE.Vector3(0, 0, 0);
@@ -46,20 +44,28 @@ export class Boundary {
   private _normalPositionHelper: THREE.ArrowHelper;
   private _normalUVHelper: THREE.ArrowHelper;
   private _normalUV: THREE.Vector3;
-  static crystalNormalTexture = new THREE.TextureLoader().load(crystalNormal);
-  static crystalDiffuseTexture = new THREE.TextureLoader().load(crystalDiffuse);
+  static textureLoader = new THREE.TextureLoader();
+  static crystalNormalTexture = Boundary.textureLoader.load(crystalNormal);
+  static crystalDiffuseTexture = Boundary.textureLoader.load(crystalDiffuse);
+  private _scheduleRender: number | null = null;
   // public breakdownTextures: string[] = [];
 
   constructor(canvas: THREE.Mesh, techPackCanvas: THREE.Mesh) {
     this._canvas = canvas;
-    this._canvasMaterial = canvas.material as THREE.MeshStandardMaterial;
+    this._canvasMaterial = new THREE.MeshPhysicalMaterial({
+      transparent: true,
+      color: "white",
+      side: THREE.DoubleSide,
+      toneMapped: false,
+      blending: THREE.CustomBlending,
+      opacity: 0,
+    });
+    canvas.material = this._canvasMaterial;
     this.name = canvas.name;
     canvas.geometry.computeVertexNormals();
     this.group.name = ControlName.BoundaryGroup;
     const boundingBox = new THREE.Box3().setFromObject(canvas);
     const techPackBoundingBox = new THREE.Box3().setFromObject(techPackCanvas);
-    this._canvasMaterial.side = THREE.DoubleSide;
-    this._canvasMaterial.transparent = true;
     const size = boundingBox.getSize(new THREE.Vector3());
     const techPackSize = techPackBoundingBox.getSize(new THREE.Vector3());
     const estimateWHRatio = size.x / size.y;
@@ -266,13 +272,7 @@ export class Boundary {
     if (!disableEditing) {
       this._workingCanvas2D?.setActiveObject(img);
     }
-    this._canvasMaterial.setValues({
-      opacity: 1,
-    });
     await this._renderCanvasOnBoundary();
-    if (disableEditing) {
-      this.finalizeCanvasOnBoundary();
-    }
   };
 
   private _updateListener = () => {
@@ -325,11 +325,17 @@ export class Boundary {
         Math.sign(this._normalUV.x),
         -Math.sign(this._normalUV.y)
       );
-      this._canvasMaterial.map = texture;
+      texture.colorSpace = THREE.SRGBColorSpace;
+      this._canvasMaterial.setValues({
+        opacity: 1,
+        map: texture,
+        color: "white",
+      });
+      await this._finalizeCanvasOnBoundary();
     }
   }, 20);
 
-  finalizeCanvasOnBoundary = async () => {
+  private _finalizeCanvasOnBoundary = _.throttle(async () => {
     if (this._workingCanvas2D) {
       const copy = await this._workingCanvas2D.clone(["elements"]);
       copy.backgroundColor = "rgba(0, 0, 0, 0)";
@@ -367,6 +373,7 @@ export class Boundary {
           switch (entry.textureOption) {
             case TextureOption.Metallic:
               (geo.material as THREE.MeshStandardMaterial).setValues({
+                color: `#${colors[index]}`,
                 metalness: 0.2,
                 roughness: 0.3,
                 opacity: 1,
@@ -376,6 +383,7 @@ export class Boundary {
             case TextureOption.Matte:
               (geo.material as THREE.MeshStandardMaterial).setValues({
                 opacity: 1,
+                color: `#${colors[index]}`,
                 map: textures[index],
               });
               break;
@@ -387,9 +395,7 @@ export class Boundary {
                 alphaUri,
                 crystalAlpha
               );
-              const alphaTexture = new THREE.TextureLoader().load(
-                finalAlphaUri
-              );
+              const alphaTexture = Boundary.textureLoader.load(finalAlphaUri);
               alphaTexture.flipY = false;
               (geo.material as THREE.MeshStandardMaterial).setValues({
                 opacity: 1,
@@ -414,9 +420,10 @@ export class Boundary {
         }
         (geo.material as THREE.Material).needsUpdate = true;
       });
+      this._canvasMaterial.opacity = 0;
       this._canvas.visible = false;
     }
-  };
+  }, 2000);
 
   resetBoundary = () => {
     this.resetTextureApplication();

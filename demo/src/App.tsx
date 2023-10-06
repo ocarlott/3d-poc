@@ -35,16 +35,30 @@ function App() {
         setViewer(viewer);
         await viewer.loadModel('./tshirt.glb', () => {});
         viewer.configureModel({
-          colorMap: [],
-          artworkMap: [{
-            boundaryName: 'CropT_boundary_1',
+          colorMap: [{
+            layerName: 'ContourFitJacket_changeable_group_1_front',
+            color: '#000000'
+          }, {
+            layerName: 'ContourFitJacket_changeable_group_2_back',
+            color: '#000000'
+          }, {
+            layerName: 'ContourFitJacket_changeable_group_4_sleeves',
+            color: '#000000' 
+          }, {
+            layerName: 'ContourFitJacket_changeable_group_3_collar',
+            color: '#903737'
+          }],
+          artworkMap: [
+            {
+            boundaryName: 'ContourFitJacket_boundary_back',
             artworkUrl: './logo.png',
             xRatio: 0.5,
-            textureApplication: [{
-              color: '377abf',
-              textureOption: TextureOption.Crystals
-            }]
-          }]
+            // textureApplication: [{
+            //   color: '377abf',
+            //   textureOption: TextureOption.Matte
+            // }]
+          }
+        ]
         })
       })();
     }
@@ -158,7 +172,7 @@ function App() {
         </Button>
         <Button onClick={async () => {
           const boundary = await viewer?.changeArtwork({
-            boundary: 'CropT_boundary_2',
+            boundary: 'ContourFitJacket_boundary_front',
             canvas: canvas2DContainerRef.current ?? undefined,
             artworkUrl: './logo.png',
             sizeRatio: 0.5,

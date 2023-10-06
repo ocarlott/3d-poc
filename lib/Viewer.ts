@@ -6,6 +6,7 @@ import * as TWEEN from "@tweenjs/tween.js";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer";
 import { OutlinePass } from "three/examples/jsm/postprocessing/OutlinePass";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass";
+import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment";
 import CameraControls from "camera-controls";
 import { ImageHelper } from "./ImageHelper";
 import { Utils } from "./Utils";
@@ -16,9 +17,12 @@ export class Viewer3D {
   private _rFID = -1;
   private _camera: THREE.PerspectiveCamera;
   private _scene: THREE.Scene = new THREE.Scene();
-  private _light = new THREE.DirectionalLight("white", 0.3);
-  private _lightBack = new THREE.DirectionalLight("white", 0.3);
-  private _ambientLight = new THREE.AmbientLight("white", 0.6);
+  private _lightKey = new THREE.SpotLight("#FFFFFF", 3, 75, 1.48, 1, 0);
+  private _lightRim = new THREE.SpotLight("#CAEDF2", 1.75, 75, 1.48, 1, 0);
+  private _lightFill = new THREE.SpotLight("#F0F8FF", 1.25, 75, 1.48, 1, 0);
+  private _lightRLeft = new THREE.SpotLight("#FFEFE0", 0.5, 75, 1.48, 1, 0);
+  private _lightRRight = new THREE.SpotLight("#FFEFE0", 0.75, 75, 1.48, 1, 0);
+  private _ambientLight = new THREE.HemisphereLight("#C3E7F7", "#E5B8BD", 3);
   private _model?: THREE.Object3D;
   private _modelGroup = new THREE.Group();
   private _techPackGroup = new THREE.Group();
@@ -62,16 +66,38 @@ export class Viewer3D {
     this._resizeObserver = new ResizeObserver(this._onCanvasSizeUpdated);
     this._resizeObserver.observe(canvas);
     this._controls = new CameraControls(this._camera, canvas);
-    this._renderer = new THREE.WebGLRenderer({
+    const renderer = new THREE.WebGLRenderer({
       canvas,
       antialias: true,
     });
-    this._light.position.set(0, 5, 30);
-    this._lightBack.position.set(0, 5, -20);
-    this._light.lookAt(new THREE.Vector3(0, 0, 20));
-    this._scene.background = new THREE.Color("#eee");
+    renderer.shadowMap.type = THREE.PCFShadowMap;
+    renderer.toneMapping = THREE.ReinhardToneMapping;
+    renderer.toneMappingExposure = 0.7;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    // const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    this._renderer = renderer;
+    this._lightKey.position.set(-17.913, 30.212, 22.077);
+    this._lightRLeft.position.set(-20.414, -2.904, -17.304);
+    this._lightRRight.position.set(23.964, -2.904, -16.006);
+    this._lightRim.position.set(27.919, 33.64, -31.806);
+    this._lightFill.position.set(41.535, 18.52, 24.681);
+    // this._lightBack.castShadow = true;
+    this._ambientLight.position.set(0, 10, -0.486);
+    // this._light.lookAt(new THREE.Vector3(0, 0, 20));
+    this._scene.background = new THREE.Color("#f1e9e9");
+    // this._scene.environment = pmremGenerator.fromScene(
+    //   new RoomEnvironment(),
+    //   0.04
+    // ).texture;
     this._scene.add(this._ambientLight);
-    this._scene.add(this._light, this._lightBack);
+    // this._scene.add(new THREE.AmbientLight("white", 0.8));
+    this._scene.add(
+      this._lightKey,
+      this._lightRLeft,
+      this._lightRRight,
+      this._lightRim,
+      this._lightFill
+    );
     this._controls.minPolarAngle = Math.PI / 2;
     this._controls.maxPolarAngle = Math.PI / 2;
     this.show();
@@ -200,7 +226,7 @@ export class Viewer3D {
     const newScene = new THREE.Scene();
     // newScene.background = new THREE.Color("#eee");
     newScene.add(this._ambientLight.clone());
-    newScene.add(this._light.clone(), this._lightBack.clone());
+    newScene.add(this._lightKey.clone(), this._lightRLeft.clone());
     const newGroup = this._modelGroup.clone();
     const techPackGroup = newGroup.getObjectByName(ControlName.TechPackGroup);
     const workingAssetGroup = newGroup.getObjectByName(
@@ -278,10 +304,10 @@ export class Viewer3D {
           obj.traverse((child) => {
             const castedChild = child as THREE.Mesh;
             const castedChildMaterial =
-              castedChild.material as THREE.MeshStandardMaterial;
+              castedChild.material as THREE.MeshPhysicalMaterial;
             if (castedChild.isMesh && !!castedChildMaterial) {
               castedChildMaterial.setValues({
-                color: "white",
+                // color: "white",
                 // wireframe: true,
               });
             }

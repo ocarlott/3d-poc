@@ -10,10 +10,6 @@ export class ImageHelper {
     minDensity?: number;
   }) => {
     let { url, limit = 4, minDensity = 0.05 } = params;
-    let img = await ImageJS.load(url);
-    img = img.resize({
-      width: 300,
-    });
     return new Promise<{
       computed: string;
       colors: string[];
@@ -27,7 +23,7 @@ export class ImageHelper {
         minDensity = 0.05;
       }
       const { imageData, width, height } =
-        await ImageHelper.getImageDataForImage(img.toDataURL());
+        await ImageHelper.getImageDataForImage(url);
       const data = imageData.data;
       const newData = new Uint8ClampedArray(data.length);
       const totalPixels = width * height;
