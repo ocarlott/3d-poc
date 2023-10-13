@@ -22,7 +22,7 @@ export class Viewer3D {
   private _lightFill = new THREE.SpotLight("#F0F8FF", 1.25, 75, 1.48, 1, 0);
   private _lightRLeft = new THREE.SpotLight("#FFEFE0", 0.5, 75, 1.48, 1, 0);
   private _lightRRight = new THREE.SpotLight("#FFEFE0", 0.75, 75, 1.48, 1, 0);
-  private _ambientLight = new THREE.HemisphereLight("#C3E7F7", "#E5B8BD", 3);
+  private _ambientLight = new THREE.HemisphereLight("#C3E7F7", "#E5B8BD", 1);
   private _model?: THREE.Object3D;
   private _modelGroup = new THREE.Group();
   private _techPackGroup = new THREE.Group();
@@ -72,7 +72,7 @@ export class Viewer3D {
     });
     renderer.shadowMap.type = THREE.PCFShadowMap;
     renderer.toneMapping = THREE.ReinhardToneMapping;
-    renderer.toneMappingExposure = 0.7;
+    renderer.toneMappingExposure = 1;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     // const pmremGenerator = new THREE.PMREMGenerator(renderer);
     this._renderer = renderer;

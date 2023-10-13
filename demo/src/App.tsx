@@ -37,16 +37,16 @@ function App() {
         viewer.configureModel({
           colorMap: [{
             layerName: 'ContourFitJacket_changeable_group_1_front',
-            color: '#000000'
+            color: '#7D7D7D'
           }, {
             layerName: 'ContourFitJacket_changeable_group_2_back',
-            color: '#000000'
+            color: '#7D7D7D'
           }, {
             layerName: 'ContourFitJacket_changeable_group_4_sleeves',
-            color: '#000000' 
+            color: '#7D7D7D' 
           }, {
             layerName: 'ContourFitJacket_changeable_group_3_collar',
-            color: '#903737'
+            color: '#7D7D7D'
           }],
           artworkMap: [
             {
