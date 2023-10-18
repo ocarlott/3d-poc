@@ -233,7 +233,7 @@ export class Viewer3D {
     const newScene = new THREE.Scene();
     // newScene.background = new THREE.Color("#eee");
     // newScene.add(this._lightGroup.clone(true));
-    // newScene.background = new THREE.Color("#f1e9e9");
+    newScene.background = new THREE.Color("#f1e9e9");
     newScene.add(this._lightGroup.clone());
     // newScene.add(this._lightKey.clone(), this._lightRLeft.clone());
     const newGroup = this._modelGroup.clone(true);
@@ -383,8 +383,8 @@ export class Viewer3D {
           );
           this._scene.add(this._axesHelper);
           this._axesHelper.visible = false;
-          this._controls.maxDistance = Math.max(size.x, size.y, size.z) * 1.2;
-          this._controls.minDistance = Math.min(size.x, size.y, size.z) * 1.2;
+          this._controls.maxDistance = Math.max(size.x, size.y, size.z);
+          this._controls.minDistance = Math.min(size.x, size.y, size.z) * 1.1;
           this._modelRatio = Math.abs(size.x / size.y);
           this._model = obj;
           this._modelGroup.add(obj);
