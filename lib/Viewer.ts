@@ -23,6 +23,7 @@ export class Viewer3D {
   private _lightRLeft = new THREE.SpotLight("#FFEFE0", 0.5, 75, 1.48, 1, 0);
   private _lightRRight = new THREE.SpotLight("#FFEFE0", 0.75, 75, 1.48, 1, 0);
   private _ambientLight = new THREE.HemisphereLight("#C3E7F7", "#E5B8BD", 1);
+  private _lightGroup = new THREE.Group();
   private _model?: THREE.Object3D;
   private _modelGroup = new THREE.Group();
   private _techPackGroup = new THREE.Group();
@@ -55,6 +56,7 @@ export class Viewer3D {
   private _modelRatio = 1;
   private _clock = new THREE.Clock();
   private _axesHelper = new THREE.AxesHelper(1);
+  private _extraLayers = new Set<string>();
 
   constructor(canvas: HTMLCanvasElement) {
     this._camera = new THREE.PerspectiveCamera(
@@ -85,19 +87,21 @@ export class Viewer3D {
     this._ambientLight.position.set(0, 10, -0.486);
     // this._light.lookAt(new THREE.Vector3(0, 0, 20));
     this._scene.background = new THREE.Color("#f1e9e9");
-    // this._scene.environment = pmremGenerator.fromScene(
-    //   new RoomEnvironment(),
-    //   0.04
-    // ).texture;
-    this._scene.add(this._ambientLight);
-    // this._scene.add(new THREE.AmbientLight("white", 0.8));
-    this._scene.add(
+    this._lightGroup.add(
+      this._ambientLight,
       this._lightKey,
       this._lightRLeft,
       this._lightRRight,
       this._lightRim,
       this._lightFill
     );
+    // this._scene.environment = pmremGenerator.fromScene(
+    //   new RoomEnvironment(),
+    //   0.04
+    // ).texture;
+    // this._scene.add(this._ambientLight);
+    // this._scene.add(new THREE.AmbientLight("white", 0.8));
+    this._scene.add(this._lightGroup);
     this._controls.minPolarAngle = Math.PI / 2;
     this._controls.maxPolarAngle = Math.PI / 2;
     this.show();
@@ -222,13 +226,19 @@ export class Viewer3D {
       antialias: true,
       alpha: true,
     });
-    renderer.setClearColor(0x000000, 0);
+    renderer.shadowMap.type = THREE.PCFShadowMap;
+    renderer.toneMapping = THREE.ReinhardToneMapping;
+    renderer.toneMappingExposure = 1;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
     const newScene = new THREE.Scene();
     // newScene.background = new THREE.Color("#eee");
-    newScene.add(this._ambientLight.clone());
-    newScene.add(this._lightKey.clone(), this._lightRLeft.clone());
-    const newGroup = this._modelGroup.clone();
+    // newScene.add(this._lightGroup.clone(true));
+    // newScene.background = new THREE.Color("#f1e9e9");
+    newScene.add(this._lightGroup.clone());
+    // newScene.add(this._lightKey.clone(), this._lightRLeft.clone());
+    const newGroup = this._modelGroup.clone(true);
     const techPackGroup = newGroup.getObjectByName(ControlName.TechPackGroup);
+    const shadowPlane = newGroup.getObjectByName(ControlName.ShadowPlane);
     const workingAssetGroup = newGroup.getObjectByName(
       ControlName.WorkingAssetGroup
     ) as THREE.Object3D;
@@ -241,6 +251,7 @@ export class Viewer3D {
       modelGroup: newGroup,
       workingAssetGroup,
       techPackGroup,
+      shadowPlane,
     };
   };
 
@@ -299,18 +310,17 @@ export class Viewer3D {
             const castedChild = child as THREE.Mesh;
             if (castedChild.name.includes("_flat")) {
               techPackList.push(castedChild);
+              if (!castedChild.name.includes("boundary")) {
+                castedChild.material = new THREE.MeshBasicMaterial();
+              }
+            } else if (castedChild.name.toLowerCase().includes("shadow")) {
+              castedChild.name = ControlName.ShadowPlane;
             }
           });
           obj.traverse((child) => {
             const castedChild = child as THREE.Mesh;
             const castedChildMaterial =
               castedChild.material as THREE.MeshPhysicalMaterial;
-            if (castedChild.isMesh && !!castedChildMaterial) {
-              castedChildMaterial.setValues({
-                // color: "white",
-                // wireframe: true,
-              });
-            }
             if (!castedChild.name.includes("_flat")) {
               const boundaryIndex = child.name
                 .toLocaleLowerCase()
@@ -330,7 +340,9 @@ export class Viewer3D {
                   this._boundaryList.push(bd);
                   workingAssets.push(bd.group);
                 } else {
-                  console.error("Invalid 3D model");
+                  console.error(
+                    `Could not find techpack version of ${castedChild.name}`
+                  );
                 }
               } else {
                 const displayNameForChangableGroup =
@@ -349,6 +361,8 @@ export class Viewer3D {
                     });
                   }
                   workingAssets.push(castedChild);
+                } else if (castedChild.name !== ControlName.ShadowPlane) {
+                  this._extraLayers.add(castedChild.name);
                 }
               }
             }
@@ -764,8 +778,16 @@ export class Viewer3D {
 
   createTechPack = async () => {
     const camera = this._camera.clone();
-    const { renderer, scene, techPackGroup, workingAssetGroup } =
-      this._generateViewerCopy();
+    const {
+      renderer,
+      scene,
+      techPackGroup,
+      workingAssetGroup,
+      shadowPlane,
+      modelGroup,
+    } = this._generateViewerCopy();
+    scene.background = new THREE.Color("rgba(0, 0, 0, 0)");
+    renderer.toneMappingExposure = 5;
     const controls = new CameraControls(camera, renderer.domElement);
     controls.rotateTo(0, 0);
     this._paddingInCssPixel(controls, workingAssetGroup, {
@@ -777,7 +799,25 @@ export class Viewer3D {
     const result: string[] = [];
     if (techPackGroup && workingAssetGroup) {
       techPackGroup.visible = true;
+      techPackGroup.children.forEach((child) => {
+        if (child.isObject3D) {
+          (
+            (child as THREE.Mesh).material as THREE.MeshPhysicalMaterial
+          ).setValues({
+            color: "white",
+            opacity: 0.4,
+          });
+        }
+      });
       workingAssetGroup.visible = false;
+      if (shadowPlane) {
+        shadowPlane.visible = false;
+      }
+      modelGroup.traverse((child) => {
+        if (this._extraLayers.has(child.name)) {
+          child.visible = false;
+        }
+      });
       const layerList = techPackGroup.children.filter((child) =>
         child.name.includes("changeable")
       );

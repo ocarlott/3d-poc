@@ -160,6 +160,10 @@ export class Boundary {
     return this._canvas.id;
   }
 
+  get canvasList() {
+    return this._canvasList;
+  }
+
   private _configure2DCanvas = (workingCanvas?: HTMLCanvasElement) => {
     const wCanvas = workingCanvas || window.document.createElement("canvas");
     if (!workingCanvas) {

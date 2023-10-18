@@ -37,7 +37,7 @@ function App() {
         viewer.configureModel({
           colorMap: [{
             layerName: 'ContourFitJacket_changeable_group_1_front',
-            color: '#7D7D7D'
+            color: '#ffffff'
           }, {
             layerName: 'ContourFitJacket_changeable_group_2_back',
             color: '#7D7D7D'
