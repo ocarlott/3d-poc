@@ -1,29 +1,22 @@
-import * as THREE from "three";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
-import { ControlName, TextureOption } from "./type";
-import { Boundary } from "./Boundary";
-import * as TWEEN from "@tweenjs/tween.js";
-import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer";
-import { OutlinePass } from "three/examples/jsm/postprocessing/OutlinePass";
-import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass";
-import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment";
-import CameraControls from "camera-controls";
-import { ImageHelper } from "./ImageHelper";
-import { Utils } from "./Utils";
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import { ControlName, TextureOption } from './type';
+import { Boundary } from './Boundary';
+import * as TWEEN from '@tweenjs/tween.js';
+import CameraControls from 'camera-controls';
+import { ImageHelper } from './ImageHelper';
+import { Utils } from './Utils';
+import { LightManager } from './managers/LightManager';
+import { SceneBuilder } from './managers/SceneBuilder';
+import { SizeUpdateParams, UIManager } from './managers/UIManager';
 
 CameraControls.install({ THREE: THREE });
-const strMime = "image/png";
+const strMime = 'image/png';
 export class Viewer3D {
   private _rFID = -1;
   private _camera: THREE.PerspectiveCamera;
   private _scene: THREE.Scene = new THREE.Scene();
-  private _lightKey = new THREE.SpotLight("#FFFFFF", 3, 75, 1.48, 1, 0);
-  private _lightRim = new THREE.SpotLight("#CAEDF2", 1.75, 75, 1.48, 1, 0);
-  private _lightFill = new THREE.SpotLight("#F0F8FF", 1.25, 75, 1.48, 1, 0);
-  private _lightRLeft = new THREE.SpotLight("#FFEFE0", 0.5, 75, 1.48, 1, 0);
-  private _lightRRight = new THREE.SpotLight("#FFEFE0", 0.75, 75, 1.48, 1, 0);
-  private _ambientLight = new THREE.HemisphereLight("#C3E7F7", "#E5B8BD", 1);
-  private _lightGroup = new THREE.Group();
+  private _lightManager: LightManager;
   private _model?: THREE.Object3D;
   private _modelGroup = new THREE.Group();
   private _techPackGroup = new THREE.Group();
@@ -40,8 +33,6 @@ export class Viewer3D {
   > = new Map();
   private _loader = new GLTFLoader();
   private _selectedBoundary: Boundary | null = null;
-  private _canvasWidth = 100;
-  private _canvasHeight = 100;
   private _onArtworkChanged?: (params: {
     forBoundary: string;
     xRatio: number;
@@ -52,83 +43,44 @@ export class Viewer3D {
   }) => void;
   private _isInDeveloperMode = false;
   private _shouldRotate = false;
-  private _resizeObserver: ResizeObserver;
+  private _uiManager: UIManager;
   private _modelRatio = 1;
   private _clock = new THREE.Clock();
   private _axesHelper = new THREE.AxesHelper(1);
   private _extraLayers = new Set<string>();
 
   constructor(canvas: HTMLCanvasElement) {
-    this._camera = new THREE.PerspectiveCamera(
-      70,
-      this._canvasWidth / this._canvasHeight,
-      0.1,
-      50
-    );
-    this._resizeObserver = new ResizeObserver(this._onCanvasSizeUpdated);
-    this._resizeObserver.observe(canvas);
-    this._controls = new CameraControls(this._camera, canvas);
-    const renderer = new THREE.WebGLRenderer({
-      canvas,
-      antialias: true,
-    });
-    renderer.shadowMap.type = THREE.PCFShadowMap;
-    renderer.toneMapping = THREE.ReinhardToneMapping;
-    renderer.toneMappingExposure = 1;
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    // const pmremGenerator = new THREE.PMREMGenerator(renderer);
-    this._renderer = renderer;
-    this._lightKey.position.set(-17.913, 30.212, 22.077);
-    this._lightRLeft.position.set(-20.414, -2.904, -17.304);
-    this._lightRRight.position.set(23.964, -2.904, -16.006);
-    this._lightRim.position.set(27.919, 33.64, -31.806);
-    this._lightFill.position.set(41.535, 18.52, 24.681);
-    // this._lightBack.castShadow = true;
-    this._ambientLight.position.set(0, 10, -0.486);
-    // this._light.lookAt(new THREE.Vector3(0, 0, 20));
-    this._scene.background = new THREE.Color("#f1e9e9");
-    this._lightGroup.add(
-      this._ambientLight,
-      this._lightKey,
-      this._lightRLeft,
-      this._lightRRight,
-      this._lightRim,
-      this._lightFill
-    );
-    // this._scene.environment = pmremGenerator.fromScene(
-    //   new RoomEnvironment(),
-    //   0.04
-    // ).texture;
-    // this._scene.add(this._ambientLight);
-    // this._scene.add(new THREE.AmbientLight("white", 0.8));
-    this._scene.add(this._lightGroup);
-    this._controls.minPolarAngle = Math.PI / 2;
-    this._controls.maxPolarAngle = Math.PI / 2;
+    this._uiManager = new UIManager(canvas, this._onCanvasSizeUpdated);
+
+    this._scene = SceneBuilder.createScene();
+    this._camera = SceneBuilder.createCamera(this._uiManager.aspectRatio);
+    this._renderer = SceneBuilder.createRenderer(canvas);
+    this._lightManager = new LightManager();
+
+    this._controls = this._createCameraControls(canvas);
+    this._scene.background = new THREE.Color('#f1e9e9');
+    this._scene.add(this._lightManager.getLightGroup());
     this.show();
   }
 
-  private _onCanvasSizeUpdated = (entries: ResizeObserverEntry[]) => {
-    const canvas = entries[0];
-    const { width, height } = canvas.contentRect;
-    this._canvasWidth = width;
-    this._canvasHeight = height;
-    this._camera.aspect = this._canvasWidth / this._canvasHeight;
+  private _createCameraControls(canvas: HTMLCanvasElement): CameraControls {
+    const controls = new CameraControls(this._camera, canvas);
+    controls.minPolarAngle = Math.PI / 2;
+    controls.maxPolarAngle = Math.PI / 2;
+    return controls;
+  }
+
+  private _onCanvasSizeUpdated = ({
+    pixelRatio,
+    aspectRatio,
+    canvasWidth,
+    canvasHeight,
+  }: SizeUpdateParams) => {
+    this._camera.aspect = aspectRatio;
     this._camera.updateProjectionMatrix();
 
-    this._renderer?.setSize(this._canvasWidth, this._canvasHeight);
-    this._renderer?.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  };
-
-  private _enableControls = () => {
-    if (this._controls) {
-      // this._controls.lockPointer = true;
-    }
-  };
-
-  private _disableControls = () => {
-    if (this._controls) {
-      // this._controls.enableRotate = false;
-    }
+    this._renderer?.setSize(canvasWidth, canvasHeight);
+    this._renderer?.setPixelRatio(pixelRatio);
   };
 
   private _getSizeAndCenter = (obj: THREE.Object3D) => {
@@ -143,10 +95,7 @@ export class Viewer3D {
     };
   };
 
-  private _fitCameraToObject = (
-    obj: THREE.Object3D,
-    controls?: CameraControls
-  ) => {
+  private _fitCameraToObject = (obj: THREE.Object3D, controls?: CameraControls) => {
     if (controls) {
       controls.rotatePolarTo(Math.PI * 0.5, false);
       this._paddingInCssPixel(controls, obj, {
@@ -174,19 +123,14 @@ export class Viewer3D {
   ) => {
     const { top, right, bottom, left } = padding;
     const fov = this._camera.fov * THREE.MathUtils.DEG2RAD;
-    const rendererHeight =
-      this._renderer?.getSize(new THREE.Vector2()).height ?? 0;
+    const rendererHeight = this._renderer?.getSize(new THREE.Vector2()).height ?? 0;
     const boundingBox = new THREE.Box3().setFromObject(obj);
     const size = boundingBox.getSize(new THREE.Vector3());
     const boundingWidth = size.x;
     const boundingHeight = size.y;
     const boundingDepth = size.z;
 
-    var distanceToFit = controls.getDistanceToFitBox(
-      boundingWidth,
-      boundingHeight,
-      boundingDepth
-    );
+    var distanceToFit = controls.getDistanceToFitBox(boundingWidth, boundingHeight, boundingDepth);
     var paddingTop = 0;
     var paddingBottom = 0;
     var paddingLeft = 0;
@@ -194,8 +138,7 @@ export class Viewer3D {
 
     for (var i = 0; i < 10; i++) {
       const depthAt = distanceToFit - boundingDepth * 0.5;
-      const cssPixelToUnit =
-        (2 * Math.tan(fov * 0.5) * Math.abs(depthAt)) / rendererHeight;
+      const cssPixelToUnit = (2 * Math.tan(fov * 0.5) * Math.abs(depthAt)) / rendererHeight;
       paddingTop = top * cssPixelToUnit;
       paddingBottom = bottom * cssPixelToUnit;
       paddingLeft = left * cssPixelToUnit;
@@ -233,8 +176,8 @@ export class Viewer3D {
     const newScene = new THREE.Scene();
     // newScene.background = new THREE.Color("#eee");
     // newScene.add(this._lightGroup.clone(true));
-    newScene.background = new THREE.Color("#f1e9e9");
-    newScene.add(this._lightGroup.clone());
+    newScene.background = new THREE.Color('#f1e9e9');
+    newScene.add(this._lightManager.getLightGroup().clone());
     // newScene.add(this._lightKey.clone(), this._lightRLeft.clone());
     const newGroup = this._modelGroup.clone(true);
     const techPackGroup = newGroup.getObjectByName(ControlName.TechPackGroup);
@@ -243,8 +186,8 @@ export class Viewer3D {
       ControlName.WorkingAssetGroup
     ) as THREE.Object3D;
     newScene.add(newGroup);
-    renderer.setSize(this._canvasWidth, this._canvasHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(this._uiManager.canvasWidth, this._uiManager.canvasHeight);
+    renderer.setPixelRatio(this._uiManager.pixelRatio);
     return {
       renderer,
       scene: newScene,
@@ -254,15 +197,6 @@ export class Viewer3D {
       shadowPlane,
     };
   };
-
-  // private _saveFile = function (imgDataUrl: string, filename: string) {
-  //   var link = document.createElement("a");
-  //   document.body.appendChild(link);
-  //   link.download = filename;
-  //   link.href = imgDataUrl;
-  //   link.click();
-  //   document.body.removeChild(link);
-  // };
 
   show = () => {
     const delta = this._clock.getDelta();
@@ -280,10 +214,7 @@ export class Viewer3D {
     this._rFID = -1;
   };
 
-  loadModel = (
-    url: string,
-    onProgress: (percent: number) => void
-  ): Promise<void> => {
+  loadModel = (url: string, onProgress: (percent: number) => void): Promise<void> => {
     this._model = undefined;
     this._scene.remove(this._modelGroup);
     this._modelGroup.removeFromParent();
@@ -308,52 +239,42 @@ export class Viewer3D {
           this._techPackGroup.visible = this._isInDeveloperMode;
           obj.traverse((child) => {
             const castedChild = child as THREE.Mesh;
-            if (castedChild.name.includes("_flat")) {
+            if (castedChild.name.includes('_flat')) {
               techPackList.push(castedChild);
-              if (!castedChild.name.includes("boundary")) {
+              if (!castedChild.name.includes('boundary')) {
                 castedChild.material = new THREE.MeshBasicMaterial();
               }
-            } else if (castedChild.name.toLowerCase().includes("shadow")) {
+            } else if (castedChild.name.toLowerCase().includes('shadow')) {
               castedChild.name = ControlName.ShadowPlane;
             }
           });
           obj.traverse((child) => {
             const castedChild = child as THREE.Mesh;
-            const castedChildMaterial =
-              castedChild.material as THREE.MeshPhysicalMaterial;
-            if (!castedChild.name.includes("_flat")) {
-              const boundaryIndex = child.name
-                .toLocaleLowerCase()
-                .search("boundary");
+            const castedChildMaterial = castedChild.material as THREE.MeshPhysicalMaterial;
+            if (!castedChild.name.includes('_flat')) {
+              const boundaryIndex = child.name.toLocaleLowerCase().search('boundary');
               if (castedChild.isMesh && boundaryIndex !== -1) {
                 castedChildMaterial.setValues({
                   transparent: true,
                   opacity: 0,
                 });
                 const techPackBoundary: THREE.Mesh | null =
-                  techPackList.find(
-                    (group) => group.name === castedChild.name + "_flat"
-                  ) ?? null;
+                  techPackList.find((group) => group.name === castedChild.name + '_flat') ?? null;
                 if (techPackBoundary) {
                   const bd = new Boundary(castedChild, techPackBoundary);
                   this._modelGroup.add(bd.group);
                   this._boundaryList.push(bd);
                   workingAssets.push(bd.group);
                 } else {
-                  console.error(
-                    `Could not find techpack version of ${castedChild.name}`
-                  );
+                  console.error(`Could not find techpack version of ${castedChild.name}`);
                 }
               } else {
-                const displayNameForChangableGroup =
-                  Utils.getDisplayNameIfChangeableGroup(castedChild.name);
+                const displayNameForChangableGroup = Utils.getDisplayNameIfChangeableGroup(
+                  castedChild.name
+                );
                 if (displayNameForChangableGroup) {
-                  if (
-                    this._layerMap.get(displayNameForChangableGroup.groupName)
-                  ) {
-                    console.log(
-                      "Object is not valid. Trying our best to render it"
-                    );
+                  if (this._layerMap.get(displayNameForChangableGroup.groupName)) {
+                    console.log('Object is not valid. Trying our best to render it');
                   } else {
                     this._layerMap.set(castedChild.name, {
                       displayName: displayNameForChangableGroup.displayName,
@@ -378,9 +299,7 @@ export class Viewer3D {
           });
           this._fitCameraToObject(this._workingAssetGroup, this._controls);
           const { size } = this._getSizeAndCenter(this._workingAssetGroup);
-          this._axesHelper = new THREE.AxesHelper(
-            Math.max(size.x, size.y, size.z) / 2 + 2
-          );
+          this._axesHelper = new THREE.AxesHelper(Math.max(size.x, size.y, size.z) / 2 + 2);
           this._scene.add(this._axesHelper);
           this._axesHelper.visible = false;
           this._controls.maxDistance = Math.max(size.x, size.y, size.z);
@@ -429,12 +348,8 @@ export class Viewer3D {
         ? CameraControls.ACTION.TOUCH_DOLLY
         : CameraControls.ACTION.TOUCH_ROTATE;
     this._controls.minPolarAngle = this._isInDeveloperMode ? 0 : Math.PI / 2;
-    this._controls.maxPolarAngle = this._isInDeveloperMode
-      ? Math.PI
-      : Math.PI / 2;
-    this._boundaryList.forEach((bd) =>
-      bd.setDeveloperMode(this._isInDeveloperMode)
-    );
+    this._controls.maxPolarAngle = this._isInDeveloperMode ? Math.PI : Math.PI / 2;
+    this._boundaryList.forEach((bd) => bd.setDeveloperMode(this._isInDeveloperMode));
     this._axesHelper.visible = this._isInDeveloperMode;
   };
 
@@ -489,23 +404,22 @@ export class Viewer3D {
   validate = (layers: string[], boundaries: string[]) => {
     const allLayersFound = layers.every((layer) => !!this._layerMap.get(layer));
     const allBoundariesFound = boundaries.every(
-      (boundary) =>
-        this._boundaryList.findIndex((b) => b.name === boundary) !== -1
+      (boundary) => this._boundaryList.findIndex((b) => b.name === boundary) !== -1
     );
     return allLayersFound && allBoundariesFound;
   };
 
-  validateModel = async (artworkUrl = "./logo.png") => {
+  validateModel = async (artworkUrl = './logo.png') => {
     const colors = Utils.getShuffledColors();
     const boundaries: string[] = [];
     const techPacks: string[] = [];
     const layers: string[] = [];
     this._modelGroup.traverse((child) => {
-      if (child.name.includes("flat")) {
+      if (child.name.includes('flat')) {
         techPacks.push(child.name);
-      } else if (child.name.includes("boundary")) {
+      } else if (child.name.includes('boundary')) {
         boundaries.push(child.name);
-      } else if (child.name.includes("changeable")) {
+      } else if (child.name.includes('changeable')) {
         layers.push(child.name);
       }
     });
@@ -527,7 +441,7 @@ export class Viewer3D {
     boundaries.forEach((bd) => {
       const bdMaterial = (this._modelGroup.getObjectByName(bd) as THREE.Mesh)
         .material as THREE.MeshStandardMaterial;
-      if (!techPacks.includes(bd + "_flat")) {
+      if (!techPacks.includes(bd + '_flat')) {
         materialMap.set(bdMaterial.id, {
           hasError: materialMap.has(bdMaterial.id),
           meshes: [...(materialMap.get(bdMaterial.id)?.meshes ?? []), bd],
@@ -537,20 +451,15 @@ export class Viewer3D {
           result: false,
         });
       } else {
-        const techpackMaterial = (
-          this._modelGroup.getObjectByName(bd + "_flat") as THREE.Mesh
-        ).material as THREE.MeshBasicMaterial;
+        const techpackMaterial = (this._modelGroup.getObjectByName(bd + '_flat') as THREE.Mesh)
+          .material as THREE.MeshBasicMaterial;
         materialMatches.push({
           boundaryName: bd,
           result: bdMaterial.id === techpackMaterial.id,
         });
         materialMap.set(bdMaterial.id, {
           hasError: materialMap.has(bdMaterial.id),
-          meshes: [
-            ...(materialMap.get(bdMaterial.id)?.meshes ?? []),
-            bd,
-            bd + "_flat",
-          ],
+          meshes: [...(materialMap.get(bdMaterial.id)?.meshes ?? []), bd, bd + '_flat'],
         });
       }
     });
@@ -569,10 +478,8 @@ export class Viewer3D {
     });
     this._modelGroup.traverse((child) => {
       if (child.isObject3D && (child as THREE.Mesh).isMesh) {
-        (
-          (child as THREE.Mesh).material as THREE.MeshStandardMaterial
-        ).setValues({
-          color: "white",
+        ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).setValues({
+          color: 'white',
         });
       }
     });
@@ -590,12 +497,8 @@ export class Viewer3D {
   };
 
   private _animateSelectBoundary = (boundary: string) => {
-    const selectingBoundary =
-      this._boundaryList.find((bd) => bd.name === boundary) ?? null;
-    if (
-      selectingBoundary?.name !== this._selectedBoundary?.name &&
-      selectingBoundary !== null
-    ) {
+    const selectingBoundary = this._boundaryList.find((bd) => bd.name === boundary) ?? null;
+    if (selectingBoundary?.name !== this._selectedBoundary?.name && selectingBoundary !== null) {
       this._selectedBoundary = selectingBoundary;
       const boundaryPosition = this._selectedBoundary.center;
       const boundaryNormal = this._selectedBoundary.normal;
@@ -647,8 +550,7 @@ export class Viewer3D {
     if (!disableEditing) {
       boundaryObj = this._animateSelectBoundary(boundary);
     } else {
-      boundaryObj =
-        this._boundaryList.find((bd) => bd.name === boundary) ?? null;
+      boundaryObj = this._boundaryList.find((bd) => bd.name === boundary) ?? null;
     }
     await boundaryObj?.addArtwork({
       workingCanvas: canvas,
@@ -697,7 +599,7 @@ export class Viewer3D {
       const entry = this._layerMap.get(layerName);
       if (entry) {
         (entry.mesh.material as THREE.MeshStandardMaterial).color.set(
-          `#${color.replace(/#/g, "")}`
+          `#${color.replace(/#/g, '')}`
         );
       }
     }
@@ -778,15 +680,9 @@ export class Viewer3D {
 
   createTechPack = async () => {
     const camera = this._camera.clone();
-    const {
-      renderer,
-      scene,
-      techPackGroup,
-      workingAssetGroup,
-      shadowPlane,
-      modelGroup,
-    } = this._generateViewerCopy();
-    scene.background = new THREE.Color("rgba(0, 0, 0, 0)");
+    const { renderer, scene, techPackGroup, workingAssetGroup, shadowPlane, modelGroup } =
+      this._generateViewerCopy();
+    scene.background = new THREE.Color('rgba(0, 0, 0, 0)');
     renderer.toneMappingExposure = 5;
     const controls = new CameraControls(camera, renderer.domElement);
     controls.rotateTo(0, 0);
@@ -801,10 +697,8 @@ export class Viewer3D {
       techPackGroup.visible = true;
       techPackGroup.children.forEach((child) => {
         if (child.isObject3D) {
-          (
-            (child as THREE.Mesh).material as THREE.MeshPhysicalMaterial
-          ).setValues({
-            color: "white",
+          ((child as THREE.Mesh).material as THREE.MeshPhysicalMaterial).setValues({
+            color: 'white',
             opacity: 0.4,
           });
         }
@@ -818,9 +712,7 @@ export class Viewer3D {
           child.visible = false;
         }
       });
-      const layerList = techPackGroup.children.filter((child) =>
-        child.name.includes("changeable")
-      );
+      const layerList = techPackGroup.children.filter((child) => child.name.includes('changeable'));
       controls.fitToBox(techPackGroup, false, {
         paddingBottom: 4,
         paddingLeft: 4,
@@ -832,10 +724,7 @@ export class Viewer3D {
       const delta = this._clock.getDelta();
       controls.update(delta);
       renderer.render(scene, camera);
-      const img = await ImageHelper.cropImageToRatio(
-        renderer.domElement.toDataURL(strMime),
-        ratio
-      );
+      const img = await ImageHelper.cropImageToRatio(renderer.domElement.toDataURL(strMime), ratio);
       result.push(img);
       for (let child of layerList) {
         controls.fitToBox(child, false, {
@@ -861,11 +750,7 @@ export class Viewer3D {
     return result;
   };
 
-  changeArtworkTexture = (
-    boundary: string,
-    color: string,
-    textureOption: TextureOption
-  ) => {
+  changeArtworkTexture = (boundary: string, color: string, textureOption: TextureOption) => {
     const bd = this._boundaryList.find((b) => b.name === boundary);
     if (bd) {
       bd.applyTextureApplication({
@@ -885,11 +770,10 @@ export class Viewer3D {
   resetModel = () => {
     this._modelGroup.traverse((child) => {
       const castedChild = child as THREE.Mesh;
-      const castedChildMaterial =
-        castedChild.material as THREE.MeshStandardMaterial;
+      const castedChildMaterial = castedChild.material as THREE.MeshStandardMaterial;
       if (castedChild.isMesh && !!castedChildMaterial) {
         castedChildMaterial.setValues({
-          color: "white",
+          color: 'white',
           // wireframe: true,
         });
       }
