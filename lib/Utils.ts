@@ -193,6 +193,12 @@ export class Utils {
       color2.toUpperCase().replace("#", "")
     );
   };
+
+  static getEqualAngleRotations = (numberOfSplits: number) => {
+    return Array(numberOfSplits)
+      .fill(0)
+      .map((e, index) => index * (Math.PI / 2));
+  };
 }
 
 interface IColor {

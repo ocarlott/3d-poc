@@ -9,20 +9,21 @@ import { Utils } from './Utils';
 import { LightManager } from './managers/LightManager';
 import { SceneBuilder } from './managers/SceneBuilder';
 import { SizeUpdateParams, UIManager } from './managers/UIManager';
+import { CameraControlsManager } from './managers/CameraControlsManager';
 
-CameraControls.install({ THREE: THREE });
 const strMime = 'image/png';
 export class Viewer3D {
   private _rFID = -1;
   private _camera: THREE.PerspectiveCamera;
   private _scene: THREE.Scene = new THREE.Scene();
+  private _renderer: THREE.WebGLRenderer;
   private _lightManager: LightManager;
+  private _cameraControlsManager: CameraControlsManager;
+  private _uiManager: UIManager;
   private _model?: THREE.Object3D;
   private _modelGroup = new THREE.Group();
   private _techPackGroup = new THREE.Group();
   private _workingAssetGroup = new THREE.Group();
-  private _renderer?: THREE.WebGLRenderer;
-  private _controls: CameraControls;
   private _boundaryList: Boundary[] = [];
   private _layerMap: Map<
     string,
@@ -43,7 +44,6 @@ export class Viewer3D {
   }) => void;
   private _isInDeveloperMode = false;
   private _shouldRotate = false;
-  private _uiManager: UIManager;
   private _modelRatio = 1;
   private _clock = new THREE.Clock();
   private _axesHelper = new THREE.AxesHelper(1);
@@ -57,17 +57,12 @@ export class Viewer3D {
     this._renderer = SceneBuilder.createRenderer(canvas);
     this._lightManager = new LightManager();
 
-    this._controls = this._createCameraControls(canvas);
+    this._cameraControlsManager = new CameraControlsManager(canvas, this._camera, {
+      lockPolarAngle: true,
+    });
     this._scene.background = new THREE.Color('#f1e9e9');
     this._scene.add(this._lightManager.getLightGroup());
     this.show();
-  }
-
-  private _createCameraControls(canvas: HTMLCanvasElement): CameraControls {
-    const controls = new CameraControls(this._camera, canvas);
-    controls.minPolarAngle = Math.PI / 2;
-    controls.maxPolarAngle = Math.PI / 2;
-    return controls;
   }
 
   private _onCanvasSizeUpdated = ({
@@ -79,8 +74,8 @@ export class Viewer3D {
     this._camera.aspect = aspectRatio;
     this._camera.updateProjectionMatrix();
 
-    this._renderer?.setSize(canvasWidth, canvasHeight);
-    this._renderer?.setPixelRatio(pixelRatio);
+    this._renderer.setSize(canvasWidth, canvasHeight);
+    this._renderer.setPixelRatio(pixelRatio);
   };
 
   private _getSizeAndCenter = (obj: THREE.Object3D) => {
@@ -96,71 +91,21 @@ export class Viewer3D {
   };
 
   private _fitCameraToObject = (obj: THREE.Object3D, controls?: CameraControls) => {
-    if (controls) {
-      controls.rotatePolarTo(Math.PI * 0.5, false);
-      this._paddingInCssPixel(controls, obj, {
+    this._cameraControlsManager.paddingInCssPixelAndMoveControl({
+      camera: this._camera,
+      renderer: this._renderer,
+      obj,
+      padding: {
         top: 20,
         bottom: 20,
         left: 20,
         right: 20,
-      });
-    }
-  };
-
-  private _paddingInCssPixel = (
-    controls: CameraControls,
-    obj: THREE.Object3D,
-    padding: {
-      top: number;
-      right: number;
-      bottom: number;
-      left: number;
-    },
-    rotation?: {
-      azimuthAngle?: number;
-      polarAngle?: number;
-    }
-  ) => {
-    const { top, right, bottom, left } = padding;
-    const fov = this._camera.fov * THREE.MathUtils.DEG2RAD;
-    const rendererHeight = this._renderer?.getSize(new THREE.Vector2()).height ?? 0;
-    const boundingBox = new THREE.Box3().setFromObject(obj);
-    const size = boundingBox.getSize(new THREE.Vector3());
-    const boundingWidth = size.x;
-    const boundingHeight = size.y;
-    const boundingDepth = size.z;
-
-    var distanceToFit = controls.getDistanceToFitBox(boundingWidth, boundingHeight, boundingDepth);
-    var paddingTop = 0;
-    var paddingBottom = 0;
-    var paddingLeft = 0;
-    var paddingRight = 0;
-
-    for (var i = 0; i < 10; i++) {
-      const depthAt = distanceToFit - boundingDepth * 0.5;
-      const cssPixelToUnit = (2 * Math.tan(fov * 0.5) * Math.abs(depthAt)) / rendererHeight;
-      paddingTop = top * cssPixelToUnit;
-      paddingBottom = bottom * cssPixelToUnit;
-      paddingLeft = left * cssPixelToUnit;
-      paddingRight = right * cssPixelToUnit;
-
-      distanceToFit = controls.getDistanceToFitBox(
-        boundingWidth + paddingLeft + paddingRight,
-        boundingHeight + paddingTop + paddingBottom,
-        boundingDepth
-      );
-    }
-
-    controls.fitToBox(obj, false, {
-      paddingLeft: paddingLeft,
-      paddingRight: paddingRight,
-      paddingBottom: paddingBottom,
-      paddingTop: paddingTop,
+      },
+      rotationTo: {
+        polarAngle: Math.PI * 0.5,
+      },
+      transition: false,
     });
-
-    if (rotation) {
-      controls.rotateTo(rotation.azimuthAngle || 0, rotation.polarAngle || 0);
-    }
   };
 
   private _generateViewerCopy = () => {
@@ -198,15 +143,79 @@ export class Viewer3D {
     };
   };
 
+  private _animateSelectBoundary = (boundary: string) => {
+    const selectingBoundary = this._boundaryList.find((bd) => bd.name === boundary) ?? null;
+    if (selectingBoundary?.name !== this._selectedBoundary?.name && selectingBoundary !== null) {
+      this._selectedBoundary = selectingBoundary;
+      const boundaryPosition = this._selectedBoundary.center;
+      const boundaryNormal = this._selectedBoundary.normal;
+      // this._controls.setLookAt
+      // const cameraPosition = boundaryPosition
+      //   .clone()
+      //   .add(
+      //     boundaryNormal
+      //       .clone()
+      //       .multiplyScalar(this._controls.maxDistance * 0.65)
+      //   );
+      // new TWEEN.Tween(this._camera.position)
+      //   .to(cameraPosition)
+      //   .easing(TWEEN.Easing.Quadratic.InOut)
+      //   .onUpdate(() => {
+      //     this._camera.lookAt(boundaryPosition);
+      //   })
+      //   .start();
+    }
+    return selectingBoundary;
+  };
+
+  private _takeScreenShot = async (params: {
+    modelRatio: number;
+    rotations: {
+      azimuthAngle?: number;
+      polarAngle?: number;
+    }[];
+  }) => {
+    const { rotations, modelRatio } = params;
+
+    const camera = this._camera.clone();
+    const { renderer, scene, workingAssetGroup } = this._generateViewerCopy();
+
+    const controlsManager = new CameraControlsManager(renderer.domElement, camera);
+    controlsManager.paddingInCssPixelAndMoveControl({
+      camera,
+      renderer,
+      obj: workingAssetGroup,
+      padding: {
+        top: 20,
+        bottom: 20,
+        left: 20,
+        right: 20,
+      },
+    });
+
+    const images: string[] = [];
+    for (let rotation of rotations) {
+      controlsManager.rotateTo(rotation);
+      controlsManager.update(this._clock);
+      renderer.render(scene, camera);
+      const imgData = await ImageHelper.cropImageToRatio(
+        renderer.domElement.toDataURL(strMime),
+        modelRatio
+      );
+      images.push(imgData);
+    }
+    return images;
+  };
+
   show = () => {
     const delta = this._clock.getDelta();
-    this._controls.update(delta);
+    this._cameraControlsManager.update(delta);
     this._rFID = requestAnimationFrame(this.show);
     if (this._shouldRotate) {
       this._modelGroup.rotation.y += 0.01;
     }
     TWEEN.update();
-    this._renderer?.render(this._scene, this._camera);
+    this._renderer.render(this._scene, this._camera);
   };
 
   hide = () => {
@@ -297,13 +306,12 @@ export class Viewer3D {
           this._boundaryList.forEach((child) => {
             child.organizeGroup();
           });
-          this._fitCameraToObject(this._workingAssetGroup, this._controls);
+          this._fitCameraToObject(this._workingAssetGroup);
           const { size } = this._getSizeAndCenter(this._workingAssetGroup);
           this._axesHelper = new THREE.AxesHelper(Math.max(size.x, size.y, size.z) / 2 + 2);
           this._scene.add(this._axesHelper);
           this._axesHelper.visible = false;
-          this._controls.maxDistance = Math.max(size.x, size.y, size.z);
-          this._controls.minDistance = Math.min(size.x, size.y, size.z) * 1.1;
+          this._cameraControlsManager.setDistanceLimitsFromSize(size);
           this._modelRatio = Math.abs(size.x / size.y);
           this._model = obj;
           this._modelGroup.add(obj);
@@ -339,16 +347,7 @@ export class Viewer3D {
   toggleDeveloperMode = () => {
     this._isInDeveloperMode = !this._isInDeveloperMode;
     this._techPackGroup.visible = this._isInDeveloperMode;
-    this._controls.mouseButtons.wheel =
-      this._controls.mouseButtons.wheel === CameraControls.ACTION.NONE
-        ? CameraControls.ACTION.ZOOM
-        : CameraControls.ACTION.NONE;
-    this._controls.touches.two =
-      this._controls.touches.two === CameraControls.ACTION.TOUCH_ROTATE
-        ? CameraControls.ACTION.TOUCH_DOLLY
-        : CameraControls.ACTION.TOUCH_ROTATE;
-    this._controls.minPolarAngle = this._isInDeveloperMode ? 0 : Math.PI / 2;
-    this._controls.maxPolarAngle = this._isInDeveloperMode ? Math.PI : Math.PI / 2;
+    this._cameraControlsManager.setDevMode(this._isInDeveloperMode);
     this._boundaryList.forEach((bd) => bd.setDeveloperMode(this._isInDeveloperMode));
     this._axesHelper.visible = this._isInDeveloperMode;
   };
@@ -496,31 +495,6 @@ export class Viewer3D {
     };
   };
 
-  private _animateSelectBoundary = (boundary: string) => {
-    const selectingBoundary = this._boundaryList.find((bd) => bd.name === boundary) ?? null;
-    if (selectingBoundary?.name !== this._selectedBoundary?.name && selectingBoundary !== null) {
-      this._selectedBoundary = selectingBoundary;
-      const boundaryPosition = this._selectedBoundary.center;
-      const boundaryNormal = this._selectedBoundary.normal;
-      // this._controls.setLookAt
-      // const cameraPosition = boundaryPosition
-      //   .clone()
-      //   .add(
-      //     boundaryNormal
-      //       .clone()
-      //       .multiplyScalar(this._controls.maxDistance * 0.65)
-      //   );
-      // new TWEEN.Tween(this._camera.position)
-      //   .to(cameraPosition)
-      //   .easing(TWEEN.Easing.Quadratic.InOut)
-      //   .onUpdate(() => {
-      //     this._camera.lookAt(boundaryPosition);
-      //   })
-      //   .start();
-    }
-    return selectingBoundary;
-  };
-
   unselectBoundary = () => {
     this._selectedBoundary = null;
   };
@@ -606,76 +580,40 @@ export class Viewer3D {
   };
 
   takeScreenShot = async () => {
-    const camera = this._camera.clone();
-    const { renderer, scene, workingAssetGroup } = this._generateViewerCopy();
-    const controls = new CameraControls(camera, renderer.domElement);
-    const { azimuthAngle, polarAngle } = this._controls;
-    this._paddingInCssPixel(
-      controls,
-      workingAssetGroup,
-      {
-        top: 20,
-        bottom: 20,
-        left: 20,
-        right: 20,
-      },
-      {
-        azimuthAngle,
-        polarAngle,
-      }
-    );
-    const delta = this._clock.getDelta();
-    controls.update(delta);
-    renderer.render(scene, camera);
-    return await ImageHelper.cropImageToRatio(
-      renderer.domElement.toDataURL(strMime),
-      this._modelRatio
-    );
+    const { azimuthAngle, polarAngle } = this._cameraControlsManager.controls;
+    const [image] = await this._takeScreenShot({
+      modelRatio: this._modelRatio,
+      rotations: [
+        {
+          azimuthAngle,
+          polarAngle,
+        },
+      ],
+    });
+    return image;
   };
 
-  takeScreenShotAt = async (angleY: number) => {
-    const camera = this._camera.clone();
-    const { renderer, scene, workingAssetGroup } = this._generateViewerCopy();
-    const controls = new CameraControls(camera, renderer.domElement);
-    this._paddingInCssPixel(controls, workingAssetGroup, {
-      top: 20,
-      bottom: 20,
-      left: 20,
-      right: 20,
+  takeScreenShotAt = async (azimuthAngle: number) => {
+    const [image] = await this._takeScreenShot({
+      modelRatio: this._modelRatio,
+      rotations: [
+        {
+          azimuthAngle,
+        },
+      ],
     });
-    controls.rotateAzimuthTo(angleY, false);
-    const delta = this._clock.getDelta();
-    controls.update(delta);
-    renderer.render(scene, camera);
-    return await ImageHelper.cropImageToRatio(
-      renderer.domElement.toDataURL(strMime),
-      this._modelRatio
-    );
+    return image;
   };
 
   takeScreenShotAuto = async () => {
-    const camera = this._camera.clone();
-    const { renderer, scene, workingAssetGroup } = this._generateViewerCopy();
-    const controls = new CameraControls(camera, renderer.domElement);
-    this._paddingInCssPixel(controls, workingAssetGroup, {
-      top: 20,
-      bottom: 20,
-      left: 20,
-      right: 20,
+    const rotations = Utils.getEqualAngleRotations(4).map((azimuthAngle) => ({
+      azimuthAngle,
+    }));
+
+    return await this._takeScreenShot({
+      modelRatio: this._modelRatio,
+      rotations: rotations,
     });
-    const images: string[] = [];
-    for (var i = 0; i < 4; i++) {
-      controls.rotateAzimuthTo((Math.PI / 2) * i, false);
-      const delta = this._clock.getDelta();
-      controls.update(delta);
-      renderer.render(scene, camera);
-      const imgData = await ImageHelper.cropImageToRatio(
-        renderer.domElement.toDataURL(strMime),
-        this._modelRatio
-      );
-      images.push(imgData);
-    }
-    return images;
   };
 
   createTechPack = async () => {
@@ -684,14 +622,23 @@ export class Viewer3D {
       this._generateViewerCopy();
     scene.background = new THREE.Color('rgba(0, 0, 0, 0)');
     renderer.toneMappingExposure = 5;
-    const controls = new CameraControls(camera, renderer.domElement);
-    controls.rotateTo(0, 0);
-    this._paddingInCssPixel(controls, workingAssetGroup, {
-      top: 20,
-      bottom: 20,
-      left: 20,
-      right: 20,
+    const controlsManager = new CameraControlsManager(renderer.domElement, camera);
+    controlsManager.rotateTo({
+      azimuthAngle: 0,
+      polarAngle: 0,
     });
+    controlsManager.paddingInCssPixelAndMoveControl({
+      camera,
+      renderer,
+      obj: workingAssetGroup,
+      padding: {
+        top: 20,
+        bottom: 20,
+        left: 20,
+        right: 20,
+      },
+    });
+
     const result: string[] = [];
     if (techPackGroup && workingAssetGroup) {
       techPackGroup.visible = true;
@@ -713,32 +660,38 @@ export class Viewer3D {
         }
       });
       const layerList = techPackGroup.children.filter((child) => child.name.includes('changeable'));
-      controls.fitToBox(techPackGroup, false, {
-        paddingBottom: 4,
-        paddingLeft: 4,
-        paddingRight: 4,
-        paddingTop: 4,
+      controlsManager.fitToBounds({
+        obj: techPackGroup,
+        padding: {
+          bottom: 4,
+          left: 4,
+          right: 4,
+          top: 4,
+        },
+        transition: false,
       });
       const { size } = this._getSizeAndCenter(techPackGroup);
       const ratio = Math.abs(size.x / size.z);
-      const delta = this._clock.getDelta();
-      controls.update(delta);
+      controlsManager.update(this._clock);
       renderer.render(scene, camera);
       const img = await ImageHelper.cropImageToRatio(renderer.domElement.toDataURL(strMime), ratio);
       result.push(img);
       for (let child of layerList) {
-        controls.fitToBox(child, false, {
-          paddingBottom: 4,
-          paddingLeft: 4,
-          paddingRight: 4,
-          paddingTop: 4,
+        controlsManager.fitToBounds({
+          obj: child,
+          padding: {
+            bottom: 4,
+            left: 4,
+            right: 4,
+            top: 4,
+          },
+          transition: false,
         });
         layerList.forEach((child) => (child.visible = false));
         child.visible = true;
         const { size } = this._getSizeAndCenter(child);
         const ratio = Math.abs(size.x / size.z);
-        const delta = this._clock.getDelta();
-        controls.update(delta);
+        controlsManager.update(this._clock);
         renderer.render(scene, camera);
         const img = await ImageHelper.cropImageToRatio(
           renderer.domElement.toDataURL(strMime),
