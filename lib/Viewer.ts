@@ -1,10 +1,10 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { ControlName, TextureOption } from './type';
-import { Boundary } from './Boundary';
+import { Boundary } from './core/Boundary';
 import * as TWEEN from '@tweenjs/tween.js';
 import CameraControls from 'camera-controls';
-import { ImageHelper } from './ImageHelper';
+import { ImageHelper } from './core/ImageHelper';
 import { Utils } from './Utils';
 import { LightManager } from './managers/LightManager';
 import { SceneBuilder } from './managers/SceneBuilder';

@@ -1,12 +1,12 @@
-import * as THREE from "three";
-import { ControlName, TextureOption } from "./type";
-import * as fabric from "fabric";
-import _ from "underscore";
-import { ImageHelper } from "./ImageHelper";
-import { Utils } from "./Utils";
-import crystalAlpha from "./assets/crystal_alpha.webp";
-import crystalNormal from "./assets/crystal_diffuse.webp";
-import crystalDiffuse from "./assets/crystal_diffuse.webp";
+import * as THREE from 'three';
+import { ControlName, TextureOption } from '../type';
+import * as fabric from 'fabric';
+import _ from 'underscore';
+import { ImageHelper } from './ImageHelper';
+import { Utils } from '../Utils';
+import crystalAlpha from '../assets/crystal_alpha.webp';
+import crystalNormal from '../assets/crystal_diffuse.webp';
+import crystalDiffuse from '../assets/crystal_diffuse.webp';
 // import { Texture, Sprite } from "pixi.js";
 // import { MultiColorReplaceFilter } from "@pixi/filter-multi-color-replace";
 
@@ -40,7 +40,7 @@ export class Boundary {
     color: string;
     textureOption: TextureOption;
   }[] = [];
-  private _artworkUrl = "";
+  private _artworkUrl = '';
   private _normalPositionHelper: THREE.ArrowHelper;
   private _normalUVHelper: THREE.ArrowHelper;
   private _normalUV: THREE.Vector3;
@@ -54,7 +54,7 @@ export class Boundary {
     this._canvas = canvas;
     this._canvasMaterial = new THREE.MeshPhysicalMaterial({
       transparent: true,
-      color: "white",
+      color: 'white',
       side: THREE.DoubleSide,
       toneMapped: false,
       blending: THREE.CustomBlending,
@@ -76,26 +76,17 @@ export class Boundary {
     this._boundaryRatio = width / height;
     const { max, min } = boundingBox;
     this.center = canvas.worldToLocal(min.clone().add(max).multiplyScalar(0.5));
-    const positionArray = (
-      canvas.geometry.attributes["position"] as THREE.BufferAttribute
-    ).array;
-    const uvArray = (canvas.geometry.attributes["uv"] as THREE.BufferAttribute)
-      .array;
+    const positionArray = (canvas.geometry.attributes['position'] as THREE.BufferAttribute).array;
+    const uvArray = (canvas.geometry.attributes['uv'] as THREE.BufferAttribute).array;
     const positionPoints: THREE.Vector3[] = [];
     for (let i = 0; i < positionArray.length; i += 3) {
       positionPoints.push(
-        new THREE.Vector3(
-          positionArray[i],
-          positionArray[i + 1],
-          positionArray[i + 2]
-        )
+        new THREE.Vector3(positionArray[i], positionArray[i + 1], positionArray[i + 2])
       );
     }
     const uvPoints: THREE.Vector3[] = [];
     for (let i = 0; i < uvArray.length; i += 3) {
-      uvPoints.push(
-        new THREE.Vector3(uvArray[i], uvArray[i + 1], uvArray[i + 2])
-      );
+      uvPoints.push(new THREE.Vector3(uvArray[i], uvArray[i + 1], uvArray[i + 2]));
     }
     const boundingSphere = new THREE.Sphere().setFromPoints(positionPoints);
     const boundingUVSphere = new THREE.Sphere().setFromPoints(uvPoints);
@@ -110,7 +101,7 @@ export class Boundary {
       this._normalUV,
       new THREE.Vector3(0, 0, 0),
       biggerSide + 2,
-      "purple"
+      'purple'
     );
     this._normalPositionHelper.visible = false;
     this._normalUVHelper.visible = false;
@@ -165,7 +156,7 @@ export class Boundary {
   }
 
   private _configure2DCanvas = (workingCanvas?: HTMLCanvasElement) => {
-    const wCanvas = workingCanvas || window.document.createElement("canvas");
+    const wCanvas = workingCanvas || window.document.createElement('canvas');
     if (!workingCanvas) {
       wCanvas.width = 300;
       wCanvas.height = 300;
@@ -175,16 +166,13 @@ export class Boundary {
     this._workingCanvas2D?.removeListeners();
     this._workingCanvas2D = new fabric.Canvas(wCanvas);
     if (workingCanvas) {
-      this._workingCanvas2D.on("after:render", this._renderCanvasOnBoundary);
-      this._workingCanvas2D.on("object:moving", this._onArtworkMove);
-      this._workingCanvas2D.on("object:scaling", this._onArtworkResize);
-      this._workingCanvas2D.on("object:rotating", this._onArtworkRotate);
+      this._workingCanvas2D.on('after:render', this._renderCanvasOnBoundary);
+      this._workingCanvas2D.on('object:moving', this._onArtworkMove);
+      this._workingCanvas2D.on('object:scaling', this._onArtworkResize);
+      this._workingCanvas2D.on('object:rotating', this._onArtworkRotate);
     }
-    this._workingCanvas2D.clipPath = this._generateClipPath(
-      this._canvasWidth,
-      this._canvasHeight
-    );
-    this._workingCanvas2D.backgroundColor = "rgba(0, 0, 0, 0.1)";
+    this._workingCanvas2D.clipPath = this._generateClipPath(this._canvasWidth, this._canvasHeight);
+    this._workingCanvas2D.backgroundColor = 'rgba(0, 0, 0, 0.1)';
   };
 
   organizeGroup = () => {
@@ -239,10 +227,9 @@ export class Boundary {
     }
     this._artworkUrl = artworkUrl;
     this._configure2DCanvas(workingCanvas);
-    const { canvasHeight, canvasWidth, clipPathHeight, clipPathWidth } =
-      this._getClipPathSize();
+    const { canvasHeight, canvasWidth, clipPathHeight, clipPathWidth } = this._getClipPathSize();
     const img = await fabric.Image.fromURL(computedArtworkUrl, {
-      crossOrigin: "anonymous",
+      crossOrigin: 'anonymous',
     });
     const { width = 1, height = 1 } = img;
     this._useWidthToScale = width / clipPathWidth > height / clipPathHeight;
@@ -255,12 +242,12 @@ export class Boundary {
     } else {
       img.scaleToHeight(clipPathHeight * sizeRatio);
     }
-    img.originX = "center";
-    img.originY = "center";
+    img.originX = 'center';
+    img.originY = 'center';
     img.setPositionByOrigin(
       new fabric.Point(canvasWidth * xRatio, canvasHeight * yRatio),
-      "center",
-      "center"
+      'center',
+      'center'
     );
     img.setControlsVisibility({
       mb: false,
@@ -294,11 +281,9 @@ export class Boundary {
     const { clipPathWidth, clipPathHeight } = this._getClipPathSize();
     this._sizeRatio =
       (this._useWidthToScale
-        ? (((e as any).target?.scaleX ?? 1) * ((e as any).target?.width ?? 1)) /
-          clipPathWidth
-        : (((e as any).target?.scaleY ?? 1) *
-            ((e as any).target?.height ?? 1)) /
-          clipPathHeight) / window.devicePixelRatio;
+        ? (((e as any).target?.scaleX ?? 1) * ((e as any).target?.width ?? 1)) / clipPathWidth
+        : (((e as any).target?.scaleY ?? 1) * ((e as any).target?.height ?? 1)) / clipPathHeight) /
+      window.devicePixelRatio;
     this._updateListener();
   }, 300);
 
@@ -308,32 +293,26 @@ export class Boundary {
   }, 300);
 
   private _onArtworkMove = (event: fabric.TEvent<MouseEvent>) => {
-    const { clipPathWidth, clipPathHeight, widthPadding, heightPadding } =
-      this._getClipPathSize();
-    this._xRatio =
-      (((event as any).target?.left ?? 0) - widthPadding) / clipPathWidth;
-    this._yRatio =
-      (((event as any).target?.top ?? 0) - heightPadding) / clipPathHeight;
+    const { clipPathWidth, clipPathHeight, widthPadding, heightPadding } = this._getClipPathSize();
+    this._xRatio = (((event as any).target?.left ?? 0) - widthPadding) / clipPathWidth;
+    this._yRatio = (((event as any).target?.top ?? 0) - heightPadding) / clipPathHeight;
     this._updateListener();
   };
 
   private _renderCanvasOnBoundary = _.throttle(async () => {
     if (this._workingCanvas2D) {
-      const copy = await this._workingCanvas2D.clone(["elements"]);
-      copy.backgroundColor = "rgba(0, 0, 0, 0)";
+      const copy = await this._workingCanvas2D.clone(['elements']);
+      copy.backgroundColor = 'rgba(0, 0, 0, 0)';
       const original = copy.toCanvasElement();
       const texture = new THREE.CanvasTexture(original);
       texture.wrapS = THREE.RepeatWrapping;
       texture.wrapT = THREE.RepeatWrapping;
-      texture.repeat.set(
-        Math.sign(this._normalUV.x),
-        -Math.sign(this._normalUV.y)
-      );
+      texture.repeat.set(Math.sign(this._normalUV.x), -Math.sign(this._normalUV.y));
       texture.colorSpace = THREE.SRGBColorSpace;
       this._canvasMaterial.setValues({
         opacity: 1,
         map: texture,
-        color: "white",
+        color: 'white',
       });
       await this._finalizeCanvasOnBoundary();
     }
@@ -341,23 +320,17 @@ export class Boundary {
 
   private _finalizeCanvasOnBoundary = _.throttle(async () => {
     if (this._workingCanvas2D) {
-      const copy = await this._workingCanvas2D.clone(["elements"]);
-      copy.backgroundColor = "rgba(0, 0, 0, 0)";
+      const copy = await this._workingCanvas2D.clone(['elements']);
+      copy.backgroundColor = 'rgba(0, 0, 0, 0)';
       const original = copy.toCanvasElement();
       const url = original.toDataURL();
-      const imagePartUrls = await ImageHelper.generateImageParts(
-        url,
-        this._workingColors
-      );
+      const imagePartUrls = await ImageHelper.generateImageParts(url, this._workingColors);
       // this.breakdownTextures = imagePartUrls;
       const textures = imagePartUrls.map((uri) => {
         const texture = new THREE.TextureLoader().load(uri);
         texture.wrapS = THREE.RepeatWrapping;
         texture.wrapT = THREE.RepeatWrapping;
-        texture.repeat.set(
-          Math.sign(this._normalUV.x),
-          -Math.sign(this._normalUV.y)
-        );
+        texture.repeat.set(Math.sign(this._normalUV.x), -Math.sign(this._normalUV.y));
         return texture;
       });
       const colors = this._workingColors.map((color) => Utils.rgb2hex(color));
@@ -392,13 +365,8 @@ export class Boundary {
               });
               break;
             case TextureOption.Crystals:
-              const { uri: alphaUri } = await ImageHelper.generateAlphaMap(
-                imagePartUrls[index]
-              );
-              const finalAlphaUri = await ImageHelper.mergeAlphaMap(
-                alphaUri,
-                crystalAlpha
-              );
+              const { uri: alphaUri } = await ImageHelper.generateAlphaMap(imagePartUrls[index]);
+              const finalAlphaUri = await ImageHelper.mergeAlphaMap(alphaUri, crystalAlpha);
               const alphaTexture = Boundary.textureLoader.load(finalAlphaUri);
               alphaTexture.flipY = false;
               (geo.material as THREE.MeshStandardMaterial).setValues({
@@ -435,18 +403,16 @@ export class Boundary {
     this._workingCanvas2D?.dispose();
     this._workingCanvas2D = undefined;
     this._canvasMaterial.setValues({
-      color: "rgba(0, 0, 0, 0)",
+      color: 'rgba(0, 0, 0, 0)',
       map: null,
       normalMap: null,
       alphaMap: null,
       opacity: 0,
     });
     this._canvasList.forEach((geo) => {
-      (
-        geo.material as THREE.MeshStandardMaterial | THREE.MeshPhongMaterial
-      ).setValues({
+      (geo.material as THREE.MeshStandardMaterial | THREE.MeshPhongMaterial).setValues({
         map: null,
-        color: "rgba(0, 0, 0, 0)",
+        color: 'rgba(0, 0, 0, 0)',
         opacity: 0,
         normalMap: null,
         alphaMap: null,
@@ -486,8 +452,7 @@ export class Boundary {
       Utils.testHexMatch(textureApplication.color, v.color)
     );
     if (index === -1) {
-      this._textureApplication =
-        this._textureApplication.concat(textureApplication);
+      this._textureApplication = this._textureApplication.concat(textureApplication);
     } else {
       this._textureApplication.splice(index, 1, textureApplication);
     }

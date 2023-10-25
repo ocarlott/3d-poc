@@ -63,6 +63,7 @@ export class UIManager {
     return this._canvas;
   }
 
+  //FIXME: when to call this?
   onDestroy() {
     this._resizeObserver.disconnect();
   }
