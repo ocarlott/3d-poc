@@ -1,5 +1,5 @@
 import { Viewer3D } from 'microstore-3d';
-import { deafultModelConfig } from '../../config';
+import { defaultModelConfig } from '../../config';
 import { AppModel } from './AppModel';
 
 export function AppViewModel() {
@@ -9,7 +9,7 @@ export function AppViewModel() {
     const viewer = new Viewer3D(canvasElement);
     model.setViewer(viewer);
     await viewer.loadModel('./tshirt.glb', () => {});
-    viewer.configureModel(deafultModelConfig);
+    viewer.configureModel(defaultModelConfig);
   };
 
   return {

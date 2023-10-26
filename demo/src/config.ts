@@ -1,4 +1,4 @@
-export const deafultModelConfig = {
+export const defaultModelConfig = {
   colorMap: [
     {
       layerName: 'ContourFitJacket_changeable_group_1_front',
