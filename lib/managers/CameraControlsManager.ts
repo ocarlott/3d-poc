@@ -4,6 +4,7 @@ import CameraControls from 'camera-controls';
 CameraControls.install({ THREE: THREE });
 export class CameraControlsManager {
   private _controls: CameraControls;
+  private _camera: THREE.PerspectiveCamera;
 
   constructor(
     canvasOrDomElement: HTMLCanvasElement | HTMLElement,
@@ -11,6 +12,7 @@ export class CameraControlsManager {
     options?: { lockPolarAngle?: boolean }
   ) {
     this._controls = new CameraControls(camera, canvasOrDomElement);
+    this._camera = camera;
 
     options?.lockPolarAngle && this._lockPolarAngle();
   }
@@ -21,13 +23,11 @@ export class CameraControlsManager {
   }
 
   private _getPaddingInCssPixel = ({
-    camera,
-    renderer,
+    rendererHeight,
     obj,
     padding,
   }: {
-    camera: THREE.PerspectiveCamera;
-    renderer?: THREE.WebGLRenderer;
+    rendererHeight: number;
     obj: THREE.Object3D;
     padding: {
       top: number;
@@ -37,8 +37,7 @@ export class CameraControlsManager {
     };
   }) => {
     const { top, right, bottom, left } = padding;
-    const fov = camera.fov * THREE.MathUtils.DEG2RAD;
-    const rendererHeight = renderer?.getSize(new THREE.Vector2()).height ?? 0;
+    const fov = this._camera.fov * THREE.MathUtils.DEG2RAD;
     const boundingBox = new THREE.Box3().setFromObject(obj);
     const size = boundingBox.getSize(new THREE.Vector3());
     const boundingWidth = size.x;
@@ -100,15 +99,13 @@ export class CameraControlsManager {
   };
 
   paddingInCssPixelAndMoveControl = ({
-    camera,
-    renderer,
+    rendererHeight,
     obj,
     padding,
     rotationTo,
     transition = false,
   }: {
-    camera: THREE.PerspectiveCamera;
-    renderer?: THREE.WebGLRenderer;
+    rendererHeight: number;
     obj?: THREE.Object3D;
     padding: {
       top: number;
@@ -125,7 +122,7 @@ export class CameraControlsManager {
     if (!obj) {
       throw new Error('obj is required');
     }
-    const { padding: newPadding } = this._getPaddingInCssPixel({ camera, renderer, obj, padding });
+    const { padding: newPadding } = this._getPaddingInCssPixel({ rendererHeight, obj, padding });
     this.fitToBounds({ obj, padding: newPadding, transition });
     rotationTo && this.rotateTo(rotationTo, transition);
   };

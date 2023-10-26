@@ -92,10 +92,13 @@ export class Viewer3D {
     };
   };
 
+  private static getRendererHeight(renderer: THREE.WebGLRenderer) {
+    return renderer?.getSize(new THREE.Vector2()).height ?? 0;
+  }
+
   private _fitCameraToObject = (obj: THREE.Object3D, controls?: CameraControls) => {
     this._cameraControlsManager.paddingInCssPixelAndMoveControl({
-      camera: this._camera,
-      renderer: this._renderer,
+      rendererHeight: Viewer3D.getRendererHeight(this._renderer),
       obj,
       padding: {
         top: 20,
@@ -180,8 +183,7 @@ export class Viewer3D {
 
     const controlsManager = new CameraControlsManager(renderer.domElement, camera);
     controlsManager.paddingInCssPixelAndMoveControl({
-      camera,
-      renderer,
+      rendererHeight: Viewer3D.getRendererHeight(renderer),
       obj: workingAssetGroup,
       padding: {
         top: 20,
@@ -592,8 +594,7 @@ export class Viewer3D {
       polarAngle: 0,
     });
     controlsManager.paddingInCssPixelAndMoveControl({
-      camera,
-      renderer,
+      rendererHeight: Viewer3D.getRendererHeight(renderer),
       obj: workingAssetGroup,
       padding: {
         top: 20,
