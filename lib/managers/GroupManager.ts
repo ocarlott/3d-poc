@@ -28,38 +28,35 @@ export class GroupManager {
     this.modelGroup.add(workingAssetGroup);
   }
 
-  load(obj: THREE.Group) {
+  load(obj: THREE.Group, allModelObjects: THREE.Mesh[]) {
     this._modelGroup.add(obj); //. used to be added at the end
 
-    const techPackList: THREE.Mesh[] = [];
-    const workingAssetsList: (THREE.Mesh | THREE.Group)[] = [];
-
-    obj.traverse((child) => {
+    allModelObjects.forEach((child) => {
       const castedChild = child as THREE.Mesh;
       if (GroupManager.isTechPack(castedChild)) {
-        techPackList.push(castedChild);
+        this.techPackGroup!.add(castedChild);
 
         if (GroupManager.isNotBoundary(castedChild)) {
           castedChild.material = new THREE.MeshBasicMaterial();
         }
       } else {
         // isNotTechPack
-
         if (GroupManager.isShadow(castedChild)) {
           castedChild.name = ControlName.ShadowPlane;
         } else if (GroupManager.isNotBoundary(castedChild)) {
           const displayNameForChangableGroup = Utils.getDisplayNameIfChangeableGroup(
             castedChild.name
           );
+
           if (displayNameForChangableGroup) {
-            workingAssetsList.push(castedChild);
+            this.workingAssetGroup!.add(castedChild);
           }
         }
       }
     });
 
-    this.techPackGroup!.add(...techPackList);
-    this.workingAssetGroup!.add(...workingAssetsList);
+    // this.techPackGroup!.add(...techPackList);
+    // this.workingAssetGroup!.add(...workingAssetsList);
   }
 
   getChildNamesListSnapshot() {
@@ -87,7 +84,7 @@ export class GroupManager {
     };
   }
 
-  loadBoundaries(boundaries: Boundary[]) {
+  setBoundaries(boundaries: Boundary[]) {
     for (let bd of boundaries) {
       this.modelGroup.add(bd.group);
       this.workingAssetGroup!.add(bd.group);

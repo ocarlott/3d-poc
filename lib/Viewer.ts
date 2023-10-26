@@ -237,9 +237,13 @@ export class Viewer3D {
 
           const boundingBox = new THREE.Box3();
           boundingBox.setFromObject(obj);
-          this._groupManager.load(obj);
 
-          obj.traverse((child) => {
+          const allModelObjects: THREE.Mesh[] = [];
+          obj.traverse((child) => allModelObjects.push(child as THREE.Mesh));
+
+          this._groupManager.load(obj, allModelObjects);
+
+          allModelObjects.forEach((child) => {
             const castedChild = child as THREE.Mesh;
             const castedChildMaterial = castedChild.material as THREE.MeshPhysicalMaterial;
             if (GroupManager.isNotTechPack(castedChild)) {
@@ -278,7 +282,7 @@ export class Viewer3D {
             }
           });
 
-          this._groupManager.loadBoundaries(this._boundaryList);
+          this._groupManager.setBoundaries(this._boundaryList);
           this._boundaryList.forEach((child) => {
             child.organizeGroup();
           });
