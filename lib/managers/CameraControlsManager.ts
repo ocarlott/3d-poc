@@ -109,7 +109,7 @@ export class CameraControlsManager {
   }: {
     camera: THREE.PerspectiveCamera;
     renderer?: THREE.WebGLRenderer;
-    obj: THREE.Object3D;
+    obj?: THREE.Object3D;
     padding: {
       top: number;
       right: number;
@@ -122,6 +122,9 @@ export class CameraControlsManager {
     };
     transition?: boolean;
   }) => {
+    if (!obj) {
+      throw new Error('obj is required');
+    }
     const { padding: newPadding } = this._getPaddingInCssPixel({ camera, renderer, obj, padding });
     this.fitToBounds({ obj, padding: newPadding, transition });
     rotationTo && this.rotateTo(rotationTo, transition);

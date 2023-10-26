@@ -10,6 +10,7 @@ import { LightManager } from './managers/LightManager';
 import { SceneBuilder } from './managers/SceneBuilder';
 import { SizeUpdateParams, UIManager } from './managers/UIManager';
 import { CameraControlsManager } from './managers/CameraControlsManager';
+import { GroupManager } from './managers/GroupManager';
 
 const strMime = 'image/png';
 export class Viewer3D {
@@ -20,10 +21,8 @@ export class Viewer3D {
   private _lightManager: LightManager;
   private _cameraControlsManager: CameraControlsManager;
   private _uiManager: UIManager;
+  private _groupManager: GroupManager;
   private _model?: THREE.Object3D;
-  private _modelGroup = new THREE.Group();
-  private _techPackGroup = new THREE.Group();
-  private _workingAssetGroup = new THREE.Group();
   private _boundaryList: Boundary[] = [];
   private _layerMap: Map<
     string,
@@ -60,6 +59,9 @@ export class Viewer3D {
     this._cameraControlsManager = new CameraControlsManager(canvas, this._camera, {
       lockPolarAngle: true,
     });
+
+    this._groupManager = new GroupManager();
+
     this._scene.background = new THREE.Color('#f1e9e9');
     this._scene.add(this._lightManager.getLightGroup());
     this.show();
@@ -118,28 +120,24 @@ export class Viewer3D {
     renderer.toneMapping = THREE.ReinhardToneMapping;
     renderer.toneMappingExposure = 1;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
+
     const newScene = new THREE.Scene();
-    // newScene.background = new THREE.Color("#eee");
-    // newScene.add(this._lightGroup.clone(true));
     newScene.background = new THREE.Color('#f1e9e9');
     newScene.add(this._lightManager.getLightGroup().clone());
-    // newScene.add(this._lightKey.clone(), this._lightRLeft.clone());
-    const newGroup = this._modelGroup.clone(true);
-    const techPackGroup = newGroup.getObjectByName(ControlName.TechPackGroup);
-    const shadowPlane = newGroup.getObjectByName(ControlName.ShadowPlane);
-    const workingAssetGroup = newGroup.getObjectByName(
-      ControlName.WorkingAssetGroup
-    ) as THREE.Object3D;
-    newScene.add(newGroup);
+
+    const newGroupManager = this._groupManager.clone();
+
+    newScene.add(newGroupManager.modelGroup);
+
     renderer.setSize(this._uiManager.canvasWidth, this._uiManager.canvasHeight);
     renderer.setPixelRatio(this._uiManager.pixelRatio);
     return {
       renderer,
       scene: newScene,
-      modelGroup: newGroup,
-      workingAssetGroup,
-      techPackGroup,
-      shadowPlane,
+      modelGroup: newGroupManager.modelGroup,
+      workingAssetGroup: newGroupManager.workingAssetGroup,
+      techPackGroup: newGroupManager.techPackGroup,
+      shadowPlane: newGroupManager.shadowPlane,
     };
   };
 
@@ -210,12 +208,12 @@ export class Viewer3D {
   show = () => {
     const delta = this._clock.getDelta();
     this._cameraControlsManager.update(delta);
-    this._rFID = requestAnimationFrame(this.show);
     if (this._shouldRotate) {
-      this._modelGroup.rotation.y += 0.01;
+      this._groupManager.animateUpdate();
     }
-    TWEEN.update();
+
     this._renderer.render(this._scene, this._camera);
+    this._rFID = requestAnimationFrame(this.show);
   };
 
   hide = () => {
@@ -225,13 +223,8 @@ export class Viewer3D {
 
   loadModel = (url: string, onProgress: (percent: number) => void): Promise<void> => {
     this._model = undefined;
-    this._scene.remove(this._modelGroup);
-    this._modelGroup.removeFromParent();
-    this._modelGroup = new THREE.Group();
-    this._techPackGroup = new THREE.Group();
-    this._techPackGroup.name = ControlName.TechPackGroup;
-    this._workingAssetGroup = new THREE.Group();
-    this._workingAssetGroup.name = ControlName.WorkingAssetGroup;
+    this._scene.remove(this._groupManager.modelGroup);
+    this._groupManager.reinit({ isInDeveloperMode: this._isInDeveloperMode });
     this._boundaryList = [];
     this._layerMap.clear();
     return new Promise((resolve, reject) => {
@@ -239,43 +232,29 @@ export class Viewer3D {
         url,
         (gltf) => {
           const obj = gltf.scene;
+
           const boundingBox = new THREE.Box3();
           boundingBox.setFromObject(obj);
-          const techPackList: THREE.Mesh[] = [];
-          const workingAssets: (THREE.Mesh | THREE.Group)[] = [];
-          this._modelGroup.add(this._techPackGroup);
-          this._modelGroup.add(this._workingAssetGroup);
-          this._techPackGroup.visible = this._isInDeveloperMode;
-          obj.traverse((child) => {
-            const castedChild = child as THREE.Mesh;
-            if (castedChild.name.includes('_flat')) {
-              techPackList.push(castedChild);
-              if (!castedChild.name.includes('boundary')) {
-                castedChild.material = new THREE.MeshBasicMaterial();
-              }
-            } else if (castedChild.name.toLowerCase().includes('shadow')) {
-              castedChild.name = ControlName.ShadowPlane;
-            }
-          });
+          this._groupManager.load(obj);
+
           obj.traverse((child) => {
             const castedChild = child as THREE.Mesh;
             const castedChildMaterial = castedChild.material as THREE.MeshPhysicalMaterial;
-            if (!castedChild.name.includes('_flat')) {
-              const boundaryIndex = child.name.toLocaleLowerCase().search('boundary');
-              if (castedChild.isMesh && boundaryIndex !== -1) {
+            if (GroupManager.isNotTechPack(castedChild)) {
+              if (castedChild.isMesh && GroupManager.isBoundary(castedChild)) {
                 castedChildMaterial.setValues({
                   transparent: true,
                   opacity: 0,
                 });
+
                 const techPackBoundary: THREE.Mesh | null =
-                  techPackList.find((group) => group.name === castedChild.name + '_flat') ?? null;
-                if (techPackBoundary) {
-                  const bd = new Boundary(castedChild, techPackBoundary);
-                  this._modelGroup.add(bd.group);
-                  this._boundaryList.push(bd);
-                  workingAssets.push(bd.group);
-                } else {
+                  this._groupManager.findByName(GroupManager.formTechpackName(castedChild.name)) ??
+                  null;
+                if (!techPackBoundary) {
                   console.error(`Could not find techpack version of ${castedChild.name}`);
+                } else {
+                  const bd = new Boundary(castedChild, techPackBoundary);
+                  this._boundaryList.push(bd);
                 }
               } else {
                 const displayNameForChangableGroup = Utils.getDisplayNameIfChangeableGroup(
@@ -290,32 +269,31 @@ export class Viewer3D {
                       mesh: castedChild,
                     });
                   }
-                  workingAssets.push(castedChild);
                 } else if (castedChild.name !== ControlName.ShadowPlane) {
                   this._extraLayers.add(castedChild.name);
                 }
               }
             }
           });
-          techPackList.forEach((child) => {
-            this._techPackGroup.add(child);
-          });
-          workingAssets.forEach((child) => {
-            this._workingAssetGroup.add(child);
-          });
+
+          this._groupManager.loadBoundaries(this._boundaryList);
           this._boundaryList.forEach((child) => {
             child.organizeGroup();
           });
-          this._fitCameraToObject(this._workingAssetGroup);
-          const { size } = this._getSizeAndCenter(this._workingAssetGroup);
-          this._axesHelper = new THREE.AxesHelper(Math.max(size.x, size.y, size.z) / 2 + 2);
-          this._scene.add(this._axesHelper);
-          this._axesHelper.visible = false;
+
+          this._fitCameraToObject(this._groupManager.workingAssetGroup!);
+          const { size } = this._getSizeAndCenter(this._groupManager.workingAssetGroup!);
+
           this._cameraControlsManager.setDistanceLimitsFromSize(size);
+
+          this._axesHelper = new THREE.AxesHelper(Math.max(size.x, size.y, size.z) / 2 + 2);
+          this._axesHelper.visible = false;
+          this._scene.add(this._axesHelper);
+
           this._modelRatio = Math.abs(size.x / size.y);
           this._model = obj;
-          this._modelGroup.add(obj);
-          this._scene.add(this._modelGroup);
+
+          this._scene.add(this._groupManager.modelGroup);
           onProgress(100);
           resolve();
         },
@@ -346,7 +324,7 @@ export class Viewer3D {
 
   toggleDeveloperMode = () => {
     this._isInDeveloperMode = !this._isInDeveloperMode;
-    this._techPackGroup.visible = this._isInDeveloperMode;
+    this._groupManager.setDeveloperMode(this._isInDeveloperMode);
     this._cameraControlsManager.setDevMode(this._isInDeveloperMode);
     this._boundaryList.forEach((bd) => bd.setDeveloperMode(this._isInDeveloperMode));
     this._axesHelper.visible = this._isInDeveloperMode;
@@ -410,18 +388,9 @@ export class Viewer3D {
 
   validateModel = async (artworkUrl = './logo.png') => {
     const colors = Utils.getShuffledColors();
-    const boundaries: string[] = [];
-    const techPacks: string[] = [];
-    const layers: string[] = [];
-    this._modelGroup.traverse((child) => {
-      if (child.name.includes('flat')) {
-        techPacks.push(child.name);
-      } else if (child.name.includes('boundary')) {
-        boundaries.push(child.name);
-      } else if (child.name.includes('changeable')) {
-        layers.push(child.name);
-      }
-    });
+
+    const { boundaryNames, techPackNames, layerNames } =
+      this._groupManager.getChildNamesListSnapshot();
     const layerList = Array.from(this._layerMap.values());
     layerList.forEach((layer, index) => {
       this.changeColor(layer.mesh.name, colors[index]);
@@ -437,28 +406,29 @@ export class Viewer3D {
       boundaryName: string;
       result: boolean;
     }[] = [];
-    boundaries.forEach((bd) => {
-      const bdMaterial = (this._modelGroup.getObjectByName(bd) as THREE.Mesh)
-        .material as THREE.MeshStandardMaterial;
-      if (!techPacks.includes(bd + '_flat')) {
-        materialMap.set(bdMaterial.id, {
-          hasError: materialMap.has(bdMaterial.id),
-          meshes: [...(materialMap.get(bdMaterial.id)?.meshes ?? []), bd],
-        });
+    boundaryNames.forEach((bd) => {
+      const bdMaterial = this._groupManager.findByName(bd)!.material as THREE.MeshStandardMaterial;
+      const techpackName = GroupManager.formTechpackName(bd);
+      const techpack = this._groupManager.findByName(techpackName);
+      const techpackMaterial = techpack?.material as THREE.MeshStandardMaterial | undefined;
+
+      if (!techpack || !techpackMaterial) {
         materialMatches.push({
           boundaryName: bd,
           result: false,
         });
+        materialMap.set(bdMaterial.id, {
+          hasError: materialMap.has(bdMaterial.id),
+          meshes: [...(materialMap.get(bdMaterial.id)?.meshes ?? []), bd],
+        });
       } else {
-        const techpackMaterial = (this._modelGroup.getObjectByName(bd + '_flat') as THREE.Mesh)
-          .material as THREE.MeshBasicMaterial;
         materialMatches.push({
           boundaryName: bd,
           result: bdMaterial.id === techpackMaterial.id,
         });
         materialMap.set(bdMaterial.id, {
           hasError: materialMap.has(bdMaterial.id),
-          meshes: [...(materialMap.get(bdMaterial.id)?.meshes ?? []), bd, bd + '_flat'],
+          meshes: [...(materialMap.get(bdMaterial.id)?.meshes ?? []), bd, techpackName],
         });
       }
     });
@@ -475,17 +445,11 @@ export class Viewer3D {
     this._boundaryList.map((bd) => {
       return this.removeArtwork(bd.name);
     });
-    this._modelGroup.traverse((child) => {
-      if (child.isObject3D && (child as THREE.Mesh).isMesh) {
-        ((child as THREE.Mesh).material as THREE.MeshStandardMaterial).setValues({
-          color: 'white',
-        });
-      }
-    });
+    this._groupManager.resetAllToWhite();
     return {
-      boundaries,
-      techPacks,
-      layers,
+      boundaries: boundaryNames,
+      techPacks: techPackNames,
+      layers: layerNames,
       screenshots,
       techpackImages,
       materialMatches,
@@ -721,16 +685,7 @@ export class Viewer3D {
   };
 
   resetModel = () => {
-    this._modelGroup.traverse((child) => {
-      const castedChild = child as THREE.Mesh;
-      const castedChildMaterial = castedChild.material as THREE.MeshStandardMaterial;
-      if (castedChild.isMesh && !!castedChildMaterial) {
-        castedChildMaterial.setValues({
-          color: 'white',
-          // wireframe: true,
-        });
-      }
-    });
+    this._groupManager.resetAllToWhite();
     this._boundaryList.forEach((bd) => bd.resetBoundary());
   };
 }
