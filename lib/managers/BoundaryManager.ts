@@ -51,6 +51,19 @@ export class BoundaryManager {
     this._boundaryList.forEach((bd) => bd.setDeveloperMode(isInDeveloperMode));
   }
 
+  loadBoundary(castedChild: THREE.Mesh, techPackBoundary: THREE.Mesh | null) {
+    if (!techPackBoundary) {
+      console.error(`Could not find techpack version of ${castedChild.name}`);
+    } else {
+      const bd = new Boundary(castedChild, techPackBoundary);
+      this.addBoundary(bd);
+    }
+  }
+
+  validateIfAllExists(boundaryNames: string[]) {
+    return boundaryNames.every((boundary) => !!this.findByName(boundary));
+  }
+
   updateListeners = (
     onArtworkChanged: (params: {
       forBoundary: string;

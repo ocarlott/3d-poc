@@ -1,8 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
-import { ControlName, TextureOption } from './type';
-import { Boundary } from './core/Boundary';
-import * as TWEEN from '@tweenjs/tween.js';
+import { TextureOption } from './type';
 import CameraControls from 'camera-controls';
 import { ImageHelper } from './core/ImageHelper';
 import { Utils } from './Utils';
@@ -12,6 +10,7 @@ import { SizeUpdateParams, UIManager } from './managers/UIManager';
 import { CameraControlsManager } from './managers/CameraControlsManager';
 import { GroupManager } from './managers/GroupManager';
 import { BoundaryManager } from './managers/BoundaryManager';
+import { LayerManager } from './managers/LayerManager';
 
 const strMime = 'image/png';
 export class Viewer3D {
@@ -24,22 +23,15 @@ export class Viewer3D {
   private _uiManager: UIManager;
   private _groupManager: GroupManager;
   private _boundaryManager: BoundaryManager;
+  private _layerManager: LayerManager;
   private _model?: THREE.Object3D;
-  // private _boundaryList: Boundary[] = [];
-  private _layerMap: Map<
-    string,
-    {
-      displayName: string;
-      mesh: THREE.Mesh;
-    }
-  > = new Map();
+
   private _loader = new GLTFLoader();
   private _isInDeveloperMode = false;
   private _shouldRotate = false;
   private _modelRatio = 1;
   private _clock = new THREE.Clock();
   private _axesHelper = new THREE.AxesHelper(1);
-  private _extraLayers = new Set<string>();
 
   constructor(canvas: HTMLCanvasElement) {
     this._uiManager = new UIManager(canvas, this._onCanvasSizeUpdated);
@@ -55,6 +47,7 @@ export class Viewer3D {
 
     this._groupManager = new GroupManager();
     this._boundaryManager = new BoundaryManager();
+    this._layerManager = new LayerManager();
 
     this._scene.background = new THREE.Color('#f1e9e9');
     this._scene.add(this._lightManager.getLightGroup());
@@ -176,7 +169,7 @@ export class Viewer3D {
     return images;
   };
 
-  private _parseForLayers(allModelObjects: THREE.Mesh[]) {
+  private _parseForLayersAndBoundaries(allModelObjects: THREE.Mesh[]) {
     allModelObjects.forEach((child) => {
       const castedChild = child as THREE.Mesh;
       const castedChildMaterial = castedChild.material as THREE.MeshPhysicalMaterial;
@@ -188,29 +181,11 @@ export class Viewer3D {
           });
 
           const techPackBoundary: THREE.Mesh | null =
-            this._groupManager.findByName(GroupManager.formTechpackName(castedChild.name)) ?? null;
-          if (!techPackBoundary) {
-            console.error(`Could not find techpack version of ${castedChild.name}`);
-          } else {
-            const bd = new Boundary(castedChild, techPackBoundary);
-            this._boundaryManager.addBoundary(bd);
-          }
+            this._groupManager.findTechpackEquivalentByName(castedChild.name) ?? null;
+
+          this._boundaryManager.loadBoundary(castedChild, techPackBoundary);
         } else {
-          const displayNameForChangableGroup = Utils.getDisplayNameIfChangeableGroup(
-            castedChild.name
-          );
-          if (displayNameForChangableGroup) {
-            if (this._layerMap.get(displayNameForChangableGroup.groupName)) {
-              console.log('Object is not valid. Trying our best to render it');
-            } else {
-              this._layerMap.set(castedChild.name, {
-                displayName: displayNameForChangableGroup.displayName,
-                mesh: castedChild,
-              });
-            }
-          } else if (castedChild.name !== ControlName.ShadowPlane) {
-            this._extraLayers.add(castedChild.name);
-          }
+          this._layerManager.loadLayer(castedChild);
         }
       }
     });
@@ -266,7 +241,8 @@ export class Viewer3D {
     this._scene.remove(this._groupManager.modelGroup);
     this._groupManager.reinit({ isInDeveloperMode: this._isInDeveloperMode });
     this._boundaryManager.resetBoundaryList();
-    this._layerMap.clear();
+    this._layerManager.clearLayerMap();
+
     return new Promise((resolve, reject) => {
       this._loader.load(
         url,
@@ -280,7 +256,7 @@ export class Viewer3D {
           obj.traverse((child) => allModelObjects.push(child as THREE.Mesh));
 
           this._groupManager.load(obj, allModelObjects);
-          this._parseForLayers(allModelObjects);
+          this._parseForLayersAndBoundaries(allModelObjects);
           this._groupManager.setBoundaries(this._boundaryManager.boundaryList);
           this._boundaryManager.organizeGroup();
 
@@ -382,22 +358,17 @@ export class Viewer3D {
   };
 
   validate = (layers: string[], boundaries: string[]) => {
-    const allLayersFound = layers.every((layer) => !!this._layerMap.get(layer));
-    const allBoundariesFound = boundaries.every(
-      (boundary) => !!this._boundaryManager.findByName(boundary)
-    );
+    const allLayersFound = this._layerManager.validateIfAllExists(layers);
+    const allBoundariesFound = this._boundaryManager.validateIfAllExists(boundaries);
     return allLayersFound && allBoundariesFound;
   };
 
   validateModel = async (artworkUrl = './logo.png') => {
-    const colors = Utils.getShuffledColors();
+    this._layerManager.validateLayersModel();
 
     const { boundaryNames, techPackNames, layerNames } =
       this._groupManager.getChildNamesListSnapshot();
-    const layerList = Array.from(this._layerMap.values());
-    layerList.forEach((layer, index) => {
-      this.changeColor(layer.mesh.name, colors[index]);
-    });
+
     const materialMap = new Map<
       number,
       {
@@ -503,12 +474,7 @@ export class Viewer3D {
 
   changeColor = (layerName: string, color: string) => {
     if (this._model) {
-      const entry = this._layerMap.get(layerName);
-      if (entry) {
-        (entry.mesh.material as THREE.MeshStandardMaterial).color.set(
-          `#${color.replace(/#/g, '')}`
-        );
-      }
+      this._layerManager.changeLayerColor(layerName, color);
     }
   };
 
@@ -587,7 +553,7 @@ export class Viewer3D {
         shadowPlane.visible = false;
       }
       modelGroup.traverse((child) => {
-        if (this._extraLayers.has(child.name)) {
+        if (this._layerManager.isExtraLayer(child.name)) {
           child.visible = false;
         }
       });

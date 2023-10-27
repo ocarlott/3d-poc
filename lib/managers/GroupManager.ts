@@ -124,6 +124,10 @@ export class GroupManager {
     return this._modelGroup.getObjectByName(name) as THREE.Mesh | undefined;
   }
 
+  findTechpackEquivalentByName(name: string) {
+    return this.findByName(GroupManager.formTechpackName(name));
+  }
+
   get modelGroup() {
     return this._modelGroup;
   }
