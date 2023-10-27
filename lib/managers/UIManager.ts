@@ -25,22 +25,17 @@ export class UIManager {
     const { width, height } = canvas.contentRect;
     this._canvasWidth = width;
     this._canvasHeight = height;
+  }
+
+  private _onCanvasSizeUpdated = (entries: ResizeObserverEntry[]) => {
+    const canvas = entries[0];
+    this._updateCanvasSize(canvas);
     this._onSizeUpdate?.({
       canvasWidth: this.canvasWidth,
       canvasHeight: this.canvasHeight,
       pixelRatio: this.pixelRatio,
       aspectRatio: this.aspectRatio,
     });
-  }
-
-  private _onCanvasSizeUpdated = (entries: ResizeObserverEntry[]) => {
-    const canvas = entries[0];
-    this._updateCanvasSize(canvas);
-    // this._camera.aspect = this._canvasWidth / this._canvasHeight;
-    // this._camera.updateProjectionMatrix();
-
-    // this._renderer?.setSize(this._canvasWidth, this._canvasHeight);
-    // this._renderer?.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   };
 
   get canvasWidth() {

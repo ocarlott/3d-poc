@@ -69,22 +69,14 @@ export class Utils {
     var deltaLKlsl = deltaL / 1.0;
     var deltaCkcsc = deltaC / sc;
     var deltaHkhsh = deltaH / sh;
-    var i =
-      deltaLKlsl * deltaLKlsl +
-      deltaCkcsc * deltaCkcsc +
-      deltaHkhsh * deltaHkhsh;
+    var i = deltaLKlsl * deltaLKlsl + deltaCkcsc * deltaCkcsc + deltaHkhsh * deltaHkhsh;
     return i < 0 ? 0 : Math.sqrt(i);
   };
 
-  static findClosetIndexColorFromLabColorList = (
-    labList: number[][],
-    labColorNeedle: number[]
-  ) => {
+  static findClosetIndexColorFromLabColorList = (labList: number[][], labColorNeedle: number[]) => {
     const { index } = labList.reduce(
       (acc, newColor, currentIndex) => {
-        const currentDistance = Math.abs(
-          Utils.deltaE(newColor, labColorNeedle)
-        );
+        const currentDistance = Math.abs(Utils.deltaE(newColor, labColorNeedle));
         if (currentDistance < acc.distance) {
           acc.distance = currentDistance;
           acc.index = currentIndex;
@@ -111,10 +103,7 @@ export class Utils {
     }
     const [groupName] = result;
     const startIndex = result.index || 0;
-    let res = name
-      .slice(startIndex)
-      .replace(`${groupName}_`, "")
-      .replace("_", " ");
+    let res = name.slice(startIndex).replace(`${groupName}_`, '').replace('_', ' ');
     return {
       displayName: Utils.capitalize(res),
       groupName,
@@ -136,42 +125,39 @@ export class Utils {
     if (!test) {
       return null;
     }
-    const res = name.split("boundary");
+    const res = name.split('boundary');
     if (res.length === 1) {
       return null;
     }
     let newName = res[res.length - 1];
-    if (newName.startsWith("_") && newName.length > 1) {
+    if (newName.startsWith('_') && newName.length > 1) {
       newName = newName.substring(1);
     }
-    return Utils.capitalize(newName.split("_").join(" "));
+    return Utils.capitalize(newName.split('_').join(' '));
   };
 
   static getShuffledColors = () => {
     const array = [
-      "#5B9A8B",
-      "#512B81",
-      "#E48586",
-      "#FFE17B",
-      "#7A316F",
-      "#6C3428",
-      "#3F2E3E",
-      "#D8B4F8",
-      "#7091F5",
-      "#40F8FF",
-      "#C8E4B2",
-      "#FFCCCC",
-      "#F31559",
+      '#5B9A8B',
+      '#512B81',
+      '#E48586',
+      '#FFE17B',
+      '#7A316F',
+      '#6C3428',
+      '#3F2E3E',
+      '#D8B4F8',
+      '#7091F5',
+      '#40F8FF',
+      '#C8E4B2',
+      '#FFCCCC',
+      '#F31559',
     ];
     let currentIndex = array.length,
       randomIndex;
     while (currentIndex > 0) {
       randomIndex = Math.floor(Math.random() * currentIndex);
       currentIndex--;
-      [array[currentIndex], array[randomIndex]] = [
-        array[randomIndex],
-        array[currentIndex],
-      ];
+      [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
     }
 
     return array;
@@ -179,19 +165,16 @@ export class Utils {
 
   static rgb2hex = (color: number[]) => {
     if (color.length !== 3) {
-      console.error("Invalid rgb color");
-      return "FFFFFF";
+      console.error('Invalid rgb color');
+      return 'FFFFFF';
     }
-    return `${color[0].toString(16).padStart(2, "0")}${color[1]
+    return `${color[0].toString(16).padStart(2, '0')}${color[1]
       .toString(16)
-      .padStart(2, "0")}${color[2].toString(16).padStart(2, "0")}`;
+      .padStart(2, '0')}${color[2].toString(16).padStart(2, '0')}`;
   };
 
   static testHexMatch = (color1: string, color2: string) => {
-    return (
-      color1.toUpperCase().replace("#", "") ===
-      color2.toUpperCase().replace("#", "")
-    );
+    return color1.toUpperCase().replace('#', '') === color2.toUpperCase().replace('#', '');
   };
 
   static getEqualAngleRotations = (numberOfSplits: number) => {

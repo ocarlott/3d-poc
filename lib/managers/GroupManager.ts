@@ -54,9 +54,6 @@ export class GroupManager {
         }
       }
     });
-
-    // this.techPackGroup!.add(...techPackList);
-    // this.workingAssetGroup!.add(...workingAssetsList);
   }
 
   getChildNamesListSnapshot() {
@@ -85,10 +82,7 @@ export class GroupManager {
   }
 
   setBoundaries(boundaries: Boundary[]) {
-    for (let bd of boundaries) {
-      this.modelGroup.add(bd.group);
-      this.workingAssetGroup!.add(bd.group);
-    }
+    this.workingAssetGroup!.add(...boundaries.map((b) => b.group));
   }
 
   clone() {

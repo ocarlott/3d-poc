@@ -11,6 +11,7 @@ import { CameraControlsManager } from './managers/CameraControlsManager';
 import { GroupManager } from './managers/GroupManager';
 import { BoundaryManager } from './managers/BoundaryManager';
 import { LayerManager } from './managers/LayerManager';
+import { Utils3D } from './Utils3D';
 
 const strMime = 'image/png';
 export class Viewer3D {
@@ -65,18 +66,6 @@ export class Viewer3D {
 
     this._renderer.setSize(canvasWidth, canvasHeight);
     this._renderer.setPixelRatio(pixelRatio);
-  };
-
-  private _getSizeAndCenter = (obj: THREE.Object3D) => {
-    const boundingBox = new THREE.Box3();
-    boundingBox.setFromObject(obj);
-    let size = boundingBox.getSize(new THREE.Vector3());
-    boundingBox.setFromObject(obj);
-    const center = boundingBox.getCenter(new THREE.Vector3());
-    return {
-      size,
-      center,
-    };
   };
 
   private static getRendererHeight(renderer: THREE.WebGLRenderer) {
@@ -208,7 +197,7 @@ export class Viewer3D {
       },
       transition: false,
     });
-    const { size } = this._getSizeAndCenter(target);
+    const { size } = Utils3D.getSizeAndCenter(target);
     const ratio = Math.abs(size.x / size.z);
     controlsManager.update(this._clock);
     renderer.render(scene, camera);
@@ -249,9 +238,6 @@ export class Viewer3D {
         (gltf) => {
           const obj = gltf.scene;
 
-          const boundingBox = new THREE.Box3();
-          boundingBox.setFromObject(obj);
-
           const allModelObjects: THREE.Mesh[] = [];
           obj.traverse((child) => allModelObjects.push(child as THREE.Mesh));
 
@@ -261,7 +247,7 @@ export class Viewer3D {
           this._boundaryManager.organizeGroup();
 
           this._fitCameraToObject(this._groupManager.workingAssetGroup!);
-          const { size } = this._getSizeAndCenter(this._groupManager.workingAssetGroup!);
+          const { size } = Utils3D.getSizeAndCenter(this._groupManager.workingAssetGroup!);
 
           this._cameraControlsManager.setDistanceLimitsFromSize(size);
 

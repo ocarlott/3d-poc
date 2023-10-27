@@ -2,7 +2,7 @@ import * as THREE from 'three';
 
 export class SceneBuilder {
   static createCamera(aspectRatio = 1): THREE.PerspectiveCamera {
-    return new THREE.PerspectiveCamera(70, aspectRatio, 0.1, 50);
+    return new THREE.PerspectiveCamera(70, aspectRatio, 0.1, 80);
   }
 
   static createScene() {

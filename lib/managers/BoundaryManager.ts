@@ -123,12 +123,9 @@ export class BoundaryManager {
       artworkUrl,
       canvas,
     } = options;
-    let boundaryObj: Boundary | null = null;
-    if (!disableEditing) {
-      boundaryObj = this.animateSelectBoundary(boundary);
-    } else {
-      boundaryObj = this._boundaryList.find((bd) => bd.name === boundary) ?? null;
-    }
+
+    let boundaryObj = this.findByName(boundary) ?? null;
+
     await boundaryObj?.addArtwork({
       workingCanvas: canvas,
       artworkUrl,
@@ -143,17 +140,12 @@ export class BoundaryManager {
   };
 
   resetArtworkToDefault = (boundary: string) => {
-    const currentBoundary = this._selectedBoundary;
-    this.animateSelectBoundary(boundary);
-    // Do work
-    this._selectedBoundary = currentBoundary;
+    // TODO: implement..
   };
 
   removeArtwork = (boundary: string) => {
-    const currentBoundary = this._selectedBoundary;
-    const rBoundary = this.animateSelectBoundary(boundary);
+    const rBoundary = this.findByName(boundary);
     rBoundary?.resetBoundary();
-    this._selectedBoundary = currentBoundary;
   };
 
   removeAllBoundaryArtworks = () => {
@@ -174,10 +166,7 @@ export class BoundaryManager {
   };
 
   resetArtworkTextureToDefault = (boundary: string) => {
-    const currentBoundary = this._selectedBoundary;
-    this.animateSelectBoundary(boundary);
-    // Do work
-    this._selectedBoundary = currentBoundary;
+    // TODO: implement..
   };
 
   changeArtworkTexture = (boundary: string, color: string, textureOption: TextureOption) => {

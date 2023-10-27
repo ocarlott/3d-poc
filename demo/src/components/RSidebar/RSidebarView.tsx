@@ -1,4 +1,4 @@
-import { Boundary } from 'microstore-3d/lib/Boundary';
+import { Boundary } from 'microstore-3d/lib/core/Boundary';
 import { Button, Image, ImageList, SideBar } from '../../AppStyles';
 
 export function RSidebarView(props: {
@@ -17,7 +17,7 @@ export function RSidebarView(props: {
   canvas2DContainerRef: React.RefObject<HTMLCanvasElement>;
   fileRef: React.RefObject<HTMLInputElement>;
   images: string[];
-  currentBoundary: Boundary | null;
+  boundaryActive: boolean;
 }) {
   return (
     <SideBar>
@@ -35,7 +35,7 @@ export function RSidebarView(props: {
 
       <canvas
         ref={props.canvas2DContainerRef}
-        hidden={!props.currentBoundary}
+        hidden={!props.boundaryActive}
         width={500}
         height={500}
       ></canvas>

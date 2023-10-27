@@ -30,7 +30,7 @@ export function RSidebarViewModel({
         },
         false
       )) ?? null;
-    model.setCurrentBoundary(boundary);
+    model.setBoundaryActive(true);
   };
 
   const toggleAutoRotate = () => viewer?.toggleAutoRotate();
@@ -38,8 +38,8 @@ export function RSidebarViewModel({
   const toggleDeveloperMode = () => viewer?.toggleDeveloperMode();
 
   const removeArtwork = () => {
-    viewer?.removeArtwork('CropT_boundary_front');
-    model.setCurrentBoundary(null);
+    viewer?.removeArtwork('ContourFitJacket_boundary_front');
+    model.setBoundaryActive(false);
   };
 
   function onFileChange() {
@@ -120,7 +120,7 @@ export function RSidebarViewModel({
 
   return {
     canvas2DContainerRef: model.canvas2DContainerRef,
-    currentBoundary: model.currentBoundary,
+    boundaryActive: model.boundaryActive,
     fileRef: model.fileRef,
     images: model.images,
     addArtwork,
