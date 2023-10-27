@@ -207,6 +207,46 @@ export class Viewer3D {
     return images;
   };
 
+  private _parseForLayers(allModelObjects: THREE.Mesh[]) {
+    allModelObjects.forEach((child) => {
+      const castedChild = child as THREE.Mesh;
+      const castedChildMaterial = castedChild.material as THREE.MeshPhysicalMaterial;
+      if (GroupManager.isNotTechPack(castedChild)) {
+        if (castedChild.isMesh && GroupManager.isBoundary(castedChild)) {
+          castedChildMaterial.setValues({
+            transparent: true,
+            opacity: 0,
+          });
+
+          const techPackBoundary: THREE.Mesh | null =
+            this._groupManager.findByName(GroupManager.formTechpackName(castedChild.name)) ?? null;
+          if (!techPackBoundary) {
+            console.error(`Could not find techpack version of ${castedChild.name}`);
+          } else {
+            const bd = new Boundary(castedChild, techPackBoundary);
+            this._boundaryList.push(bd);
+          }
+        } else {
+          const displayNameForChangableGroup = Utils.getDisplayNameIfChangeableGroup(
+            castedChild.name
+          );
+          if (displayNameForChangableGroup) {
+            if (this._layerMap.get(displayNameForChangableGroup.groupName)) {
+              console.log('Object is not valid. Trying our best to render it');
+            } else {
+              this._layerMap.set(castedChild.name, {
+                displayName: displayNameForChangableGroup.displayName,
+                mesh: castedChild,
+              });
+            }
+          } else if (castedChild.name !== ControlName.ShadowPlane) {
+            this._extraLayers.add(castedChild.name);
+          }
+        }
+      }
+    });
+  }
+
   show = () => {
     const delta = this._clock.getDelta();
     this._cameraControlsManager.update(delta);
@@ -654,44 +694,4 @@ export class Viewer3D {
     this._groupManager.resetAllToWhite();
     this._boundaryList.forEach((bd) => bd.resetBoundary());
   };
-
-  private _parseForLayers(allModelObjects: THREE.Mesh[]) {
-    allModelObjects.forEach((child) => {
-      const castedChild = child as THREE.Mesh;
-      const castedChildMaterial = castedChild.material as THREE.MeshPhysicalMaterial;
-      if (GroupManager.isNotTechPack(castedChild)) {
-        if (castedChild.isMesh && GroupManager.isBoundary(castedChild)) {
-          castedChildMaterial.setValues({
-            transparent: true,
-            opacity: 0,
-          });
-
-          const techPackBoundary: THREE.Mesh | null =
-            this._groupManager.findByName(GroupManager.formTechpackName(castedChild.name)) ?? null;
-          if (!techPackBoundary) {
-            console.error(`Could not find techpack version of ${castedChild.name}`);
-          } else {
-            const bd = new Boundary(castedChild, techPackBoundary);
-            this._boundaryList.push(bd);
-          }
-        } else {
-          const displayNameForChangableGroup = Utils.getDisplayNameIfChangeableGroup(
-            castedChild.name
-          );
-          if (displayNameForChangableGroup) {
-            if (this._layerMap.get(displayNameForChangableGroup.groupName)) {
-              console.log('Object is not valid. Trying our best to render it');
-            } else {
-              this._layerMap.set(castedChild.name, {
-                displayName: displayNameForChangableGroup.displayName,
-                mesh: castedChild,
-              });
-            }
-          } else if (castedChild.name !== ControlName.ShadowPlane) {
-            this._extraLayers.add(castedChild.name);
-          }
-        }
-      }
-    });
-  }
 }
