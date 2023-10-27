@@ -63,14 +63,17 @@ export class Boundary {
 
     this.name = this._initializeCanvas(canvas);
     this._initializeGroup();
-    this._boundaryRatio = this._calculateBoundaryRatio(canvas, techPackCanvas);
+
+    const { boundingRatio, biggerSide } = this._calculateBoundary(canvas, techPackCanvas);
+    this._boundaryRatio = boundingRatio;
+
     this.center = this._calculateCenter(canvas);
     const positionPoints = this._calculatePositionPoints(canvas);
     const uvPoints = this._calculateUVPoints(canvas);
     this.normal = this._calculateNormal(positionPoints);
-    this._normalPositionHelper = this._calculateNormalPositionHelper(positionPoints);
+    this._normalPositionHelper = this._calculateNormalPositionHelper(positionPoints, biggerSide);
     this._normalUV = this._calculateNormalUV(uvPoints);
-    this._normalUVHelper = this._calculateNormalUVHelper(uvPoints, this._normalUV);
+    this._normalUVHelper = this._calculateNormalUVHelper(uvPoints, this._normalUV, biggerSide);
     this._addHelpersToGroup();
   }
 
@@ -84,7 +87,7 @@ export class Boundary {
     this.group.name = ControlName.BoundaryGroup;
   }
 
-  private _calculateBoundaryRatio(canvas: THREE.Mesh, techPackCanvas: THREE.Mesh) {
+  private _calculateBoundary(canvas: THREE.Mesh, techPackCanvas: THREE.Mesh) {
     const boundingBox = new THREE.Box3().setFromObject(canvas);
     const techPackBoundingBox = new THREE.Box3().setFromObject(techPackCanvas);
     const size = boundingBox.getSize(new THREE.Vector3());
@@ -94,7 +97,7 @@ export class Boundary {
     const biggerSide = Math.max(techPackSize.x, techPackSize.z);
     const width = estimateWHRatio > 1 ? biggerSide : smallerSide;
     const height = estimateWHRatio > 1 ? smallerSide : biggerSide;
-    return width / height;
+    return { boundingRatio: width / height, biggerSide, smallerSide };
   }
 
   private _calculateCenter(canvas: THREE.Mesh) {
@@ -127,8 +130,7 @@ export class Boundary {
     return boundingSphere.center.normalize();
   }
 
-  private _calculateNormalPositionHelper(positionPoints: THREE.Vector3[]) {
-    const biggerSide = Math.max(positionPoints[0].x, positionPoints[0].y, positionPoints[0].z);
+  private _calculateNormalPositionHelper(positionPoints: THREE.Vector3[], biggerSide: number) {
     const normalPositionHelper = new THREE.ArrowHelper(
       this.normal,
       new THREE.Vector3(0, 0, 0),
@@ -143,8 +145,11 @@ export class Boundary {
     return boundingUVSphere.center.normalize();
   }
 
-  private _calculateNormalUVHelper(uvPoints: THREE.Vector3[], normalUV: THREE.Vector3) {
-    const biggerSide = Math.max(uvPoints[0].x, uvPoints[0].y, uvPoints[0].z);
+  private _calculateNormalUVHelper(
+    uvPoints: THREE.Vector3[],
+    normalUV: THREE.Vector3,
+    biggerSide: number
+  ) {
     const normalUVHelper = new THREE.ArrowHelper(
       normalUV,
       new THREE.Vector3(0, 0, 0),
