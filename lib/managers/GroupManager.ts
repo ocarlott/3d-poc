@@ -116,6 +116,10 @@ export class GroupManager {
     this._modelGroup.rotation.y += 0.01;
   }
 
+  update(shouldRotate: boolean) {
+    shouldRotate && this.animateUpdate();
+  }
+
   findByName(name: string) {
     return this._modelGroup.getObjectByName(name) as THREE.Mesh | undefined;
   }

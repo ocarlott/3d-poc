@@ -11,6 +11,7 @@ import { SceneBuilder } from './managers/SceneBuilder';
 import { SizeUpdateParams, UIManager } from './managers/UIManager';
 import { CameraControlsManager } from './managers/CameraControlsManager';
 import { GroupManager } from './managers/GroupManager';
+import { BoundaryManager } from './managers/BoundaryManager';
 
 const strMime = 'image/png';
 export class Viewer3D {
@@ -22,8 +23,9 @@ export class Viewer3D {
   private _cameraControlsManager: CameraControlsManager;
   private _uiManager: UIManager;
   private _groupManager: GroupManager;
+  private _boundaryManager: BoundaryManager;
   private _model?: THREE.Object3D;
-  private _boundaryList: Boundary[] = [];
+  // private _boundaryList: Boundary[] = [];
   private _layerMap: Map<
     string,
     {
@@ -32,15 +34,6 @@ export class Viewer3D {
     }
   > = new Map();
   private _loader = new GLTFLoader();
-  private _selectedBoundary: Boundary | null = null;
-  private _onArtworkChanged?: (params: {
-    forBoundary: string;
-    xRatio: number;
-    yRatio: number;
-    whRatio: number;
-    sizeRatio: number;
-    rotation: number;
-  }) => void;
   private _isInDeveloperMode = false;
   private _shouldRotate = false;
   private _modelRatio = 1;
@@ -61,6 +54,7 @@ export class Viewer3D {
     });
 
     this._groupManager = new GroupManager();
+    this._boundaryManager = new BoundaryManager();
 
     this._scene.background = new THREE.Color('#f1e9e9');
     this._scene.add(this._lightManager.getLightGroup());
@@ -144,31 +138,6 @@ export class Viewer3D {
     };
   };
 
-  private _animateSelectBoundary = (boundary: string) => {
-    const selectingBoundary = this._boundaryList.find((bd) => bd.name === boundary) ?? null;
-    if (selectingBoundary?.name !== this._selectedBoundary?.name && selectingBoundary !== null) {
-      this._selectedBoundary = selectingBoundary;
-      const boundaryPosition = this._selectedBoundary.center;
-      const boundaryNormal = this._selectedBoundary.normal;
-      // this._controls.setLookAt
-      // const cameraPosition = boundaryPosition
-      //   .clone()
-      //   .add(
-      //     boundaryNormal
-      //       .clone()
-      //       .multiplyScalar(this._controls.maxDistance * 0.65)
-      //   );
-      // new TWEEN.Tween(this._camera.position)
-      //   .to(cameraPosition)
-      //   .easing(TWEEN.Easing.Quadratic.InOut)
-      //   .onUpdate(() => {
-      //     this._camera.lookAt(boundaryPosition);
-      //   })
-      //   .start();
-    }
-    return selectingBoundary;
-  };
-
   private _takeScreenShot = async (params: {
     modelRatio: number;
     rotations: {
@@ -224,7 +193,7 @@ export class Viewer3D {
             console.error(`Could not find techpack version of ${castedChild.name}`);
           } else {
             const bd = new Boundary(castedChild, techPackBoundary);
-            this._boundaryList.push(bd);
+            this._boundaryManager.addBoundary(bd);
           }
         } else {
           const displayNameForChangableGroup = Utils.getDisplayNameIfChangeableGroup(
@@ -247,14 +216,38 @@ export class Viewer3D {
     });
   }
 
+  private _captureTechPackImage = async (
+    renderer: THREE.WebGLRenderer,
+    scene: THREE.Scene,
+    camera: THREE.PerspectiveCamera,
+    controlsManager: CameraControlsManager,
+    target: THREE.Object3D
+  ) => {
+    controlsManager.fitToBounds({
+      obj: target,
+      padding: {
+        bottom: 4,
+        left: 4,
+        right: 4,
+        top: 4,
+      },
+      transition: false,
+    });
+    const { size } = this._getSizeAndCenter(target);
+    const ratio = Math.abs(size.x / size.z);
+    controlsManager.update(this._clock);
+    renderer.render(scene, camera);
+    const img = await ImageHelper.cropImageToRatio(renderer.domElement.toDataURL(strMime), ratio);
+
+    return img;
+  };
+
   show = () => {
-    const delta = this._clock.getDelta();
-    this._cameraControlsManager.update(delta);
-    if (this._shouldRotate) {
-      this._groupManager.animateUpdate();
-    }
+    this._cameraControlsManager.update(this._clock);
+    this._groupManager.update(this._shouldRotate);
 
     this._renderer.render(this._scene, this._camera);
+
     this._rFID = requestAnimationFrame(this.show);
   };
 
@@ -263,11 +256,16 @@ export class Viewer3D {
     this._rFID = -1;
   };
 
+  resetModel = () => {
+    this._groupManager.resetAllToWhite();
+    this._boundaryManager.resetAllBoundarys();
+  };
+
   loadModel = (url: string, onProgress: (percent: number) => void): Promise<void> => {
     this._model = undefined;
     this._scene.remove(this._groupManager.modelGroup);
     this._groupManager.reinit({ isInDeveloperMode: this._isInDeveloperMode });
-    this._boundaryList = [];
+    this._boundaryManager.resetBoundaryList();
     this._layerMap.clear();
     return new Promise((resolve, reject) => {
       this._loader.load(
@@ -283,10 +281,8 @@ export class Viewer3D {
 
           this._groupManager.load(obj, allModelObjects);
           this._parseForLayers(allModelObjects);
-          this._groupManager.setBoundaries(this._boundaryList);
-          this._boundaryList.forEach((child) => {
-            child.organizeGroup();
-          });
+          this._groupManager.setBoundaries(this._boundaryManager.boundaryList);
+          this._boundaryManager.organizeGroup();
 
           this._fitCameraToObject(this._groupManager.workingAssetGroup!);
           const { size } = this._getSizeAndCenter(this._groupManager.workingAssetGroup!);
@@ -326,14 +322,14 @@ export class Viewer3D {
     }) => void;
   }) => {
     const { onArtworkChanged } = options;
-    this._onArtworkChanged = onArtworkChanged;
+    this._boundaryManager.updateListeners(onArtworkChanged);
   };
 
   toggleDeveloperMode = () => {
     this._isInDeveloperMode = !this._isInDeveloperMode;
     this._groupManager.setDeveloperMode(this._isInDeveloperMode);
     this._cameraControlsManager.setDevMode(this._isInDeveloperMode);
-    this._boundaryList.forEach((bd) => bd.setDeveloperMode(this._isInDeveloperMode));
+    this._boundaryManager.setDeveloperMode(this._isInDeveloperMode);
     this._axesHelper.visible = this._isInDeveloperMode;
   };
 
@@ -388,7 +384,7 @@ export class Viewer3D {
   validate = (layers: string[], boundaries: string[]) => {
     const allLayersFound = layers.every((layer) => !!this._layerMap.get(layer));
     const allBoundariesFound = boundaries.every(
-      (boundary) => this._boundaryList.findIndex((b) => b.name === boundary) !== -1
+      (boundary) => !!this._boundaryManager.findByName(boundary)
     );
     return allLayersFound && allBoundariesFound;
   };
@@ -439,19 +435,11 @@ export class Viewer3D {
         });
       }
     });
-    await Promise.all(
-      this._boundaryList.map((bd) => {
-        return this.changeArtwork({
-          boundary: bd.name,
-          artworkUrl,
-        });
-      })
-    );
+
+    await this._boundaryManager.testChangeAllBoundaryArtworks(artworkUrl);
     const screenshots = await this.takeScreenShotAuto();
     const techpackImages = await this.createTechPack();
-    this._boundaryList.map((bd) => {
-      return this.removeArtwork(bd.name);
-    });
+    this._boundaryManager.removeAllBoundaryArtworks();
     this._groupManager.resetAllToWhite();
     return {
       boundaries: boundaryNames,
@@ -467,7 +455,7 @@ export class Viewer3D {
   };
 
   unselectBoundary = () => {
-    this._selectedBoundary = null;
+    this._boundaryManager.unselectBoundary();
   };
 
   changeArtwork = async (
@@ -482,61 +470,35 @@ export class Viewer3D {
     },
     disableEditing = true
   ) => {
-    const {
-      boundary,
-      xRatio = 0.5,
-      yRatio = 0.5,
-      rotation = 0,
-      sizeRatio = 0.5,
-      artworkUrl,
-      canvas,
-    } = options;
-    let boundaryObj: Boundary | null = null;
-    if (!disableEditing) {
-      boundaryObj = this._animateSelectBoundary(boundary);
-    } else {
-      boundaryObj = this._boundaryList.find((bd) => bd.name === boundary) ?? null;
-    }
-    await boundaryObj?.addArtwork({
-      workingCanvas: canvas,
-      artworkUrl,
-      xRatio,
-      yRatio,
-      rotation,
-      sizeRatio,
-      onArtworkChanged: this._onArtworkChanged,
-      disableEditing,
-    });
-    return boundaryObj;
+    return this._boundaryManager.changeArtwork(options, disableEditing);
   };
 
   resetArtworkToDefault = (boundary: string) => {
-    const currentBoundary = this._selectedBoundary;
-    this._animateSelectBoundary(boundary);
-    // Do work
-    this._selectedBoundary = currentBoundary;
+    return this._boundaryManager.resetArtworkToDefault(boundary);
   };
 
   removeArtwork = (boundary: string) => {
-    const currentBoundary = this._selectedBoundary;
-    const rBoundary = this._animateSelectBoundary(boundary);
-    rBoundary?.resetBoundary();
-    this._selectedBoundary = currentBoundary;
+    return this._boundaryManager.removeArtwork(boundary);
   };
 
   resetArtworkTextureToDefault = (boundary: string) => {
-    const currentBoundary = this._selectedBoundary;
-    this._animateSelectBoundary(boundary);
-    // Do work
-    this._selectedBoundary = currentBoundary;
+    return this._boundaryManager.resetArtworkTextureToDefault(boundary);
+  };
+
+  changeArtworkTexture = (boundary: string, color: string, textureOption: TextureOption) => {
+    return this._boundaryManager.changeArtworkTexture(boundary, color, textureOption);
+  };
+
+  resetArtworkTexture = (boundary: string) => {
+    return this._boundaryManager.resetArtworkTexture(boundary);
+  };
+
+  exportData = () => {
+    return this._boundaryManager.exportData();
   };
 
   toggleAutoRotate = () => {
     this._shouldRotate = !this._shouldRotate;
-  };
-
-  exportData = () => {
-    return this._boundaryList.map((bd) => bd.exportArtworkData());
   };
 
   changeColor = (layerName: string, color: string) => {
@@ -629,69 +591,33 @@ export class Viewer3D {
           child.visible = false;
         }
       });
-      const layerList = techPackGroup.children.filter((child) => child.name.includes('changeable'));
-      controlsManager.fitToBounds({
-        obj: techPackGroup,
-        padding: {
-          bottom: 4,
-          left: 4,
-          right: 4,
-          top: 4,
-        },
-        transition: false,
-      });
-      const { size } = this._getSizeAndCenter(techPackGroup);
-      const ratio = Math.abs(size.x / size.z);
-      controlsManager.update(this._clock);
-      renderer.render(scene, camera);
-      const img = await ImageHelper.cropImageToRatio(renderer.domElement.toDataURL(strMime), ratio);
+
+      const img = await this._captureTechPackImage(
+        renderer,
+        scene,
+        camera,
+        controlsManager,
+        techPackGroup
+      );
       result.push(img);
+
+      const layerList = techPackGroup.children.filter((child) => child.name.includes('changeable'));
+      layerList.forEach((child) => (child.visible = false));
       for (let child of layerList) {
-        controlsManager.fitToBounds({
-          obj: child,
-          padding: {
-            bottom: 4,
-            left: 4,
-            right: 4,
-            top: 4,
-          },
-          transition: false,
-        });
-        layerList.forEach((child) => (child.visible = false));
         child.visible = true;
-        const { size } = this._getSizeAndCenter(child);
-        const ratio = Math.abs(size.x / size.z);
-        controlsManager.update(this._clock);
-        renderer.render(scene, camera);
-        const img = await ImageHelper.cropImageToRatio(
-          renderer.domElement.toDataURL(strMime),
-          ratio
+
+        const img = await this._captureTechPackImage(
+          renderer,
+          scene,
+          camera,
+          controlsManager,
+          child
         );
         result.push(img);
+
+        child.visible = false;
       }
     }
     return result;
-  };
-
-  changeArtworkTexture = (boundary: string, color: string, textureOption: TextureOption) => {
-    const bd = this._boundaryList.find((b) => b.name === boundary);
-    if (bd) {
-      bd.applyTextureApplication({
-        color,
-        textureOption,
-      });
-    }
-  };
-
-  resetArtworkTexture = (boundary: string) => {
-    const bd = this._boundaryList.find((b) => b.name === boundary);
-    if (bd) {
-      bd.resetTextureApplication();
-    }
-  };
-
-  resetModel = () => {
-    this._groupManager.resetAllToWhite();
-    this._boundaryList.forEach((bd) => bd.resetBoundary());
   };
 }
