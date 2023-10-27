@@ -47,7 +47,7 @@ export class Boundary {
   static textureLoader = new THREE.TextureLoader();
   static crystalNormalTexture = Boundary.textureLoader.load(crystalNormal);
   static crystalDiffuseTexture = Boundary.textureLoader.load(crystalDiffuse);
-  private _scheduleRender: number | null = null;
+  // private _scheduleRender: number | null = null;
   // public breakdownTextures: string[] = [];
 
   constructor(canvas: THREE.Mesh, techPackCanvas: THREE.Mesh) {
@@ -60,10 +60,31 @@ export class Boundary {
       blending: THREE.CustomBlending,
       opacity: 0,
     });
+
+    this.name = this._initializeCanvas(canvas);
+    this._initializeGroup();
+    this._boundaryRatio = this._calculateBoundaryRatio(canvas, techPackCanvas);
+    this.center = this._calculateCenter(canvas);
+    const positionPoints = this._calculatePositionPoints(canvas);
+    const uvPoints = this._calculateUVPoints(canvas);
+    this.normal = this._calculateNormal(positionPoints);
+    this._normalPositionHelper = this._calculateNormalPositionHelper(positionPoints);
+    this._normalUV = this._calculateNormalUV(uvPoints);
+    this._normalUVHelper = this._calculateNormalUVHelper(uvPoints, this._normalUV);
+    this._addHelpersToGroup();
+  }
+
+  private _initializeCanvas(canvas: THREE.Mesh) {
     canvas.material = this._canvasMaterial;
-    this.name = canvas.name;
     canvas.geometry.computeVertexNormals();
+    return canvas.name;
+  }
+
+  private _initializeGroup() {
     this.group.name = ControlName.BoundaryGroup;
+  }
+
+  private _calculateBoundaryRatio(canvas: THREE.Mesh, techPackCanvas: THREE.Mesh) {
     const boundingBox = new THREE.Box3().setFromObject(canvas);
     const techPackBoundingBox = new THREE.Box3().setFromObject(techPackCanvas);
     const size = boundingBox.getSize(new THREE.Vector3());
@@ -73,38 +94,68 @@ export class Boundary {
     const biggerSide = Math.max(techPackSize.x, techPackSize.z);
     const width = estimateWHRatio > 1 ? biggerSide : smallerSide;
     const height = estimateWHRatio > 1 ? smallerSide : biggerSide;
-    this._boundaryRatio = width / height;
-    const { max, min } = boundingBox;
-    this.center = canvas.worldToLocal(min.clone().add(max).multiplyScalar(0.5));
+    return width / height;
+  }
+
+  private _calculateCenter(canvas: THREE.Mesh) {
+    const { max, min } = new THREE.Box3().setFromObject(canvas);
+    return canvas.worldToLocal(min.clone().add(max).multiplyScalar(0.5));
+  }
+
+  private _calculatePositionPoints(canvas: THREE.Mesh): THREE.Vector3[] {
     const positionArray = (canvas.geometry.attributes['position'] as THREE.BufferAttribute).array;
-    const uvArray = (canvas.geometry.attributes['uv'] as THREE.BufferAttribute).array;
     const positionPoints: THREE.Vector3[] = [];
     for (let i = 0; i < positionArray.length; i += 3) {
       positionPoints.push(
         new THREE.Vector3(positionArray[i], positionArray[i + 1], positionArray[i + 2])
       );
     }
+    return positionPoints;
+  }
+
+  private _calculateUVPoints(canvas: THREE.Mesh): THREE.Vector3[] {
+    const uvArray = (canvas.geometry.attributes['uv'] as THREE.BufferAttribute).array;
     const uvPoints: THREE.Vector3[] = [];
     for (let i = 0; i < uvArray.length; i += 3) {
       uvPoints.push(new THREE.Vector3(uvArray[i], uvArray[i + 1], uvArray[i + 2]));
     }
+    return uvPoints;
+  }
+
+  private _calculateNormal(positionPoints: THREE.Vector3[]) {
     const boundingSphere = new THREE.Sphere().setFromPoints(positionPoints);
-    const boundingUVSphere = new THREE.Sphere().setFromPoints(uvPoints);
-    this.normal = boundingSphere.center.normalize();
-    this._normalPositionHelper = new THREE.ArrowHelper(
+    return boundingSphere.center.normalize();
+  }
+
+  private _calculateNormalPositionHelper(positionPoints: THREE.Vector3[]) {
+    const biggerSide = Math.max(positionPoints[0].x, positionPoints[0].y, positionPoints[0].z);
+    const normalPositionHelper = new THREE.ArrowHelper(
       this.normal,
       new THREE.Vector3(0, 0, 0),
       biggerSide + 1
     );
-    this._normalUV = boundingUVSphere.center.normalize();
-    this._normalUVHelper = new THREE.ArrowHelper(
-      this._normalUV,
+    normalPositionHelper.visible = false;
+    return normalPositionHelper;
+  }
+
+  private _calculateNormalUV(uvPoints: THREE.Vector3[]) {
+    const boundingUVSphere = new THREE.Sphere().setFromPoints(uvPoints);
+    return boundingUVSphere.center.normalize();
+  }
+
+  private _calculateNormalUVHelper(uvPoints: THREE.Vector3[], normalUV: THREE.Vector3) {
+    const biggerSide = Math.max(uvPoints[0].x, uvPoints[0].y, uvPoints[0].z);
+    const normalUVHelper = new THREE.ArrowHelper(
+      normalUV,
       new THREE.Vector3(0, 0, 0),
       biggerSide + 2,
       'purple'
     );
-    this._normalPositionHelper.visible = false;
-    this._normalUVHelper.visible = false;
+    normalUVHelper.visible = false;
+    return normalUVHelper;
+  }
+
+  private _addHelpersToGroup() {
     this.group.add(this._normalUVHelper);
     this.group.add(this._normalPositionHelper);
   }
@@ -206,64 +257,101 @@ export class Boundary {
       onArtworkChanged,
       disableEditing = true,
     } = options;
+
     this.resetBoundary();
     this._onArtworkChanged = onArtworkChanged;
     let computedArtworkUrl = artworkUrl;
+
     if (this._artworkUrl !== artworkUrl) {
-      const { computed, colorList } = await ImageHelper.reduceImageColor({
-        url: artworkUrl,
-      });
+      const { computed, colorList } = await this._reduceImageColor(artworkUrl);
       computedArtworkUrl = computed;
-      this._canvasList.forEach((c) => {
-        c.removeFromParent();
-      });
-      this._canvasList = colorList.map(() => {
-        const canvas = this._canvas.clone();
-        canvas.material = this._canvasMaterial.clone();
-        return canvas;
-      });
+      this._clearCanvasList();
+      this._canvasList = this._createCanvasList(colorList);
       this.group.add(...this._canvasList);
       this._workingColors = colorList;
     }
+
     this._artworkUrl = artworkUrl;
     this._configure2DCanvas(workingCanvas);
     const { canvasHeight, canvasWidth, clipPathHeight, clipPathWidth } = this._getClipPathSize();
-    const img = await fabric.Image.fromURL(computedArtworkUrl, {
+    const img = await this._createFabricImage(computedArtworkUrl);
+    this._scaleImage(img, clipPathWidth, clipPathHeight, sizeRatio);
+    this._setPositionImage(img, canvasWidth, xRatio, canvasHeight, yRatio);
+    this._configureImage(img, rotation, disableEditing);
+
+    this._workingCanvas2D?.add(img);
+    if (!disableEditing) {
+      this._workingCanvas2D?.setActiveObject(img);
+    }
+
+    await this._renderCanvasOnBoundary();
+  };
+
+  private _reduceImageColor = async (artworkUrl: string) => {
+    const { computed, colorList } = await ImageHelper.reduceImageColor({
+      url: artworkUrl,
+    });
+    return { computed, colorList };
+  };
+
+  private _clearCanvasList = () => {
+    this._canvasList.forEach((c) => {
+      c.removeFromParent();
+    });
+    this._canvasList = [];
+  };
+
+  private _createCanvasList = (colorList: any[]) => {
+    return colorList.map(() => {
+      const canvas = this._canvas.clone();
+      canvas.material = this._canvasMaterial.clone();
+      return canvas;
+    });
+  };
+
+  private _createFabricImage = async (artworkUrl: string) => {
+    const img = await fabric.Image.fromURL(artworkUrl, {
       crossOrigin: 'anonymous',
     });
+    return img;
+  };
+
+  private _scaleImage = (
+    img: fabric.Image,
+    clipPathWidth: number,
+    clipPathHeight: number,
+    sizeRatio: number
+  ) => {
     const { width = 1, height = 1 } = img;
     this._useWidthToScale = width / clipPathWidth > height / clipPathHeight;
-    this._xRatio = xRatio;
-    this._yRatio = yRatio;
-    this._sizeRatio = sizeRatio;
-    this._rotation = rotation;
+
     if (this._useWidthToScale) {
       img.scaleToWidth(clipPathWidth * sizeRatio);
     } else {
       img.scaleToHeight(clipPathHeight * sizeRatio);
     }
+
     img.originX = 'center';
     img.originY = 'center';
+  };
+
+  private _setPositionImage = (
+    img: fabric.Image,
+    canvasWidth: number,
+    xRatio: number,
+    canvasHeight: number,
+    yRatio: number
+  ) => {
     img.setPositionByOrigin(
       new fabric.Point(canvasWidth * xRatio, canvasHeight * yRatio),
       'center',
       'center'
     );
-    img.setControlsVisibility({
-      mb: false,
-      mt: false,
-      ml: false,
-      mr: false,
-    });
-    img.set({
-      angle: rotation,
-      selectable: !disableEditing,
-    });
-    this._workingCanvas2D?.add(img);
-    if (!disableEditing) {
-      this._workingCanvas2D?.setActiveObject(img);
-    }
-    await this._renderCanvasOnBoundary();
+  };
+
+  private _configureImage = (img: fabric.Image, angle: number, disableEditing: boolean) => {
+    img.setControlsVisibility({ mb: false, mt: false, ml: false, mr: false });
+    img.set({ angle: angle, selectable: !disableEditing });
   };
 
   private _updateListener = () => {
@@ -325,77 +413,102 @@ export class Boundary {
       const original = copy.toCanvasElement();
       const url = original.toDataURL();
       const imagePartUrls = await ImageHelper.generateImageParts(url, this._workingColors);
-      // this.breakdownTextures = imagePartUrls;
       const textures = imagePartUrls.map((uri) => {
-        const texture = new THREE.TextureLoader().load(uri);
-        texture.wrapS = THREE.RepeatWrapping;
-        texture.wrapT = THREE.RepeatWrapping;
-        texture.repeat.set(Math.sign(this._normalUV.x), -Math.sign(this._normalUV.y));
+        const texture = this._createTexture(uri);
         return texture;
       });
       const colors = this._workingColors.map((color) => Utils.rgb2hex(color));
-      this._canvasList.forEach(async (geo, index) => {
-        const entry = this._textureApplication.find((v) =>
-          Utils.testHexMatch(v.color, colors[index])
-        );
-        if (!entry) {
-          // Default screenprint
-          const material = new THREE.MeshPhongMaterial({
-            shininess: 50,
-            map: textures[index],
-            transparent: true,
-          });
-          geo.material = material;
-        } else {
-          switch (entry.textureOption) {
-            case TextureOption.Metallic:
-              (geo.material as THREE.MeshStandardMaterial).setValues({
-                color: `#${colors[index]}`,
-                metalness: 0.2,
-                roughness: 0.3,
-                opacity: 1,
-                map: textures[index],
-              });
-              break;
-            case TextureOption.Matte:
-              (geo.material as THREE.MeshStandardMaterial).setValues({
-                opacity: 1,
-                color: `#${colors[index]}`,
-                map: textures[index],
-              });
-              break;
-            case TextureOption.Crystals:
-              const { uri: alphaUri } = await ImageHelper.generateAlphaMap(imagePartUrls[index]);
-              const finalAlphaUri = await ImageHelper.mergeAlphaMap(alphaUri, crystalAlpha);
-              const alphaTexture = Boundary.textureLoader.load(finalAlphaUri);
-              alphaTexture.flipY = false;
-              (geo.material as THREE.MeshStandardMaterial).setValues({
-                opacity: 1,
-                color: `#${colors[index]}`,
-                map: Boundary.crystalDiffuseTexture,
-                normalMap: Boundary.crystalNormalTexture,
-                alphaMap: alphaTexture,
-                transparent: true,
-              });
-              break;
-            case TextureOption.Screenprint:
-            default:
-              const material = new THREE.MeshPhongMaterial({
-                shininess: 50,
-                map: textures[index],
-                transparent: true,
-                opacity: 1,
-              });
-              geo.material = material;
-              break;
-          }
-        }
-        (geo.material as THREE.Material).needsUpdate = true;
-      });
+      this._applyTexturesToGeometries(textures, colors, imagePartUrls);
       this._canvasMaterial.opacity = 0;
       this._canvas.visible = false;
     }
   }, 2000);
+
+  private _createTexture(uri: string): THREE.Texture {
+    const texture = new THREE.TextureLoader().load(uri);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(Math.sign(this._normalUV.x), -Math.sign(this._normalUV.y));
+    return texture;
+  }
+
+  private _applyTexturesToGeometries(
+    textures: THREE.Texture[],
+    colors: string[],
+    imagePartUrls: string[]
+  ): void {
+    this._canvasList.forEach(async (geo, index) => {
+      const entry = this._textureApplication.find((v) =>
+        Utils.testHexMatch(v.color, colors[index])
+      );
+      if (!entry) {
+        this._applyDefaultScreenprintMaterial(geo, textures[index]);
+      } else {
+        switch (entry.textureOption) {
+          case TextureOption.Metallic:
+            this._applyMetallicMaterial(geo, colors[index], textures[index]);
+            break;
+          case TextureOption.Matte:
+            this._applyMatteMaterial(geo, colors[index], textures[index]);
+            break;
+          case TextureOption.Crystals:
+            await this._applyCrystalsMaterial(geo, colors[index], imagePartUrls[index]);
+            break;
+          case TextureOption.Screenprint:
+          default:
+            this._applyDefaultScreenprintMaterial(geo, textures[index]);
+            break;
+        }
+      }
+      (geo.material as THREE.Material).needsUpdate = true;
+    });
+  }
+
+  private _applyDefaultScreenprintMaterial(geo: THREE.Mesh, texture: THREE.Texture): void {
+    const material = new THREE.MeshPhongMaterial({
+      shininess: 50,
+      map: texture,
+      transparent: true,
+    });
+    geo.material = material;
+  }
+
+  private _applyMetallicMaterial(geo: THREE.Mesh, color: string, texture: THREE.Texture): void {
+    (geo.material as THREE.MeshStandardMaterial).setValues({
+      color: `#${color}`,
+      metalness: 0.2,
+      roughness: 0.3,
+      opacity: 1,
+      map: texture,
+    });
+  }
+
+  private _applyMatteMaterial(geo: THREE.Mesh, color: string, texture: THREE.Texture): void {
+    (geo.material as THREE.MeshStandardMaterial).setValues({
+      opacity: 1,
+      color: `#${color}`,
+      map: texture,
+    });
+  }
+
+  private async _applyCrystalsMaterial(
+    geo: THREE.Mesh,
+    color: string,
+    imagePartUrl: string
+  ): Promise<void> {
+    const { uri: alphaUri } = await ImageHelper.generateAlphaMap(imagePartUrl);
+    const finalAlphaUri = await ImageHelper.mergeAlphaMap(alphaUri, crystalAlpha);
+    const alphaTexture = Boundary.textureLoader.load(finalAlphaUri);
+    alphaTexture.flipY = false;
+    (geo.material as THREE.MeshStandardMaterial).setValues({
+      opacity: 1,
+      color: `#${color}`,
+      map: Boundary.crystalDiffuseTexture,
+      normalMap: Boundary.crystalNormalTexture,
+      alphaMap: alphaTexture,
+      transparent: true,
+    });
+  }
 
   resetBoundary = () => {
     this.resetTextureApplication();
