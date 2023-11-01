@@ -15,7 +15,7 @@ export class UIManager {
 
   constructor(
     private _canvas: HTMLCanvasElement,
-    private _onSizeUpdate: (params: SizeUpdateParams) => any
+    private _onSizeUpdate: (params: SizeUpdateParams) => any,
   ) {
     this._resizeObserver = new ResizeObserver(this._onCanvasSizeUpdated);
     this._resizeObserver.observe(this._canvas);

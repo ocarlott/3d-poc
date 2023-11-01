@@ -83,7 +83,7 @@ export class Utils {
         }
         return acc;
       },
-      { distance: Number.POSITIVE_INFINITY, index: 0 }
+      { distance: Number.POSITIVE_INFINITY, index: 0 },
     );
     return index;
   };

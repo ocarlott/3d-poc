@@ -28,7 +28,7 @@ export function RSidebarViewModel({
           xRatio: 0.5,
           yRatio: 0.5,
         },
-        false
+        false,
       )) ?? null;
     model.setBoundaryActive(true);
   };

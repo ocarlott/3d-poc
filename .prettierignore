@@ -1,0 +1,9 @@
+dist
+build
+node_modules
+.glb
+*.sh
+*.todo
+*.yml
+*.json
+*.pdf

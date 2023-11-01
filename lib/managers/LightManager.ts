@@ -23,7 +23,7 @@ export class LightManager {
       this._lightRLeft,
       this._lightRRight,
       this._lightRim,
-      this._lightFill
+      this._lightFill,
     );
 
     this._positionLights();

@@ -1,12 +1,12 @@
 export enum ControlName {
-  TranslationControl = "TranslationControl",
-  ScaleArrow = "ScaleArrow",
-  Artwork = "Artwork",
-  BoundaryGroup = "BoundaryGroup",
-  Boundary = "Boundary",
-  WorkingAssetGroup = "WorkingAssetGroup",
-  TechPackGroup = "TechPackGroup",
-  ShadowPlane = "ShadowPlane",
+  TranslationControl = 'TranslationControl',
+  ScaleArrow = 'ScaleArrow',
+  Artwork = 'Artwork',
+  BoundaryGroup = 'BoundaryGroup',
+  Boundary = 'Boundary',
+  WorkingAssetGroup = 'WorkingAssetGroup',
+  TechPackGroup = 'TechPackGroup',
+  ShadowPlane = 'ShadowPlane',
 }
 
 export type UploadImageData = {
@@ -16,8 +16,8 @@ export type UploadImageData = {
 };
 
 export enum TextureOption {
-  Screenprint = "Screenprint",
-  Metallic = "Metallic",
-  Matte = "Matte",
-  Crystals = "Crystals",
+  Screenprint = 'Screenprint',
+  Metallic = 'Metallic',
+  Matte = 'Matte',
+  Crystals = 'Crystals',
 }

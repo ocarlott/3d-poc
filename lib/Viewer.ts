@@ -151,7 +151,7 @@ export class Viewer3D {
       renderer.render(scene, camera);
       const imgData = await ImageHelper.cropImageToRatio(
         renderer.domElement.toDataURL(strMime),
-        modelRatio
+        modelRatio,
       );
       images.push(imgData);
     }
@@ -185,7 +185,7 @@ export class Viewer3D {
     scene: THREE.Scene,
     camera: THREE.PerspectiveCamera,
     controlsManager: CameraControlsManager,
-    target: THREE.Object3D
+    target: THREE.Object3D,
   ) => {
     controlsManager.fitToBounds({
       obj: target,
@@ -268,7 +268,7 @@ export class Viewer3D {
         (error) => {
           console.error(error);
           reject();
-        }
+        },
       );
     });
   };
@@ -334,12 +334,12 @@ export class Viewer3D {
             rotation,
             sizeRatio,
           },
-          disableEditing
+          disableEditing,
         );
         textureApplication.forEach((app) => {
           this.changeArtworkTexture(boundaryName, app.color, app.textureOption);
         });
-      }
+      },
     );
   };
 
@@ -425,7 +425,7 @@ export class Viewer3D {
       rotation?: number;
       sizeRatio?: number;
     },
-    disableEditing = true
+    disableEditing = true,
   ) => {
     return this._boundaryManager.changeArtwork(options, disableEditing);
   };
@@ -549,7 +549,7 @@ export class Viewer3D {
         scene,
         camera,
         controlsManager,
-        techPackGroup
+        techPackGroup,
       );
       result.push(img);
 
@@ -563,7 +563,7 @@ export class Viewer3D {
           scene,
           camera,
           controlsManager,
-          child
+          child,
         );
         result.push(img);
 

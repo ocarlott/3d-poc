@@ -7,8 +7,7 @@ import { Utils } from '../Utils';
 import crystalAlpha from '../assets/crystal_alpha.webp';
 import crystalNormal from '../assets/crystal_diffuse.webp';
 import crystalDiffuse from '../assets/crystal_diffuse.webp';
-// import { Texture, Sprite } from "pixi.js";
-// import { MultiColorReplaceFilter } from "@pixi/filter-multi-color-replace";
+import { Utils3D } from '../Utils3D';
 
 export class Boundary {
   readonly group = new THREE.Group();
@@ -47,8 +46,6 @@ export class Boundary {
   static textureLoader = new THREE.TextureLoader();
   static crystalNormalTexture = Boundary.textureLoader.load(crystalNormal);
   static crystalDiffuseTexture = Boundary.textureLoader.load(crystalDiffuse);
-  // private _scheduleRender: number | null = null;
-  // public breakdownTextures: string[] = [];
 
   constructor(canvas: THREE.Mesh, techPackCanvas: THREE.Mesh) {
     this._canvas = canvas;
@@ -60,7 +57,6 @@ export class Boundary {
       blending: THREE.CustomBlending,
       opacity: 0,
     });
-
     this.name = this._initializeCanvas(canvas);
     this._initializeGroup();
 
@@ -71,9 +67,9 @@ export class Boundary {
     const positionPoints = this._calculatePositionPoints(canvas);
     const uvPoints = this._calculateUVPoints(canvas);
     this.normal = this._calculateNormal(positionPoints);
-    this._normalPositionHelper = this._calculateNormalPositionHelper(positionPoints, biggerSide);
+    this._normalPositionHelper = this._calculateNormalPositionHelper(biggerSide);
     this._normalUV = this._calculateNormalUV(uvPoints);
-    this._normalUVHelper = this._calculateNormalUVHelper(uvPoints, this._normalUV, biggerSide);
+    this._normalUVHelper = this._calculateNormalUVHelper(this._normalUV, biggerSide);
     this._addHelpersToGroup();
   }
 
@@ -110,7 +106,7 @@ export class Boundary {
     const positionPoints: THREE.Vector3[] = [];
     for (let i = 0; i < positionArray.length; i += 3) {
       positionPoints.push(
-        new THREE.Vector3(positionArray[i], positionArray[i + 1], positionArray[i + 2])
+        new THREE.Vector3(positionArray[i], positionArray[i + 1], positionArray[i + 2]),
       );
     }
     return positionPoints;
@@ -130,11 +126,11 @@ export class Boundary {
     return boundingSphere.center.normalize();
   }
 
-  private _calculateNormalPositionHelper(positionPoints: THREE.Vector3[], biggerSide: number) {
+  private _calculateNormalPositionHelper(biggerSide: number) {
     const normalPositionHelper = new THREE.ArrowHelper(
       this.normal,
       new THREE.Vector3(0, 0, 0),
-      biggerSide + 1
+      biggerSide + 1,
     );
     normalPositionHelper.visible = false;
     return normalPositionHelper;
@@ -145,16 +141,12 @@ export class Boundary {
     return boundingUVSphere.center.normalize();
   }
 
-  private _calculateNormalUVHelper(
-    uvPoints: THREE.Vector3[],
-    normalUV: THREE.Vector3,
-    biggerSide: number
-  ) {
+  private _calculateNormalUVHelper(normalUV: THREE.Vector3, biggerSide: number) {
     const normalUVHelper = new THREE.ArrowHelper(
       normalUV,
       new THREE.Vector3(0, 0, 0),
       biggerSide + 2,
-      'purple'
+      'purple',
     );
     normalUVHelper.visible = false;
     return normalUVHelper;
@@ -288,7 +280,6 @@ export class Boundary {
     if (!disableEditing) {
       this._workingCanvas2D?.setActiveObject(img);
     }
-
     await this._renderCanvasOnBoundary();
   };
 
@@ -325,7 +316,7 @@ export class Boundary {
     img: fabric.Image,
     clipPathWidth: number,
     clipPathHeight: number,
-    sizeRatio: number
+    sizeRatio: number,
   ) => {
     const { width = 1, height = 1 } = img;
     this._useWidthToScale = width / clipPathWidth > height / clipPathHeight;
@@ -345,12 +336,12 @@ export class Boundary {
     canvasWidth: number,
     xRatio: number,
     canvasHeight: number,
-    yRatio: number
+    yRatio: number,
   ) => {
     img.setPositionByOrigin(
       new fabric.Point(canvasWidth * xRatio, canvasHeight * yRatio),
       'center',
-      'center'
+      'center',
     );
   };
 
@@ -440,11 +431,11 @@ export class Boundary {
   private _applyTexturesToGeometries(
     textures: THREE.Texture[],
     colors: string[],
-    imagePartUrls: string[]
+    imagePartUrls: string[],
   ): void {
     this._canvasList.forEach(async (geo, index) => {
       const entry = this._textureApplication.find((v) =>
-        Utils.testHexMatch(v.color, colors[index])
+        Utils.testHexMatch(v.color, colors[index]),
       );
       if (!entry) {
         this._applyDefaultScreenprintMaterial(geo, textures[index]);
@@ -499,7 +490,7 @@ export class Boundary {
   private async _applyCrystalsMaterial(
     geo: THREE.Mesh,
     color: string,
-    imagePartUrl: string
+    imagePartUrl: string,
   ): Promise<void> {
     const { uri: alphaUri } = await ImageHelper.generateAlphaMap(imagePartUrl);
     const finalAlphaUri = await ImageHelper.mergeAlphaMap(alphaUri, crystalAlpha);
@@ -567,7 +558,7 @@ export class Boundary {
     textureOption: TextureOption;
   }) => {
     const index = this._textureApplication.findIndex((v) =>
-      Utils.testHexMatch(textureApplication.color, v.color)
+      Utils.testHexMatch(textureApplication.color, v.color),
     );
     if (index === -1) {
       this._textureApplication = this._textureApplication.concat(textureApplication);

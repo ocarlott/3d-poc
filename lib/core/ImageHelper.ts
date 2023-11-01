@@ -18,7 +18,7 @@ export class ImageHelper {
     }>(async (resolve) => {
       if (minDensity >= 1 || minDensity < 0) {
         console.error(
-          'Invalid minDensity. It should be in the range of [0, 1). Using default value.'
+          'Invalid minDensity. It should be in the range of [0, 1). Using default value.',
         );
         minDensity = 0.05;
       }
@@ -144,7 +144,7 @@ export class ImageHelper {
   static getDataURLForImageData = async (
     data: Uint8ClampedArray,
     width: number,
-    height: number
+    height: number,
   ) => {
     const imgData = new ImageData(data, width, height);
     const { imageCanvas, imageCxt } = await ImageHelper.generateCanvas(width, height);
@@ -193,7 +193,7 @@ export class ImageHelper {
     uri: string,
     whRatio: number,
     maxWidth?: number,
-    maxHeight?: number
+    maxHeight?: number,
   ) => {
     const { width, height, imageData } = await ImageHelper.getImageDataForImage(uri);
     const shouldCropWidth = width / height > whRatio;
@@ -210,7 +210,7 @@ export class ImageHelper {
       Math.round((width - finalWidth) / 2),
       Math.round((height - finalHeight) / 2),
       finalWidth,
-      finalHeight
+      finalHeight,
     );
     return ImageHelper.getDataURLForImageData(imgData.data, finalWidth, finalHeight);
   };
@@ -257,7 +257,7 @@ export class ImageHelper {
       }
     }
     const imagePartUrls = await Promise.all(
-      imageParts.map((part) => ImageHelper.getDataURLForImageData(part, width, height))
+      imageParts.map((part) => ImageHelper.getDataURLForImageData(part, width, height)),
     );
     return imagePartUrls;
   };

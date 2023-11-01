@@ -72,7 +72,7 @@ export class BoundaryManager {
       whRatio: number;
       sizeRatio: number;
       rotation: number;
-    }) => void
+    }) => void,
   ) => {
     this._onArtworkChanged = onArtworkChanged;
   };
@@ -112,7 +112,7 @@ export class BoundaryManager {
       rotation?: number;
       sizeRatio?: number;
     },
-    disableEditing = true
+    disableEditing = true,
   ) => {
     const {
       boundary,
@@ -161,7 +161,7 @@ export class BoundaryManager {
           boundary: bd.name,
           artworkUrl,
         });
-      })
+      }),
     );
   };
 

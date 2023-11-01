@@ -45,7 +45,7 @@ export class GroupManager {
           castedChild.name = ControlName.ShadowPlane;
         } else if (GroupManager.isNotBoundary(castedChild)) {
           const displayNameForChangableGroup = Utils.getDisplayNameIfChangeableGroup(
-            castedChild.name
+            castedChild.name,
           );
 
           if (displayNameForChangableGroup) {

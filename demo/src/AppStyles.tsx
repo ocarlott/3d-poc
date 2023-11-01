@@ -28,7 +28,7 @@ export const ImageContainer = styled.div`
 `;
 
 export const Warning = styled.p`
-  color: #FFC436;
+  color: #ffc436;
   display: inline-block;
 `;
 
@@ -38,12 +38,12 @@ export const Error = styled.p`
 `;
 
 export const Info = styled.p`
-  color: #6CB4EE;
+  color: #6cb4ee;
   display: inline-block;
 `;
 
 export const Success = styled.p`
-  color: #4FFFB0;
+  color: #4fffb0;
   display: inline-block;
 `;
 
@@ -70,5 +70,5 @@ export const ImageList = styled.div`
 export const Image = styled.img`
   width: 45%;
   margin-bottom: 5px;
-  object-fit: contain
+  object-fit: contain;
 `;

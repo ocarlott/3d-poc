@@ -9,7 +9,7 @@ export class CameraControlsManager {
   constructor(
     canvasOrDomElement: HTMLCanvasElement | HTMLElement,
     camera: THREE.PerspectiveCamera,
-    options?: { lockPolarAngle?: boolean }
+    options?: { lockPolarAngle?: boolean },
   ) {
     this._controls = new CameraControls(camera, canvasOrDomElement);
     this._camera = camera;
@@ -47,7 +47,7 @@ export class CameraControlsManager {
     var distanceToFit = this.controls.getDistanceToFitBox(
       boundingWidth,
       boundingHeight,
-      boundingDepth
+      boundingDepth,
     );
     var paddingTop = 0;
     var paddingBottom = 0;
@@ -65,7 +65,7 @@ export class CameraControlsManager {
       distanceToFit = this.controls.getDistanceToFitBox(
         boundingWidth + paddingLeft + paddingRight,
         boundingHeight + paddingTop + paddingBottom,
-        boundingDepth
+        boundingDepth,
       );
     }
 
@@ -85,7 +85,7 @@ export class CameraControlsManager {
       azimuthAngle?: number;
       polarAngle?: number;
     },
-    transition = false
+    transition = false,
   ) => {
     if (rotation.azimuthAngle !== undefined && rotation.polarAngle !== undefined) {
       this.controls.rotateTo(rotation.azimuthAngle, rotation.polarAngle, transition);
@@ -157,7 +157,7 @@ export class CameraControlsManager {
   setDistanceLimitsFromSize = (size: THREE.Vector3) => {
     this._setDistanceLimits(
       Math.min(size.x, size.y, size.z) * 1.1,
-      Math.max(size.x, size.y, size.z)
+      Math.max(size.x, size.y, size.z),
     );
   };
 
