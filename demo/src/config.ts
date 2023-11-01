@@ -18,14 +18,14 @@ export const defaultModelConfig = {
     },
   ],
   artworkMap: [
-    {
-      boundaryName: 'ContourFitJacket_boundary_back',
-      artworkUrl: './logo.png',
-      xRatio: 0.5,
-      // textureApplication: [{
-      //   color: '377abf',
-      //   textureOption: TextureOption.Matte
-      // }]
-    },
+    // {
+    //   boundaryName: 'ContourFitJacket_boundary_back',
+    //   artworkUrl: './logo.png',
+    //   xRatio: 0.5,
+    //   textureApplication: [{
+    //     color: '377abf',
+    //     textureOption: TextureOption.Matte
+    //   }]
+    // },
   ],
 };

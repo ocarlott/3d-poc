@@ -28,7 +28,7 @@ export function RSidebarView(props: {
       <Button onClick={props.takeSnapshot}>Take Snapshot</Button>
       <Button onClick={props.takeSnapshot45()}>Take Snapshot At 45</Button>
       <Button onClick={props.takeSnapshotsAuto()}>Take Snapshot Auto</Button>
-      <Button onClick={props.createTechpack()}>Create Teck Pack</Button>
+      <Button onClick={props.createTechpack()}>Create Tech Pack</Button>
       <Button onClick={props.uploadModel()}>Upload Model</Button>
       <Button onClick={props.validateModel()}>Validate Model</Button>
       <Button onClick={props.resetModel()}>Reset Model</Button>

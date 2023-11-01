@@ -1,8 +1,7 @@
 import getColors from 'image-pal';
 import { Utils } from '../Utils';
 import ImageJS from 'image-js';
-// import {} from 'image-filter-color';
-
+const strMime = 'image/webp';
 export class ImageHelper {
   static reduceImageColor = async (params: {
     url: string;
@@ -149,7 +148,7 @@ export class ImageHelper {
     const imgData = new ImageData(data, width, height);
     const { imageCanvas, imageCxt } = await ImageHelper.generateCanvas(width, height);
     imageCxt.putImageData(imgData, 0, 0);
-    const dataUri = imageCanvas.toDataURL();
+    const dataUri = imageCanvas.toDataURL(strMime);
     return dataUri;
   };
 
@@ -220,8 +219,9 @@ export class ImageHelper {
     img = img.resize({
       width,
       height,
+      preserveAspectRatio: true,
     });
-    return img.toDataURL();
+    return img.toDataURL(strMime);
   };
 
   static crop = async (uri: string, width: number, height: number, x?: number, y?: number) => {
@@ -232,7 +232,7 @@ export class ImageHelper {
       x: x || 0,
       y: y || 0,
     });
-    return img.toDataURL();
+    return img.toDataURL(strMime);
   };
 
   static generateImageParts = async (uri: string, colors: number[][]) => {

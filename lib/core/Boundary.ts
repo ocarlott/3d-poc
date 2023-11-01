@@ -49,7 +49,8 @@ export class Boundary {
 
   constructor(canvas: THREE.Mesh, techPackCanvas: THREE.Mesh) {
     this._canvas = canvas;
-    this._canvasMaterial = new THREE.MeshPhysicalMaterial({
+    this._canvasMaterial = this._canvas.material as THREE.MeshPhysicalMaterial;
+    this._canvasMaterial.setValues({
       transparent: true,
       color: 'white',
       side: THREE.DoubleSide,
@@ -74,7 +75,8 @@ export class Boundary {
   }
 
   private _initializeCanvas(canvas: THREE.Mesh) {
-    canvas.material = this._canvasMaterial;
+    // canvas.material = this._canvasMaterial;
+    canvas.visible = false;
     canvas.geometry.computeVertexNormals();
     return canvas.name;
   }
@@ -293,6 +295,7 @@ export class Boundary {
   private _clearCanvasList = () => {
     this._canvasList.forEach((c) => {
       c.removeFromParent();
+      Utils3D.disposeHierarchy(c);
     });
     this._canvasList = [];
   };
@@ -301,6 +304,7 @@ export class Boundary {
     return colorList.map(() => {
       const canvas = this._canvas.clone();
       canvas.material = this._canvasMaterial.clone();
+      canvas.visible = true;
       return canvas;
     });
   };
@@ -394,9 +398,7 @@ export class Boundary {
       texture.repeat.set(Math.sign(this._normalUV.x), -Math.sign(this._normalUV.y));
       texture.colorSpace = THREE.SRGBColorSpace;
       this._canvasMaterial.setValues({
-        opacity: 1,
         map: texture,
-        color: 'white',
       });
       await this._finalizeCanvasOnBoundary();
     }
@@ -404,6 +406,7 @@ export class Boundary {
 
   private _finalizeCanvasOnBoundary = _.throttle(async () => {
     if (this._workingCanvas2D) {
+      this._canvasMaterial.opacity = 0;
       const copy = await this._workingCanvas2D.clone(['elements']);
       copy.backgroundColor = 'rgba(0, 0, 0, 0)';
       const original = copy.toCanvasElement();
@@ -414,9 +417,8 @@ export class Boundary {
         return texture;
       });
       const colors = this._workingColors.map((color) => Utils.rgb2hex(color));
-      this._applyTexturesToGeometries(textures, colors, imagePartUrls);
-      this._canvasMaterial.opacity = 0;
       this._canvas.visible = false;
+      this._applyTexturesToGeometries(textures, colors, imagePartUrls);
     }
   }, 2000);
 
@@ -511,22 +513,14 @@ export class Boundary {
     this._workingCanvas2D?.clear();
     this._workingCanvas2D?.dispose();
     this._workingCanvas2D = undefined;
+    this._artworkUrl = '';
+    Utils3D.disposeMaps(this._canvasMaterial);
     this._canvasMaterial.setValues({
-      color: 'rgba(0, 0, 0, 0)',
       map: null,
       normalMap: null,
       alphaMap: null,
-      opacity: 0,
     });
-    this._canvasList.forEach((geo) => {
-      (geo.material as THREE.MeshStandardMaterial | THREE.MeshPhongMaterial).setValues({
-        map: null,
-        color: 'rgba(0, 0, 0, 0)',
-        opacity: 0,
-        normalMap: null,
-        alphaMap: null,
-      });
-    });
+    this._clearCanvasList();
   };
 
   hasArtwork = () => {

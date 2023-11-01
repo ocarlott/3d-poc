@@ -145,7 +145,7 @@ export class GroupManager {
   }
 
   static isBoundary(obj: THREE.Mesh | THREE.Object3D) {
-    return obj.name.toLowerCase().includes('boundary');
+    return obj.name.toLowerCase().includes('boundary') && obj.name !== ControlName.BoundaryGroup;
   }
 
   static isNotBoundary(obj: THREE.Mesh | THREE.Object3D) {

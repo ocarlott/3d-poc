@@ -13,7 +13,7 @@ import { BoundaryManager } from './managers/BoundaryManager';
 import { LayerManager } from './managers/LayerManager';
 import { Utils3D } from './Utils3D';
 
-const strMime = 'image/png';
+const strMime = 'image/webp';
 export class Viewer3D {
   private _rFID = -1;
   private _camera: THREE.PerspectiveCamera;
@@ -190,10 +190,10 @@ export class Viewer3D {
     controlsManager.fitToBounds({
       obj: target,
       padding: {
-        bottom: 4,
-        left: 4,
-        right: 4,
-        top: 4,
+        bottom: 0.5,
+        left: 0.5,
+        right: 0.5,
+        top: 0.5,
       },
       transition: false,
     });
@@ -528,10 +528,19 @@ export class Viewer3D {
       techPackGroup.visible = true;
       techPackGroup.children.forEach((child) => {
         if (child.isObject3D) {
-          ((child as THREE.Mesh).material as THREE.MeshPhysicalMaterial).setValues({
-            color: 'white',
-            opacity: 0.4,
-          });
+          const originalMaterial = (child as THREE.Mesh).material as THREE.MeshPhysicalMaterial;
+          if (GroupManager.isBoundary(child)) {
+            (child as THREE.Mesh).material = originalMaterial.clone();
+            ((child as THREE.Mesh).material as THREE.MeshPhysicalMaterial).setValues({
+              color: '#7D7D7D',
+              opacity: 1,
+            });
+          } else {
+            originalMaterial.setValues({
+              color: 'white',
+              opacity: 0.5,
+            });
+          }
         }
       });
       workingAssetGroup.visible = false;
