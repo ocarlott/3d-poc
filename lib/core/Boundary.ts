@@ -51,6 +51,7 @@ export class Boundary {
     this._canvas = canvas;
     this._canvasMaterial = this._canvas.material as THREE.MeshPhysicalMaterial;
     this._canvasMaterial.setValues({
+      map: null,
       transparent: true,
       color: 'white',
       side: THREE.DoubleSide,
@@ -452,7 +453,7 @@ export class Boundary {
           case TextureOption.Crystals:
             await this._applyCrystalsMaterial(geo, colors[index], imagePartUrls[index]);
             break;
-          case TextureOption.Screenprint:
+          case TextureOption.Glitter:
           default:
             this._applyDefaultScreenprintMaterial(geo, textures[index]);
             break;
