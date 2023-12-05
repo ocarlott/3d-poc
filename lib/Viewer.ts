@@ -12,6 +12,7 @@ import { GroupManager } from './managers/GroupManager';
 import { BoundaryManager } from './managers/BoundaryManager';
 import { LayerManager } from './managers/LayerManager';
 import { Utils3D } from './Utils3D';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
 
 const strMime = 'image/webp';
 export class Viewer3D {
@@ -50,7 +51,11 @@ export class Viewer3D {
     this._boundaryManager = new BoundaryManager();
     this._layerManager = new LayerManager();
 
-    this._scene.background = new THREE.Color('#f1e9e9');
+    const dracoLoader = new DRACOLoader();
+    dracoLoader.setDecoderConfig({ type: 'js' });
+    dracoLoader.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/');
+    this._loader.setDRACOLoader(dracoLoader);
+
     this._scene.add(this._lightManager.getLightGroup());
     this.show();
   }
