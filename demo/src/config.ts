@@ -1,3 +1,5 @@
+import { TextureOption } from 'microstore-3d/lib/type';
+
 export const defaultModelConfig = {
   colorMap: [
     {
@@ -18,14 +20,16 @@ export const defaultModelConfig = {
     },
   ],
   artworkMap: [
-    // {
-    //   boundaryName: 'ContourFitJacket_boundary_back',
-    //   artworkUrl: './logo.png',
-    //   xRatio: 0.5,
-    //   textureApplication: [{
-    //     color: '377abf',
-    //     textureOption: TextureOption.Matte
-    //   }]
-    // },
+    {
+      boundaryName: 'LongSleeveVneck_boundary_front',
+      artworkUrl: './logo.png',
+      xRatio: 0.5,
+      textureApplication: [
+        {
+          color: '3584c6',
+          textureOption: TextureOption.Glitter,
+        },
+      ],
+    },
   ],
 };

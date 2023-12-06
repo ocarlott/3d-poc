@@ -7,6 +7,7 @@ import { Utils } from '../Utils';
 import crystalAlpha from '../assets/crystal_alpha.webp';
 import crystalNormal from '../assets/crystal_diffuse.webp';
 import crystalDiffuse from '../assets/crystal_diffuse.webp';
+import glitterRoughness from '../assets/glitter_roughness.webp';
 import { Utils3D } from '../Utils3D';
 
 export class Boundary {
@@ -46,6 +47,7 @@ export class Boundary {
   static textureLoader = new THREE.TextureLoader();
   static crystalNormalTexture = Boundary.textureLoader.load(crystalNormal);
   static crystalDiffuseTexture = Boundary.textureLoader.load(crystalDiffuse);
+  static glitterRoughnessTexture = Boundary.textureLoader.load(glitterRoughness);
 
   constructor(canvas: THREE.Mesh, techPackCanvas: THREE.Mesh) {
     this._canvas = canvas;
@@ -441,21 +443,21 @@ export class Boundary {
         Utils.testHexMatch(v.color, colors[index]),
       );
       if (!entry) {
-        this._applyDefaultScreenprintMaterial(geo, textures[index]);
+        this._applyDefaultMatteMaterial(geo, colors[index], textures[index]);
       } else {
         switch (entry.textureOption) {
           case TextureOption.Metallic:
             this._applyMetallicMaterial(geo, colors[index], textures[index]);
             break;
           case TextureOption.Matte:
-            this._applyMatteMaterial(geo, colors[index], textures[index]);
+            this._applyDefaultMatteMaterial(geo, colors[index], textures[index]);
             break;
           case TextureOption.Crystals:
             await this._applyCrystalsMaterial(geo, colors[index], imagePartUrls[index]);
             break;
           case TextureOption.Glitter:
           default:
-            this._applyDefaultScreenprintMaterial(geo, textures[index]);
+            this._applyGlitterMaterial(geo, colors[index], imagePartUrls[index]);
             break;
         }
       }
@@ -463,10 +465,25 @@ export class Boundary {
     });
   }
 
-  private _applyDefaultScreenprintMaterial(geo: THREE.Mesh, texture: THREE.Texture): void {
-    const material = new THREE.MeshPhongMaterial({
-      shininess: 50,
-      map: texture,
+  private async _applyGlitterMaterial(geo: THREE.Mesh, color: string, imagePartUrl: string) {
+    const { uri: alphaUri } = await ImageHelper.generateAlphaMap(imagePartUrl);
+    const alphaTexture = Boundary.textureLoader.load(alphaUri);
+    alphaTexture.repeat.set(Math.sign(this._normalUV.x), -Math.sign(this._normalUV.y));
+    alphaTexture.wrapS = THREE.RepeatWrapping;
+    alphaTexture.wrapT = THREE.RepeatWrapping;
+    const mapTexture = Boundary.glitterRoughnessTexture.clone();
+    mapTexture.wrapS = THREE.RepeatWrapping;
+    mapTexture.wrapT = THREE.RepeatWrapping;
+    mapTexture.repeat.set(Math.sign(this._normalUV.x), -Math.sign(this._normalUV.y));
+    mapTexture.colorSpace = THREE.SRGBColorSpace;
+    const material = new THREE.MeshPhysicalMaterial({
+      map: mapTexture,
+      roughnessMap: mapTexture,
+      color: `#${color}`,
+      metalness: 0.8,
+      roughness: 0.9,
+      alphaMap: alphaTexture,
+      opacity: 1,
       transparent: true,
     });
     geo.material = material;
@@ -482,7 +499,7 @@ export class Boundary {
     });
   }
 
-  private _applyMatteMaterial(geo: THREE.Mesh, color: string, texture: THREE.Texture): void {
+  private _applyDefaultMatteMaterial(geo: THREE.Mesh, color: string, texture: THREE.Texture): void {
     (geo.material as THREE.MeshStandardMaterial).setValues({
       opacity: 1,
       color: `#${color}`,

@@ -23,6 +23,11 @@ declare module '*.hdr' {
   export = value;
 }
 
+declare module '*.glb' {
+  const value: any;
+  export = value;
+}
+
 declare module 'skmeans' {
   export type CentroidValues = 'kmrand' | 'kmpp' | null;
 
