@@ -295,6 +295,7 @@ export class Viewer3D {
   toggleDeveloperMode = () => {
     this._isInDeveloperMode = !this._isInDeveloperMode;
     this._groupManager.setDeveloperMode(this._isInDeveloperMode);
+    this._lightManager.setDeveloperMode(this._isInDeveloperMode);
     this._cameraControlsManager.setDevMode(this._isInDeveloperMode);
     this._boundaryManager.setDeveloperMode(this._isInDeveloperMode);
     this._axesHelper.visible = this._isInDeveloperMode;

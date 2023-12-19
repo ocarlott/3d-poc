@@ -291,6 +291,7 @@ export class Boundary {
   private _reduceImageColor = async (artworkUrl: string) => {
     const { computed, colorList } = await ImageHelper.reduceImageColor({
       url: artworkUrl,
+      minDensity: 0.1,
     });
     return { computed, colorList };
   };

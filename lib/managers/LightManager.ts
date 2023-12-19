@@ -1,40 +1,54 @@
 import * as THREE from 'three';
 
 export class LightManager {
-  private _lightKey: THREE.SpotLight;
-  private _lightRim: THREE.SpotLight;
-  private _lightFill: THREE.SpotLight;
-  private _lightRLeft: THREE.SpotLight;
-  private _lightRRight: THREE.SpotLight;
-  private _ambientLight: THREE.HemisphereLight;
+  private _lights: { position: THREE.Vector3; light: THREE.SpotLight }[] = [];
+  private _ambientLight = new THREE.AmbientLight('#f1e9e9', 2.5);
   private _lightGroup = new THREE.Group();
+  private _spotLightHelpers: THREE.SpotLightHelper[] = [];
+  private _devMode = false;
 
   constructor() {
-    this._lightKey = new THREE.SpotLight('#FFFFFF', 3, 75, 1.48, 1, 0);
-    this._lightRim = new THREE.SpotLight('#CAEDF2', 1.75, 75, 1.48, 1, 0);
-    this._lightFill = new THREE.SpotLight('#F0F8FF', 1.25, 75, 1.48, 1, 0);
-    this._lightRLeft = new THREE.SpotLight('#FFEFE0', 0.5, 75, 1.48, 1, 0);
-    this._lightRRight = new THREE.SpotLight('#FFEFE0', 0.75, 75, 1.48, 1, 0);
-    this._ambientLight = new THREE.HemisphereLight('#C3E7F7', '#E5B8BD', 1);
-
+    this._lights = [
+      {
+        position: new THREE.Vector3(0, 30, 40),
+        light: new THREE.SpotLight('#FFEFE0', 5, 100, Math.PI / 2, 1, 0),
+      },
+      {
+        position: new THREE.Vector3(0, 30, -40),
+        light: new THREE.SpotLight('#FFEFE0', 5, 100, Math.PI / 2, 1, 0),
+      },
+    ];
+    this._lights.forEach((l) => {
+      const helper = new THREE.SpotLightHelper(
+        l.light,
+        new THREE.Color(Math.random(), Math.random(), Math.random()),
+      );
+      helper.visible = this._devMode;
+      this._spotLightHelpers.push(helper);
+    });
     this._lightGroup.add(
+      ...this._lights.map((l) => l.light),
       this._ambientLight,
-      this._lightKey,
-      this._lightRLeft,
-      this._lightRRight,
-      this._lightRim,
-      this._lightFill,
+      ...this._spotLightHelpers,
     );
 
     this._positionLights();
   }
 
+  setDeveloperMode(isInDeveloperMode: boolean) {
+    this._devMode = isInDeveloperMode;
+    this._spotLightHelpers.forEach((h) => {
+      h.visible = this._devMode;
+    });
+  }
+
   private _positionLights(): void {
-    this._lightKey.position.set(-17.913, 30.212, 22.077);
-    this._lightRLeft.position.set(-20.414, -2.904, -17.304);
-    this._lightRRight.position.set(23.964, -2.904, -16.006);
-    this._lightRim.position.set(27.919, 33.64, -31.806);
-    this._lightFill.position.set(41.535, 18.52, 24.681);
+    this._lights.forEach((l) => {
+      l.light.position.set(l.position.x, l.position.y, l.position.z);
+    });
+    this._spotLightHelpers.forEach((h) => {
+      h.update();
+    });
   }
 
   getLightGroup() {
