@@ -56,7 +56,7 @@ export class Viewer3D {
     dracoLoader.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/');
     this._loader.setDRACOLoader(dracoLoader);
 
-    this._scene.add(this._lightManager.getLightGroup());
+    this._scene.add(this._lightManager.getLightGroup(), this._lightManager.getLightGroupHelper());
     this.show();
   }
 

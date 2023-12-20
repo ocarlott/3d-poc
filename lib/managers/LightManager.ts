@@ -4,6 +4,7 @@ export class LightManager {
   private _lights: { position: THREE.Vector3; light: THREE.SpotLight }[] = [];
   private _ambientLight = new THREE.AmbientLight('#f1e9e9', 2.5);
   private _lightGroup = new THREE.Group();
+  private _lightGroupHeper = new THREE.Group();
   private _spotLightHelpers: THREE.SpotLightHelper[] = [];
   private _devMode = false;
 
@@ -26,11 +27,8 @@ export class LightManager {
       helper.visible = this._devMode;
       this._spotLightHelpers.push(helper);
     });
-    this._lightGroup.add(
-      ...this._lights.map((l) => l.light),
-      this._ambientLight,
-      ...this._spotLightHelpers,
-    );
+    this._lightGroup.add(...this._lights.map((l) => l.light), this._ambientLight);
+    this._lightGroupHeper.add(...this._spotLightHelpers);
 
     this._positionLights();
   }
@@ -53,5 +51,9 @@ export class LightManager {
 
   getLightGroup() {
     return this._lightGroup;
+  }
+
+  getLightGroupHelper() {
+    return this._lightGroupHeper;
   }
 }
