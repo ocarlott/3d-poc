@@ -7,7 +7,7 @@ export class SceneBuilder {
 
   static createScene() {
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color('#f1e9e9');
+    scene.background = new THREE.Color('#f5f5f5');
     return scene;
   }
 
