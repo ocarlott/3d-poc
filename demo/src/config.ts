@@ -27,7 +27,7 @@ export const defaultModelConfig = {
       textureApplication: [
         {
           color: '3584c6',
-          textureOption: TextureOption.Glitter,
+          textureOption: TextureOption.Crystals,
         },
       ],
     },

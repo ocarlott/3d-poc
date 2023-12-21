@@ -5,8 +5,7 @@ import _ from 'underscore';
 import { ImageHelper } from './ImageHelper';
 import { Utils } from '../Utils';
 import crystalAlpha from '../assets/crystal_alpha.webp';
-import crystalNormal from '../assets/crystal_diffuse.webp';
-import crystalDiffuse from '../assets/crystal_diffuse.webp';
+import crystalNormal from '../assets/crystal_normal.webp';
 import glitterRoughness from '../assets/glitter_roughness.webp';
 import { Utils3D } from '../Utils3D';
 
@@ -46,7 +45,7 @@ export class Boundary {
   private _normalUV: THREE.Vector3;
   static textureLoader = new THREE.TextureLoader();
   static crystalNormalTexture = Boundary.textureLoader.load(crystalNormal);
-  static crystalDiffuseTexture = Boundary.textureLoader.load(crystalDiffuse);
+  static crystalAlphaTexture = Boundary.textureLoader.load(crystalAlpha);
   static glitterRoughnessTexture = Boundary.textureLoader.load(glitterRoughness);
 
   constructor(canvas: THREE.Mesh, techPackCanvas: THREE.Mesh) {
@@ -454,7 +453,7 @@ export class Boundary {
             this._applyDefaultMatteMaterial(geo, colors[index], textures[index]);
             break;
           case TextureOption.Crystals:
-            await this._applyCrystalsMaterial(geo, colors[index], imagePartUrls[index]);
+            await this._applyCrystalsMaterial(geo, colors[index], textures[index]);
             break;
           case TextureOption.Glitter:
           default:
@@ -511,18 +510,26 @@ export class Boundary {
   private async _applyCrystalsMaterial(
     geo: THREE.Mesh,
     color: string,
-    imagePartUrl: string,
+    texture: THREE.Texture,
   ): Promise<void> {
-    const { uri: alphaUri } = await ImageHelper.generateAlphaMap(imagePartUrl);
-    const finalAlphaUri = await ImageHelper.mergeAlphaMap(alphaUri, crystalAlpha);
-    const alphaTexture = Boundary.textureLoader.load(finalAlphaUri);
-    alphaTexture.flipY = false;
+    // const { uri: alphaUri } = await ImageHelper.generateAlphaMap(imagePartUrl);
+    // const finalAlphaUri = await ImageHelper.mergeAlphaMap(alphaUri, crystalAlpha);
+    // const alphaTexture = Boundary.textureLoader.load(finalAlphaUri);
+    // alphaTexture.flipY = false;
+    const normalMap = Boundary.crystalNormalTexture.clone();
+    normalMap.wrapS = THREE.RepeatWrapping;
+    normalMap.wrapT = THREE.RepeatWrapping;
+    normalMap.repeat.set(Math.sign(this._normalUV.x), -Math.sign(this._normalUV.y));
+    const alphaMap = Boundary.crystalAlphaTexture.clone();
+    alphaMap.wrapS = THREE.RepeatWrapping;
+    alphaMap.wrapT = THREE.RepeatWrapping;
+    alphaMap.repeat.set(Math.sign(this._normalUV.x), -Math.sign(this._normalUV.y));
     (geo.material as THREE.MeshStandardMaterial).setValues({
       opacity: 1,
       color: `#${color}`,
-      map: Boundary.crystalDiffuseTexture,
-      normalMap: Boundary.crystalNormalTexture,
-      alphaMap: alphaTexture,
+      map: texture,
+      normalMap,
+      alphaMap,
       transparent: true,
     });
   }
