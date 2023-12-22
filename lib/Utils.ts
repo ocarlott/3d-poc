@@ -173,8 +173,24 @@ export class Utils {
       .padStart(2, '0')}${color[2].toString(16).padStart(2, '0')}`;
   };
 
+  static hex2rgb = (color: string) => {
+    if (color.length !== 6) {
+      console.error('Invalid hex color');
+      return [255, 255, 255];
+    }
+    return [
+      parseInt(color.slice(0, 2), 16),
+      parseInt(color.slice(2, 4), 16),
+      parseInt(color.slice(4, 6), 16),
+    ];
+  };
+
   static testHexMatch = (color1: string, color2: string) => {
-    return color1.toUpperCase().replace('#', '') === color2.toUpperCase().replace('#', '');
+    const d = Utils.deltaE(
+      Utils.rgb2lab(Utils.hex2rgb(color1)),
+      Utils.rgb2lab(Utils.hex2rgb(color2)),
+    );
+    return d <= 2; // Very similar colors. Better than human eyes
   };
 
   static getEqualAngleRotations = (numberOfSplits: number) => {

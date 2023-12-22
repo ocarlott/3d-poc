@@ -26,7 +26,7 @@ export const defaultModelConfig = {
       xRatio: 0.5,
       textureApplication: [
         {
-          color: '3584c6',
+          color: '3585c9',
           textureOption: TextureOption.Crystals,
         },
       ],

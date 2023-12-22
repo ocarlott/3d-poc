@@ -72,11 +72,16 @@ export class ImageHelper {
           newData[i * 4 + 2] = majorColors[index][2];
         }
       }
+
+      const exportedColors = majorColors.map(
+        (color) => `rgb(${color[0]}, ${color[1]}, ${color[2]})`,
+      );
+
       const newDataUrl = await ImageHelper.getDataURLForImageData(newData, width, height);
       return resolve({
         computed: newDataUrl,
         percentages: listCount.map((i) => i / totalPixels),
-        colors: majorColors.map((color) => `rgb(${color[0]}, ${color[1]}, ${color[2]})`),
+        colors: exportedColors,
         colorList: majorColors,
       });
     });
@@ -180,6 +185,7 @@ export class ImageHelper {
     if (imageCxt) {
       imageCanvas.width = width;
       imageCanvas.height = height;
+      imageCxt.clearRect(0, 0, width, height);
       return Promise.resolve({
         imageCanvas,
         imageCxt,

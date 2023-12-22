@@ -439,12 +439,15 @@ export class Boundary {
     imagePartUrls: string[],
   ): void {
     this._canvasList.forEach(async (geo, index) => {
-      const entry = this._textureApplication.find((v) =>
+      const used = new Set<number>();
+      const entryIndex = this._textureApplication.findIndex((v) =>
         Utils.testHexMatch(v.color, colors[index]),
       );
-      if (!entry) {
+      if (entryIndex === -1 && !used.has(entryIndex)) {
         this._applyDefaultMatteMaterial(geo, colors[index], textures[index]);
       } else {
+        used.add(entryIndex);
+        const entry = this._textureApplication[entryIndex];
         switch (entry.textureOption) {
           case TextureOption.Metallic:
             this._applyMetallicMaterial(geo, colors[index], textures[index]);
