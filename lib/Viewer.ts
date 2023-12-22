@@ -106,7 +106,7 @@ export class Viewer3D {
     renderer.outputColorSpace = THREE.SRGBColorSpace;
 
     const newScene = new THREE.Scene();
-    newScene.background = new THREE.Color('#f1e9e9');
+    newScene.background = new THREE.Color('#f5f5f5');
     newScene.add(this._lightManager.getLightGroup().clone());
 
     const newGroupManager = this._groupManager.clone();
