@@ -94,7 +94,9 @@ export class Viewer3D {
     });
   };
 
-  private _generateViewerCopy = () => {
+  private _generateViewerCopy = ({
+    sceneBackground = new THREE.Color('#f5f5f5'),
+  }: { sceneBackground?: THREE.Color | null } = {}) => {
     const renderer = new THREE.WebGLRenderer({
       preserveDrawingBuffer: true,
       antialias: true,
@@ -106,7 +108,7 @@ export class Viewer3D {
     renderer.outputColorSpace = THREE.SRGBColorSpace;
 
     const newScene = new THREE.Scene();
-    newScene.background = new THREE.Color('#f5f5f5');
+    newScene.background = sceneBackground || null;
     newScene.add(this._lightManager.getLightGroup().clone());
 
     const newGroupManager = this._groupManager.clone();
@@ -135,7 +137,9 @@ export class Viewer3D {
     const { rotations, modelRatio } = params;
 
     const camera = this._camera.clone();
-    const { renderer, scene, workingAssetGroup } = this._generateViewerCopy();
+    const { renderer, scene, workingAssetGroup } = this._generateViewerCopy({
+      sceneBackground: null,
+    });
 
     const controlsManager = new CameraControlsManager(renderer.domElement, camera);
     controlsManager.paddingInCssPixelAndMoveControl({
@@ -510,8 +514,8 @@ export class Viewer3D {
   createTechPack = async () => {
     const camera = this._camera.clone();
     const { renderer, scene, techPackGroup, workingAssetGroup, shadowPlane, modelGroup } =
-      this._generateViewerCopy();
-    scene.background = new THREE.Color('rgba(0, 0, 0, 0)');
+      this._generateViewerCopy({ sceneBackground: new THREE.Color('rgba(0, 0, 0, 0)') });
+    // scene.background = new THREE.Color('rgba(0, 0, 0, 0)');
     renderer.toneMappingExposure = 5;
     const controlsManager = new CameraControlsManager(renderer.domElement, camera);
     controlsManager.rotateTo({
