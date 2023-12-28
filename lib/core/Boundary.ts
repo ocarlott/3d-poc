@@ -576,21 +576,28 @@ export class Boundary {
     // this._normalUVHelper.visible = value;
   };
 
-  applyTextureApplication = (textureApplication: {
+  applyTextureApplication = async (textureApplication: {
     color: string;
     textureOption: TextureOption;
   }) => {
     const index = this._textureApplication.findIndex((v) =>
       Utils.testHexMatch(textureApplication.color, v.color),
     );
+    console.log({
+      index,
+      textureApplication,
+      text: this._textureApplication,
+    });
     if (index === -1) {
       this._textureApplication = this._textureApplication.concat(textureApplication);
     } else {
       this._textureApplication.splice(index, 1, textureApplication);
     }
+    await this._renderCanvasOnBoundary();
   };
 
-  resetTextureApplication = () => {
+  resetTextureApplication = async () => {
     this._textureApplication = [];
+    await this._renderCanvasOnBoundary();
   };
 }

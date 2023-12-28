@@ -1,4 +1,4 @@
-import { Viewer3D } from 'microstore-3d';
+import { TextureOption, Viewer3D } from 'microstore-3d';
 import { ValidationResults } from '../../types';
 import { RSidebarModel } from './RSidebarModel';
 
@@ -63,6 +63,16 @@ export function RSidebarViewModel({
         viewer.resetModel();
       }
     };
+  }
+
+  function changeTexture() {
+    if (viewer) {
+      viewer.changeArtworkTexture(
+        'LongSleeveVneck_boundary_front',
+        '3585c9',
+        TextureOption.Glitter,
+      );
+    }
   }
 
   function validateModel() {
@@ -135,5 +145,6 @@ export function RSidebarViewModel({
     takeSnapshotsAuto,
     takeSnapshot45,
     takeSnapshot,
+    changeTexture,
   };
 }
