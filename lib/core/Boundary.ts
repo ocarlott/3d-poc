@@ -583,11 +583,6 @@ export class Boundary {
     const index = this._textureApplication.findIndex((v) =>
       Utils.testHexMatch(textureApplication.color, v.color),
     );
-    console.log({
-      index,
-      textureApplication,
-      text: this._textureApplication,
-    });
     if (index === -1) {
       this._textureApplication = this._textureApplication.concat(textureApplication);
     } else {

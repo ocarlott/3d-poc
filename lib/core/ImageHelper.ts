@@ -38,8 +38,10 @@ export class ImageHelper {
       }).map((color) => color.rgb.map((value) => Math.floor(value)));
       const labList = colors.map((color) => Utils.rgb2lab(color));
       let listCount = colors.map(() => 0);
+      let totalNontransparentPixels = 0;
       for (let i = 0; i < totalPixels; i++) {
         if (data[i * 4 + 3] > 0) {
+          totalNontransparentPixels += 1;
           const color = Utils.rgb2lab([data[i * 4], data[i * 4 + 1], data[i * 4 + 2]]);
           const index = Utils.findClosetIndexColorFromLabColorList(labList, color);
           listCount[index] += 1;
@@ -53,10 +55,9 @@ export class ImageHelper {
         }
         newData[i * 4 + 3] = data[i * 4 + 3];
       }
-      const percentages = listCount.map((ls) => ls / totalPixels);
+      const percentages = listCount.map((ls) => ls / totalNontransparentPixels);
       const majorLabColors = labList.filter((_, index) => {
-        const percentage = listCount[index] / totalPixels;
-        return percentage >= minDensity;
+        return percentages[index] >= minDensity;
       });
       const majorColors = colors.filter((_, index) => {
         return percentages[index] >= minDensity;
@@ -67,9 +68,11 @@ export class ImageHelper {
           const color = Utils.rgb2lab([newData[i * 4], newData[i * 4 + 1], newData[i * 4 + 2]]);
           const index = Utils.findClosetIndexColorFromLabColorList(majorLabColors, color);
           listCount[index] += 1;
-          newData[i * 4] = majorColors[index][0];
-          newData[i * 4 + 1] = majorColors[index][1];
-          newData[i * 4 + 2] = majorColors[index][2];
+          if (majorColors[index]) {
+            newData[i * 4] = majorColors[index][0];
+            newData[i * 4 + 1] = majorColors[index][1];
+            newData[i * 4 + 2] = majorColors[index][2];
+          }
         }
       }
 

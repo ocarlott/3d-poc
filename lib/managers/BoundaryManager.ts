@@ -171,7 +171,6 @@ export class BoundaryManager {
 
   changeArtworkTexture = async (boundary: string, color: string, textureOption: TextureOption) => {
     const bd = this._boundaryList.find((b) => b.name === boundary);
-    console.log(bd);
     if (bd) {
       await bd.applyTextureApplication({
         color,

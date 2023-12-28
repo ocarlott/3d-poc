@@ -187,8 +187,8 @@ export class Utils {
 
   static testHexMatch = (color1: string, color2: string) => {
     const d = Utils.deltaE(
-      Utils.rgb2lab(Utils.hex2rgb(color1)),
-      Utils.rgb2lab(Utils.hex2rgb(color2)),
+      Utils.rgb2lab(Utils.hex2rgb(color1.replace('#', ''))),
+      Utils.rgb2lab(Utils.hex2rgb(color2.replace('#', ''))),
     );
     return d <= 2; // Very similar colors. Better than human eyes
   };
