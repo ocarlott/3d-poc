@@ -43,6 +43,7 @@ export class Boundary {
   private _normalPositionHelper: THREE.ArrowHelper;
   private _normalUVHelper: THREE.ArrowHelper;
   private _normalUV: THREE.Vector3;
+  private _shouldShowOriginalArtwork = false;
   static textureLoader = new THREE.TextureLoader();
   static crystalNormalTexture = Boundary.textureLoader.load(crystalNormal);
   static crystalAlphaTexture = Boundary.textureLoader.load(crystalAlpha);
@@ -54,7 +55,7 @@ export class Boundary {
     this._canvasMaterial.setValues({
       map: null,
       transparent: true,
-      color: 'white',
+      // color: 'white',
       side: THREE.DoubleSide,
       toneMapped: false,
       blending: THREE.CustomBlending,
@@ -238,6 +239,7 @@ export class Boundary {
     yRatio: number;
     rotation: number;
     sizeRatio: number;
+    shouldShowOriginalArtwork?: boolean;
     onArtworkChanged?: (params: {
       forBoundary: string;
       xRatio: number;
@@ -257,19 +259,24 @@ export class Boundary {
       workingCanvas,
       onArtworkChanged,
       disableEditing = true,
+      shouldShowOriginalArtwork = false,
     } = options;
 
     this.resetBoundary();
     this._onArtworkChanged = onArtworkChanged;
     let computedArtworkUrl = artworkUrl;
-
+    this._shouldShowOriginalArtwork = shouldShowOriginalArtwork;
     if (this._artworkUrl !== artworkUrl) {
-      const { computed, colorList } = await this._reduceImageColor(artworkUrl);
-      computedArtworkUrl = computed;
       this._clearCanvasList();
-      this._canvasList = this._createCanvasList(colorList);
+      if (!shouldShowOriginalArtwork) {
+        const { computed, colorList } = await this._reduceImageColor(artworkUrl);
+        computedArtworkUrl = computed;
+        this._canvasList = this._createCanvasList(colorList);
+        this._workingColors = colorList;
+      } else {
+        this._canvasList = this._createCanvasList([1]);
+      }
       this.group.add(...this._canvasList);
-      this._workingColors = colorList;
     }
 
     this._artworkUrl = artworkUrl;
@@ -413,15 +420,33 @@ export class Boundary {
       const copy = await this._workingCanvas2D.clone(['elements']);
       copy.backgroundColor = 'rgba(0, 0, 0, 0)';
       const original = copy.toCanvasElement();
-      const url = original.toDataURL();
-      const imagePartUrls = await ImageHelper.generateImageParts(url, this._workingColors);
-      const textures = imagePartUrls.map((uri) => {
-        const texture = this._createTexture(uri);
-        return texture;
-      });
-      const colors = this._workingColors.map((color) => Utils.rgb2hex(color));
-      this._canvas.visible = false;
-      this._applyTexturesToGeometries(textures, colors, imagePartUrls);
+      if (this._shouldShowOriginalArtwork) {
+        const texture = new THREE.CanvasTexture(original);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(Math.sign(this._normalUV.x), -Math.sign(this._normalUV.y));
+        texture.colorSpace = THREE.SRGBColorSpace;
+        const canvas = this._canvasList[0];
+        canvas.material = new THREE.MeshBasicMaterial({
+          map: texture,
+          transparent: true,
+          opacity: 1,
+          depthTest: false,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+          toneMapped: false,
+        });
+      } else {
+        const url = original.toDataURL();
+        const imagePartUrls = await ImageHelper.generateImageParts(url, this._workingColors);
+        const textures = imagePartUrls.map((uri) => {
+          const texture = this._createTexture(uri);
+          return texture;
+        });
+        const colors = this._workingColors.map((color) => Utils.rgb2hex(color));
+        this._canvas.visible = false;
+        this._applyTexturesToGeometries(textures, colors, imagePartUrls);
+      }
     }
   }, 2000);
 
@@ -444,7 +469,7 @@ export class Boundary {
         Utils.testHexMatch(v.color, colors[index]),
       );
       if (entryIndex === -1 && !used.has(entryIndex)) {
-        this._applyDefaultMatteMaterial(geo, colors[index], textures[index]);
+        this._applyDefaultMatteMaterial(geo, textures[index]);
       } else {
         used.add(entryIndex);
         const entry = this._textureApplication[entryIndex];
@@ -453,7 +478,7 @@ export class Boundary {
             this._applyMetallicMaterial(geo, colors[index], textures[index]);
             break;
           case TextureOption.Matte:
-            this._applyDefaultMatteMaterial(geo, colors[index], textures[index]);
+            this._applyDefaultMatteMaterial(geo, textures[index]);
             break;
           case TextureOption.Crystals:
             await this._applyCrystalsMaterial(geo, colors[index], textures[index]);
@@ -464,7 +489,6 @@ export class Boundary {
             break;
         }
       }
-      (geo.material as THREE.Material).needsUpdate = true;
     });
   }
 
@@ -488,26 +512,34 @@ export class Boundary {
       alphaMap: alphaTexture,
       opacity: 1,
       transparent: true,
+      depthTest: false,
+      depthWrite: false,
     });
     geo.material = material;
   }
 
   private _applyMetallicMaterial(geo: THREE.Mesh, color: string, texture: THREE.Texture): void {
-    (geo.material as THREE.MeshStandardMaterial).setValues({
+    const material = this._canvasMaterial.clone();
+    material.setValues({
       color: `#${color}`,
-      metalness: 0.2,
-      roughness: 0.3,
+      metalness: 0.7,
+      roughness: 0.35,
       opacity: 1,
       map: texture,
     });
+    geo.material = material;
   }
 
-  private _applyDefaultMatteMaterial(geo: THREE.Mesh, color: string, texture: THREE.Texture): void {
-    (geo.material as THREE.MeshStandardMaterial).setValues({
+  private _applyDefaultMatteMaterial(geo: THREE.Mesh, texture: THREE.Texture): void {
+    const material = new THREE.MeshBasicMaterial({
       opacity: 1,
-      color: `#${color}`,
       map: texture,
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+      toneMapped: false,
     });
+    geo.material = material;
   }
 
   private async _applyCrystalsMaterial(
@@ -515,10 +547,6 @@ export class Boundary {
     color: string,
     texture: THREE.Texture,
   ): Promise<void> {
-    // const { uri: alphaUri } = await ImageHelper.generateAlphaMap(imagePartUrl);
-    // const finalAlphaUri = await ImageHelper.mergeAlphaMap(alphaUri, crystalAlpha);
-    // const alphaTexture = Boundary.textureLoader.load(finalAlphaUri);
-    // alphaTexture.flipY = false;
     const normalMap = Boundary.crystalNormalTexture.clone();
     normalMap.wrapS = THREE.RepeatWrapping;
     normalMap.wrapT = THREE.RepeatWrapping;
@@ -527,14 +555,18 @@ export class Boundary {
     alphaMap.wrapS = THREE.RepeatWrapping;
     alphaMap.wrapT = THREE.RepeatWrapping;
     alphaMap.repeat.set(Math.sign(this._normalUV.x), -Math.sign(this._normalUV.y));
-    (geo.material as THREE.MeshStandardMaterial).setValues({
+    const material = this._canvasMaterial.clone();
+    material.setValues({
       opacity: 1,
       color: `#${color}`,
+      metalness: 0.7,
+      roughness: 0.35,
       map: texture,
       normalMap,
       alphaMap,
       transparent: true,
     });
+    geo.material = material;
   }
 
   resetBoundary = () => {

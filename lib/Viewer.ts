@@ -316,6 +316,7 @@ export class Viewer3D {
       yRatio?: number;
       rotation?: number;
       sizeRatio?: number;
+      shouldShowOriginalArtwork?: boolean;
     }[];
     disableEditing?: boolean;
   }) => {
@@ -333,6 +334,7 @@ export class Viewer3D {
         yRatio,
         rotation,
         sizeRatio,
+        shouldShowOriginalArtwork,
       }) => {
         this.changeArtwork(
           {
@@ -343,6 +345,7 @@ export class Viewer3D {
             yRatio,
             rotation,
             sizeRatio,
+            shouldShowOriginalArtwork,
           },
           disableEditing,
         );
@@ -434,6 +437,7 @@ export class Viewer3D {
       yRatio?: number;
       rotation?: number;
       sizeRatio?: number;
+      shouldShowOriginalArtwork?: boolean;
     },
     disableEditing = true,
   ) => {

@@ -111,6 +111,7 @@ export class BoundaryManager {
       yRatio?: number;
       rotation?: number;
       sizeRatio?: number;
+      shouldShowOriginalArtwork?: boolean;
     },
     disableEditing = true,
   ) => {
@@ -122,6 +123,7 @@ export class BoundaryManager {
       sizeRatio = 0.5,
       artworkUrl,
       canvas,
+      shouldShowOriginalArtwork,
     } = options;
 
     let boundaryObj = this.findByName(boundary) ?? null;
@@ -135,6 +137,7 @@ export class BoundaryManager {
       sizeRatio,
       onArtworkChanged: this._onArtworkChanged,
       disableEditing,
+      shouldShowOriginalArtwork,
     });
     return boundaryObj;
   };

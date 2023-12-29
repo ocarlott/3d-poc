@@ -2,7 +2,7 @@ import * as THREE from 'three';
 
 export class LightManager {
   private _lights: { position: THREE.Vector3; light: THREE.SpotLight }[] = [];
-  private _ambientLight = new THREE.AmbientLight('#f1e9e9', 2.5);
+  private _ambientLight = new THREE.AmbientLight('#f1e9e9', 3);
   private _lightGroup = new THREE.Group();
   private _lightGroupHeper = new THREE.Group();
   private _spotLightHelpers: THREE.SpotLightHelper[] = [];

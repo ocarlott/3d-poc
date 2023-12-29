@@ -21,7 +21,7 @@ export function RSidebarViewModel({
     const boundary =
       (await viewer?.changeArtwork(
         {
-          boundary: 'ContourFitJacket_boundary_front',
+          boundary: 'LongSleeveVneck_boundary_front',
           canvas: model.canvas2DContainerRef.current ?? undefined,
           artworkUrl: './logo.png',
           sizeRatio: 0.5,
@@ -67,11 +67,7 @@ export function RSidebarViewModel({
 
   function changeTexture() {
     if (viewer) {
-      viewer.changeArtworkTexture(
-        'LongSleeveVneck_boundary_front',
-        '3585c9',
-        TextureOption.Glitter,
-      );
+      viewer.changeArtworkTexture('LongSleeveVneck_boundary_front', '3585c9', TextureOption.Matte);
     }
   }
 
