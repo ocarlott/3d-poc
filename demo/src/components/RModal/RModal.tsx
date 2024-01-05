@@ -2,7 +2,6 @@ import Modal from 'react-modal';
 import { ValidationResults } from '../../types';
 import { Viewer3D } from 'microstore-3d';
 import { RModalViewModel } from './RModalViewModel';
-import { RModalModel } from './RModalModel';
 import { RModalView } from './RModalView';
 
 Modal.setAppElement('#root'); // Set the root element for the modal
