@@ -64,6 +64,20 @@ export function RSidebarViewModel({
       }
     };
   }
+  function resetAllColorsToDefault() {
+    return () => {
+      if (viewer) {
+        viewer.resetAllColorsToDefault();
+      }
+    };
+  }
+  function resetAllBoundaries() {
+    return () => {
+      if (viewer) {
+        viewer.resetAllBoundaries();
+      }
+    };
+  }
 
   function changeTexture() {
     if (viewer) {
@@ -142,5 +156,7 @@ export function RSidebarViewModel({
     takeSnapshot45,
     takeSnapshot,
     changeTexture,
+    resetAllColorsToDefault,
+    resetAllBoundaries,
   };
 }

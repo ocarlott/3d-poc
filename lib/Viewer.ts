@@ -230,7 +230,15 @@ export class Viewer3D {
   };
 
   resetModel = () => {
-    this._groupManager.resetAllToWhite();
+    this.resetAllColorsToDefault();
+    this.resetAllBoundaries();
+  };
+
+  resetAllColorsToDefault = () => {
+    this._groupManager.resetAllColorsToDefault();
+  };
+
+  resetAllBoundaries = () => {
     this._boundaryManager.resetAllBoundarys();
   };
 
@@ -410,7 +418,7 @@ export class Viewer3D {
     const screenshots = await this.takeScreenShotAuto();
     const techpackImages = await this.createTechPack();
     this._boundaryManager.removeAllBoundaryArtworks();
-    this._groupManager.resetAllToWhite();
+    this._groupManager.resetAllColorsToDefault();
     return {
       boundaries: boundaryNames,
       techPacks: techPackNames,

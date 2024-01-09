@@ -13,6 +13,8 @@ export function RSidebarView(props: {
   createTechpack: () => () => any;
   uploadModel: () => () => any;
   validateModel: () => () => any;
+  resetAllColorsToDefault: () => () => any;
+  resetAllBoundaries: () => () => any;
   resetModel: () => () => any;
   onFileChange: () => () => any;
   canvas2DContainerRef: React.RefObject<HTMLCanvasElement>;
@@ -33,6 +35,8 @@ export function RSidebarView(props: {
       <Button onClick={props.createTechpack()}>Create Tech Pack</Button>
       <Button onClick={props.uploadModel()}>Upload Model</Button>
       <Button onClick={props.validateModel()}>Validate Model</Button>
+      <Button onClick={props.resetAllColorsToDefault()}>Reset All Colors To Default</Button>
+      <Button onClick={props.resetAllBoundaries()}>Reset All Boundaries</Button>
       <Button onClick={props.resetModel()}>Reset Model</Button>
 
       <canvas

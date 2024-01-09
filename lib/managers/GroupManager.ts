@@ -50,6 +50,12 @@ export class GroupManager {
 
           if (displayNameForChangableGroup) {
             this.workingAssetGroup!.add(castedChild);
+            if (!castedChild.userData) {
+              castedChild.userData = {};
+            }
+            castedChild.userData['defaultColor'] = (
+              castedChild.material as THREE.MeshStandardMaterial
+            ).color.getHexString();
           }
         }
       }
@@ -93,15 +99,16 @@ export class GroupManager {
     this.techPackGroup && (this.techPackGroup.visible = isInDeveloperMode);
   }
 
-  resetAllToWhite() {
+  resetAllColorsToDefault() {
     this._modelGroup.traverse((child) => {
       const castedChild = child as THREE.Mesh;
       const castedChildMaterial = castedChild.material as THREE.MeshStandardMaterial;
       if (castedChild.isMesh && !!castedChildMaterial) {
-        castedChildMaterial.setValues({
-          color: 'white',
-          // wireframe: true,
-        });
+        castedChild.userData?.['defaultColor'] &&
+          castedChildMaterial.setValues({
+            color: new THREE.Color('#' + castedChild.userData['defaultColor']),
+            // wireframe: true,
+          });
       }
     });
   }

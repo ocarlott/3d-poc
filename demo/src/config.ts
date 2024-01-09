@@ -3,8 +3,8 @@ import { TextureOption } from 'microstore-3d/lib/type';
 export const defaultModelConfig = {
   colorMap: [
     {
-      layerName: 'ContourFitJacket_changeable_group_1_front',
-      color: '#ffffff',
+      layerName: 'LongSleeveVneck_changeable_group_1_front',
+      color: '#ff0000',
     },
     {
       layerName: 'ContourFitJacket_changeable_group_2_back',
