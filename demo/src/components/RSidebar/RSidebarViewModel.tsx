@@ -1,6 +1,7 @@
 import { TextureOption, Viewer3D } from 'microstore-3d';
 import { ValidationResults } from '../../types';
 import { RSidebarModel } from './RSidebarModel';
+import { defaultModelConfig } from '../../config';
 
 type RSidebarViewModelProps = {
   viewer: Viewer3D | null;
@@ -16,12 +17,13 @@ export function RSidebarViewModel({
   setValidationResult,
 }: RSidebarViewModelProps) {
   const model = RSidebarModel();
+  let currentTexture: TextureOption | null = null;
 
   const addArtwork = async () => {
     const boundary =
       (await viewer?.changeArtwork(
         {
-          boundary: 'LongSleeveVneck_boundary_front',
+          boundary: defaultModelConfig.app.boundary,
           canvas: model.canvas2DContainerRef.current ?? undefined,
           artworkUrl: './logo.png',
           sizeRatio: 0.5,
@@ -38,7 +40,7 @@ export function RSidebarViewModel({
   const toggleDeveloperMode = () => viewer?.toggleDeveloperMode();
 
   const removeArtwork = () => {
-    viewer?.removeArtwork('ContourFitJacket_boundary_front');
+    viewer?.removeArtwork(defaultModelConfig.app.boundary);
     model.setBoundaryActive(false);
   };
 
@@ -80,8 +82,21 @@ export function RSidebarViewModel({
   }
 
   function changeTexture() {
-    if (viewer) {
-      viewer.changeArtworkTexture('LongSleeveVneck_boundary_front', '3585c9', TextureOption.Matte);
+    let textures = [
+      TextureOption.Matte,
+      TextureOption.Crystals,
+      TextureOption.Metallic,
+      TextureOption.Glitter,
+    ];
+
+    if (!currentTexture || textures.indexOf(currentTexture) === -1) {
+      currentTexture = textures[0];
+    } else {
+      currentTexture = textures[(textures.indexOf(currentTexture) + 1) % textures.length];
+    }
+
+    if (viewer && currentTexture) {
+      viewer.changeArtworkTexture(defaultModelConfig.app.boundary, '3585c9', currentTexture);
     }
   }
 

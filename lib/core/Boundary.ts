@@ -56,7 +56,7 @@ export class Boundary {
       map: null,
       transparent: true,
       // color: 'white',
-      side: THREE.DoubleSide,
+      side: THREE.FrontSide,
       toneMapped: false,
       blending: THREE.CustomBlending,
       opacity: 0,
@@ -431,9 +431,9 @@ export class Boundary {
           map: texture,
           transparent: true,
           opacity: 1,
-          depthTest: false,
+          depthTest: true,
           depthWrite: false,
-          side: THREE.DoubleSide,
+          side: THREE.FrontSide,
           toneMapped: false,
         });
       } else {
@@ -512,7 +512,7 @@ export class Boundary {
       alphaMap: alphaTexture,
       opacity: 1,
       transparent: true,
-      depthTest: false,
+      depthTest: true,
       depthWrite: false,
     });
     geo.material = material;
@@ -535,7 +535,7 @@ export class Boundary {
       opacity: 1,
       map: texture,
       transparent: true,
-      depthTest: false,
+      depthTest: true,
       depthWrite: false,
       toneMapped: false,
     });

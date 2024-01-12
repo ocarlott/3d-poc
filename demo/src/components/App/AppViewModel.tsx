@@ -13,8 +13,8 @@ export function AppViewModel() {
 
     const viewer = new Viewer3D(canvasElement);
     model.setViewer(viewer);
-    await viewer.loadModel('./tshirt.glb', () => {});
-    viewer.configureModel(defaultModelConfig);
+    await viewer.loadModel(defaultModelConfig.app.glb, () => {});
+    viewer.configureModel(defaultModelConfig.configure);
     return viewer;
   };
 
