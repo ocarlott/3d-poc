@@ -216,7 +216,6 @@ export class Boundary {
     }
     this._canvasWidth = wCanvas.width;
     this._canvasHeight = wCanvas.height;
-    this._workingCanvas2D?.removeListeners();
     this._workingCanvas2D = new fabric.Canvas(wCanvas);
     if (workingCanvas) {
       this._workingCanvas2D.on('after:render', this._renderCanvasOnBoundary);
@@ -262,12 +261,12 @@ export class Boundary {
       shouldShowOriginalArtwork = false,
     } = options;
 
-    this.resetBoundary();
-    this._onArtworkChanged = onArtworkChanged;
-    let computedArtworkUrl = artworkUrl;
-    this._shouldShowOriginalArtwork = shouldShowOriginalArtwork;
-    if (this._artworkUrl !== artworkUrl) {
-      this._clearCanvasList();
+    if (artworkUrl !== this._artworkUrl) {
+      this.resetBoundary();
+      this._onArtworkChanged = onArtworkChanged;
+      let computedArtworkUrl = artworkUrl;
+      this._shouldShowOriginalArtwork = shouldShowOriginalArtwork;
+
       if (!shouldShowOriginalArtwork) {
         const { computed, colorList } = await this._reduceImageColor(artworkUrl);
         computedArtworkUrl = computed;
@@ -277,21 +276,22 @@ export class Boundary {
         this._canvasList = this._createCanvasList([1]);
       }
       this.group.add(...this._canvasList);
-    }
 
-    this._artworkUrl = artworkUrl;
-    this._configure2DCanvas(workingCanvas);
-    const { canvasHeight, canvasWidth, clipPathHeight, clipPathWidth } = this._getClipPathSize();
-    const img = await this._createFabricImage(computedArtworkUrl);
-    this._scaleImage(img, clipPathWidth, clipPathHeight, sizeRatio);
-    this._setPositionImage(img, canvasWidth, xRatio, canvasHeight, yRatio);
-    this._configureImage(img, rotation, disableEditing);
+      this._artworkUrl = artworkUrl;
+      this._configure2DCanvas(workingCanvas);
+      const { canvasHeight, canvasWidth, clipPathHeight, clipPathWidth } = this._getClipPathSize();
+      const img = await this._createFabricImage(computedArtworkUrl);
+      this._scaleImage(img, clipPathWidth, clipPathHeight, sizeRatio);
+      this._setPositionImage(img, canvasWidth, xRatio, canvasHeight, yRatio);
+      this._configureImage(img, rotation, disableEditing);
 
-    this._workingCanvas2D?.add(img);
-    if (!disableEditing) {
-      this._workingCanvas2D?.setActiveObject(img);
+      this._workingCanvas2D?.remove(...this._workingCanvas2D?.getObjects());
+      this._workingCanvas2D?.add(img);
+      if (!disableEditing) {
+        this._workingCanvas2D?.setActiveObject(img);
+      }
+      await this._renderCanvasOnBoundary();
     }
-    await this._renderCanvasOnBoundary();
   };
 
   private _reduceImageColor = async (artworkUrl: string) => {
@@ -569,10 +569,11 @@ export class Boundary {
     geo.material = material;
   }
 
-  resetBoundary = () => {
+  resetBoundary = async () => {
     this.resetTextureApplication();
     this._workingCanvas2D?.clear();
-    this._workingCanvas2D?.dispose();
+    this._workingCanvas2D?.removeListeners();
+    await this._workingCanvas2D?.dispose();
     this._workingCanvas2D = undefined;
     this._artworkUrl = '';
     Utils3D.disposeMaps(this._canvasMaterial);
