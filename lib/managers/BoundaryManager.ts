@@ -30,7 +30,10 @@ export class BoundaryManager {
   }
 
   resetAllBoundarys() {
-    this._boundaryList.forEach((bd) => bd.resetBoundary());
+    this._boundaryList.forEach((bd) => {
+      bd.resetBoundary();
+      bd.disposeCanvas2D();
+    });
   }
 
   findByName(name: string) {
@@ -149,6 +152,7 @@ export class BoundaryManager {
   removeArtwork = (boundary: string) => {
     const rBoundary = this.findByName(boundary);
     rBoundary?.resetBoundary();
+    rBoundary?.disposeCanvas2D();
   };
 
   removeAllBoundaryArtworks = () => {

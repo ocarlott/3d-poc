@@ -209,22 +209,28 @@ export class Boundary {
   }
 
   private _configure2DCanvas = (workingCanvas?: HTMLCanvasElement) => {
-    const wCanvas = workingCanvas || window.document.createElement('canvas');
-    if (!workingCanvas) {
-      wCanvas.width = 300;
-      wCanvas.height = 300;
+    if (workingCanvas?.id !== `initialized-${this._canvas.name}`) {
+      const wCanvas = workingCanvas || window.document.createElement('canvas');
+      if (!workingCanvas) {
+        wCanvas.width = 300;
+        wCanvas.height = 300;
+      }
+      wCanvas.id = `initialized-${this._canvas.name}`;
+      this._canvasWidth = wCanvas.width;
+      this._canvasHeight = wCanvas.height;
+      this._workingCanvas2D = new fabric.Canvas(wCanvas);
+      if (workingCanvas) {
+        this._workingCanvas2D.on('after:render', this._renderCanvasOnBoundary);
+        this._workingCanvas2D.on('object:moving', this._onArtworkMove);
+        this._workingCanvas2D.on('object:scaling', this._onArtworkResize);
+        this._workingCanvas2D.on('object:rotating', this._onArtworkRotate);
+      }
+      this._workingCanvas2D.clipPath = this._generateClipPath(
+        this._canvasWidth,
+        this._canvasHeight,
+      );
+      this._workingCanvas2D.backgroundColor = 'rgba(0, 0, 0, 0.1)';
     }
-    this._canvasWidth = wCanvas.width;
-    this._canvasHeight = wCanvas.height;
-    this._workingCanvas2D = new fabric.Canvas(wCanvas);
-    if (workingCanvas) {
-      this._workingCanvas2D.on('after:render', this._renderCanvasOnBoundary);
-      this._workingCanvas2D.on('object:moving', this._onArtworkMove);
-      this._workingCanvas2D.on('object:scaling', this._onArtworkResize);
-      this._workingCanvas2D.on('object:rotating', this._onArtworkRotate);
-    }
-    this._workingCanvas2D.clipPath = this._generateClipPath(this._canvasWidth, this._canvasHeight);
-    this._workingCanvas2D.backgroundColor = 'rgba(0, 0, 0, 0.1)';
   };
 
   organizeGroup = () => {
@@ -261,8 +267,10 @@ export class Boundary {
       shouldShowOriginalArtwork = false,
     } = options;
 
-    if (artworkUrl !== this._artworkUrl) {
-      this.resetBoundary();
+    if (workingCanvas?.id !== this._workingCanvas2D?.getElement?.().id) {
+      await this.disposeCanvas2D();
+
+      await this.resetBoundary();
       this._onArtworkChanged = onArtworkChanged;
       let computedArtworkUrl = artworkUrl;
       this._shouldShowOriginalArtwork = shouldShowOriginalArtwork;
@@ -290,8 +298,8 @@ export class Boundary {
       if (!disableEditing) {
         this._workingCanvas2D?.setActiveObject(img);
       }
-      await this._renderCanvasOnBoundary();
     }
+    await this._renderCanvasOnBoundary();
   };
 
   private _reduceImageColor = async (artworkUrl: string) => {
@@ -571,10 +579,6 @@ export class Boundary {
 
   resetBoundary = async () => {
     this.resetTextureApplication();
-    this._workingCanvas2D?.clear();
-    this._workingCanvas2D?.removeListeners();
-    await this._workingCanvas2D?.dispose();
-    this._workingCanvas2D = undefined;
     this._artworkUrl = '';
     Utils3D.disposeMaps(this._canvasMaterial);
     this._canvasMaterial.setValues({
@@ -583,6 +587,13 @@ export class Boundary {
       alphaMap: null,
     });
     this._clearCanvasList();
+  };
+
+  disposeCanvas2D = async () => {
+    this._workingCanvas2D?.clear();
+    this._workingCanvas2D?.removeListeners();
+    await this._workingCanvas2D?.dispose();
+    this._workingCanvas2D = undefined;
   };
 
   hasArtwork = () => {
