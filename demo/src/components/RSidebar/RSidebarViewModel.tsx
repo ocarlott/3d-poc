@@ -123,7 +123,7 @@ export function RSidebarViewModel({
     return async () => {
       if (viewer) {
         const newImages = await viewer.createTechPack();
-        model.setImages(model.images.concat(newImages));
+        model.setImages(model.images.concat(newImages.map((img) => img.image)));
       }
     };
   }

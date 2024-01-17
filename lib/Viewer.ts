@@ -545,7 +545,7 @@ export class Viewer3D {
       },
     });
 
-    const result: string[] = [];
+    const result: { name: string; image: string }[] = [];
     if (techPackGroup && workingAssetGroup) {
       techPackGroup.visible = true;
       techPackGroup.children.forEach((child) => {
@@ -582,7 +582,10 @@ export class Viewer3D {
         controlsManager,
         techPackGroup,
       );
-      result.push(img);
+      result.push({
+        name: 'whole',
+        image: img,
+      });
 
       const layerList = techPackGroup.children.filter((child) => child.name.includes('changeable'));
       layerList.forEach((child) => (child.visible = false));
@@ -596,7 +599,12 @@ export class Viewer3D {
           controlsManager,
           child,
         );
-        result.push(img);
+        const name = child.name.replace('_flat', '');
+        const displayName = Utils.getDisplayNameIfChangeableGroup(name);
+        result.push({
+          name: displayName?.displayName?.toLowerCase()?.replace(' ', '_') || name,
+          image: img,
+        });
 
         child.visible = false;
       }

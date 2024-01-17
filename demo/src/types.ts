@@ -3,7 +3,10 @@ export type ValidationResults = {
   techPacks: string[];
   layers: string[];
   screenshots: string[];
-  techpackImages: string[];
+  techpackImages: {
+    name: string;
+    image: string;
+  }[];
   materialMatches: {
     boundaryName: string;
     result: boolean;

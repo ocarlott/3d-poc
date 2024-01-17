@@ -156,7 +156,7 @@ function TechPackImagesSection({ validationResults }: { validationResults: Valid
       </Info>
       <ImageContainer>
         {validationResults.techpackImages.map((item, index) => (
-          <Image src={item} key={'techpack' + index} />
+          <Image src={item.image} key={'techpack' + index} />
         ))}
       </ImageContainer>
     </>
