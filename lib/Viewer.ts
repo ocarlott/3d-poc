@@ -313,7 +313,7 @@ export class Viewer3D {
     this._axesHelper.visible = this._isInDeveloperMode;
   };
 
-  configureModel = (options: {
+  configureModel = async (options: {
     colorMap: { layerName: string; color: string }[];
     artworkMap: {
       boundaryName: string;
@@ -332,35 +332,39 @@ export class Viewer3D {
     colorMap.forEach((colorConfig) => {
       this.changeColor(colorConfig.layerName, colorConfig.color);
     });
-    artworkMap.forEach(
-      ({
-        artworkUrl,
-        textureApplication = [],
-        canvas,
-        boundaryName,
-        xRatio,
-        yRatio,
-        rotation,
-        sizeRatio,
-        shouldShowOriginalArtwork,
-      }) => {
-        this.changeArtwork(
-          {
-            artworkUrl,
-            canvas,
-            boundary: boundaryName,
-            xRatio,
-            yRatio,
-            rotation,
-            sizeRatio,
-            shouldShowOriginalArtwork,
-          },
-          disableEditing,
-        );
-        textureApplication.forEach((app) => {
-          this.changeArtworkTexture(boundaryName, app.color, app.textureOption);
-        });
-      },
+    await Promise.all(
+      artworkMap.map(
+        async ({
+          artworkUrl,
+          textureApplication = [],
+          canvas,
+          boundaryName,
+          xRatio,
+          yRatio,
+          rotation,
+          sizeRatio,
+          shouldShowOriginalArtwork,
+        }) => {
+          await this.changeArtwork(
+            {
+              artworkUrl,
+              canvas,
+              boundary: boundaryName,
+              xRatio,
+              yRatio,
+              rotation,
+              sizeRatio,
+              shouldShowOriginalArtwork,
+            },
+            disableEditing,
+          );
+          return await Promise.all(
+            textureApplication.map(async (app) => {
+              return this.changeArtworkTexture(boundaryName, app.color, app.textureOption);
+            }),
+          );
+        },
+      ),
     );
   };
 

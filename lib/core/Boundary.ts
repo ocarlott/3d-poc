@@ -267,7 +267,10 @@ export class Boundary {
       shouldShowOriginalArtwork = false,
     } = options;
 
-    if (workingCanvas?.id !== this._workingCanvas2D?.getElement?.().id) {
+    if (
+      (workingCanvas && workingCanvas.id !== this._workingCanvas2D?.getElement?.().id) ||
+      !workingCanvas
+    ) {
       await this.disposeCanvas2D();
 
       await this.resetBoundary();
@@ -406,7 +409,9 @@ export class Boundary {
   };
 
   private _renderCanvasOnBoundary = _.throttle(async () => {
+    console.log(1);
     if (this._workingCanvas2D) {
+      console.log(2);
       const copy = await this._workingCanvas2D.clone(['elements']);
       copy.backgroundColor = 'rgba(0, 0, 0, 0)';
       const original = copy.toCanvasElement();
@@ -423,7 +428,11 @@ export class Boundary {
   }, 20);
 
   private _finalizeCanvasOnBoundary = _.throttle(async () => {
+    console.log(3);
     if (this._workingCanvas2D) {
+      console.log({
+        m: this._textureApplication,
+      });
       this._canvasMaterial.opacity = 0;
       const copy = await this._workingCanvas2D.clone(['elements']);
       copy.backgroundColor = 'rgba(0, 0, 0, 0)';
