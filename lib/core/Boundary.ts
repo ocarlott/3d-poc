@@ -14,12 +14,14 @@ export class Boundary {
   private _boundaryRatio: number;
   readonly center: THREE.Vector3;
   private _canvas: THREE.Mesh;
+  private _techPackCanvas: THREE.Mesh;
   private _canvasMaterial: THREE.MeshPhysicalMaterial;
   private _canvasList: THREE.Mesh[] = [];
+  private _techPackCanvasList: THREE.Mesh[] = [];
   private _useWidthToScale = false;
   readonly normal = new THREE.Vector3(0, 0, 0);
   readonly name: string;
-  private _workingCanvas2D?: fabric.Canvas;
+  private _workingCanvas2D: fabric.Canvas;
   private _onArtworkChanged?: (params: {
     forBoundary: string;
     xRatio: number;
@@ -32,8 +34,8 @@ export class Boundary {
   private _xRatio = 0.5;
   private _yRatio = 0.5;
   private _rotation = 0;
-  private _canvasWidth = 0;
-  private _canvasHeight = 0;
+  private _canvasWidth = 300;
+  private _canvasHeight = 300;
   private _workingColors: number[][] = [];
   private _textureApplication: {
     color: string;
@@ -51,15 +53,19 @@ export class Boundary {
 
   constructor(canvas: THREE.Mesh, techPackCanvas: THREE.Mesh) {
     this._canvas = canvas;
+    this._techPackCanvas = techPackCanvas;
     this._canvasMaterial = this._canvas.material as THREE.MeshPhysicalMaterial;
     this._canvasMaterial.setValues({
       map: null,
       transparent: true,
-      // color: 'white',
       side: THREE.FrontSide,
       toneMapped: false,
       blending: THREE.CustomBlending,
       opacity: 0,
+    });
+    (techPackCanvas.material as THREE.MeshPhysicalMaterial).setValues({
+      map: null,
+      transparent: true,
     });
     this.name = this._initializeCanvas(canvas);
     this._initializeGroup();
@@ -75,6 +81,12 @@ export class Boundary {
     this._normalUV = this._calculateNormalUV(uvPoints);
     this._normalUVHelper = this._calculateNormalUVHelper(this._normalUV, biggerSide);
     this._addHelpersToGroup();
+
+    const canvasElement = window.document.createElement('canvas');
+    canvasElement.width = 300;
+    canvasElement.height = 300;
+    this._workingCanvas2D = new fabric.Canvas(canvasElement);
+    this._configure2DCanvas();
   }
 
   private _initializeCanvas(canvas: THREE.Mesh) {
@@ -208,29 +220,17 @@ export class Boundary {
     return this._canvasList;
   }
 
-  private _configure2DCanvas = (workingCanvas?: HTMLCanvasElement) => {
-    if (workingCanvas?.id !== `initialized-${this._canvas.name}`) {
-      const wCanvas = workingCanvas || window.document.createElement('canvas');
-      if (!workingCanvas) {
-        wCanvas.width = 300;
-        wCanvas.height = 300;
-      }
-      wCanvas.id = `initialized-${this._canvas.name}`;
-      this._canvasWidth = wCanvas.width;
-      this._canvasHeight = wCanvas.height;
-      this._workingCanvas2D = new fabric.Canvas(wCanvas);
-      if (workingCanvas) {
-        this._workingCanvas2D.on('after:render', this._renderCanvasOnBoundary);
-        this._workingCanvas2D.on('object:moving', this._onArtworkMove);
-        this._workingCanvas2D.on('object:scaling', this._onArtworkResize);
-        this._workingCanvas2D.on('object:rotating', this._onArtworkRotate);
-      }
-      this._workingCanvas2D.clipPath = this._generateClipPath(
-        this._canvasWidth,
-        this._canvasHeight,
-      );
-      this._workingCanvas2D.backgroundColor = 'rgba(0, 0, 0, 0.1)';
-    }
+  get imageEditor() {
+    return this._workingCanvas2D.elements.container;
+  }
+
+  private _configure2DCanvas = () => {
+    this._workingCanvas2D.on('after:render', this._renderCanvasOnBoundary);
+    this._workingCanvas2D.on('object:moving', this._onArtworkMove);
+    this._workingCanvas2D.on('object:scaling', this._onArtworkResize);
+    this._workingCanvas2D.on('object:rotating', this._onArtworkRotate);
+    this._workingCanvas2D.clipPath = this._generateClipPath(this._canvasWidth, this._canvasHeight);
+    this._workingCanvas2D.backgroundColor = 'rgba(0, 0, 0, 0.1)';
   };
 
   organizeGroup = () => {
@@ -238,7 +238,6 @@ export class Boundary {
   };
 
   addArtwork = async (options: {
-    workingCanvas?: HTMLCanvasElement;
     artworkUrl: string;
     xRatio: number;
     yRatio: number;
@@ -261,46 +260,39 @@ export class Boundary {
       yRatio,
       rotation,
       sizeRatio,
-      workingCanvas,
       onArtworkChanged,
       disableEditing = true,
       shouldShowOriginalArtwork = false,
     } = options;
 
-    if (
-      (workingCanvas && workingCanvas.id !== this._workingCanvas2D?.getElement?.().id) ||
-      !workingCanvas
-    ) {
-      await this.disposeCanvas2D();
+    await this.resetBoundary();
+    this._onArtworkChanged = onArtworkChanged;
+    let computedArtworkUrl = artworkUrl;
+    this._shouldShowOriginalArtwork = shouldShowOriginalArtwork;
 
-      await this.resetBoundary();
-      this._onArtworkChanged = onArtworkChanged;
-      let computedArtworkUrl = artworkUrl;
-      this._shouldShowOriginalArtwork = shouldShowOriginalArtwork;
+    if (!shouldShowOriginalArtwork) {
+      const { computed, colorList } = await this._reduceImageColor(artworkUrl);
+      computedArtworkUrl = computed;
+      this._canvasList = this._createCanvasList(colorList);
+      this._techPackCanvasList = this._createTechPackCanvasList(colorList);
+      this._workingColors = colorList;
+    } else {
+      this._canvasList = this._createCanvasList([1]);
+      this._techPackCanvasList = this._createTechPackCanvasList([1]);
+    }
+    this.group.add(...this._canvasList);
 
-      if (!shouldShowOriginalArtwork) {
-        const { computed, colorList } = await this._reduceImageColor(artworkUrl);
-        computedArtworkUrl = computed;
-        this._canvasList = this._createCanvasList(colorList);
-        this._workingColors = colorList;
-      } else {
-        this._canvasList = this._createCanvasList([1]);
-      }
-      this.group.add(...this._canvasList);
+    this._artworkUrl = artworkUrl;
+    const { canvasHeight, canvasWidth, clipPathHeight, clipPathWidth } = this._getClipPathSize();
+    const img = await this._createFabricImage(computedArtworkUrl);
+    this._scaleImage(img, clipPathWidth, clipPathHeight, sizeRatio);
+    this._setPositionImage(img, canvasWidth, xRatio, canvasHeight, yRatio);
+    this._configureImage(img, rotation, disableEditing);
 
-      this._artworkUrl = artworkUrl;
-      this._configure2DCanvas(workingCanvas);
-      const { canvasHeight, canvasWidth, clipPathHeight, clipPathWidth } = this._getClipPathSize();
-      const img = await this._createFabricImage(computedArtworkUrl);
-      this._scaleImage(img, clipPathWidth, clipPathHeight, sizeRatio);
-      this._setPositionImage(img, canvasWidth, xRatio, canvasHeight, yRatio);
-      this._configureImage(img, rotation, disableEditing);
-
-      this._workingCanvas2D?.remove(...this._workingCanvas2D?.getObjects());
-      this._workingCanvas2D?.add(img);
-      if (!disableEditing) {
-        this._workingCanvas2D?.setActiveObject(img);
-      }
+    this._workingCanvas2D.remove(...this._workingCanvas2D.getObjects());
+    this._workingCanvas2D.add(img);
+    if (!disableEditing) {
+      this._workingCanvas2D.setActiveObject(img);
     }
     await this._renderCanvasOnBoundary();
   };
@@ -324,6 +316,15 @@ export class Boundary {
   private _createCanvasList = (colorList: any[]) => {
     return colorList.map(() => {
       const canvas = this._canvas.clone();
+      canvas.material = this._canvasMaterial.clone();
+      canvas.visible = true;
+      return canvas;
+    });
+  };
+
+  private _createTechPackCanvasList = (colorList: any[]) => {
+    return colorList.map(() => {
+      const canvas = this._techPackCanvas.clone();
       canvas.material = this._canvasMaterial.clone();
       canvas.visible = true;
       return canvas;
@@ -409,9 +410,7 @@ export class Boundary {
   };
 
   private _renderCanvasOnBoundary = _.throttle(async () => {
-    console.log(1);
-    if (this._workingCanvas2D) {
-      console.log(2);
+    if (this._artworkUrl) {
       const copy = await this._workingCanvas2D.clone(['elements']);
       copy.backgroundColor = 'rgba(0, 0, 0, 0)';
       const original = copy.toCanvasElement();
@@ -428,11 +427,7 @@ export class Boundary {
   }, 20);
 
   private _finalizeCanvasOnBoundary = _.throttle(async () => {
-    console.log(3);
-    if (this._workingCanvas2D) {
-      console.log({
-        m: this._textureApplication,
-      });
+    if (this._artworkUrl) {
       this._canvasMaterial.opacity = 0;
       const copy = await this._workingCanvas2D.clone(['elements']);
       copy.backgroundColor = 'rgba(0, 0, 0, 0)';
@@ -466,6 +461,22 @@ export class Boundary {
       }
     }
   }, 2000);
+
+  prepareForTechpack = async () => {
+    if (this._artworkUrl) {
+      const copy = await this._workingCanvas2D.clone(['elements']);
+      copy.backgroundColor = 'rgba(0, 0, 0, 0)';
+      const original = copy.toCanvasElement();
+      const texture = new THREE.CanvasTexture(original);
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.RepeatWrapping;
+      texture.repeat.set(Math.sign(this._normalUV.x), -Math.sign(this._normalUV.y));
+      texture.colorSpace = THREE.SRGBColorSpace;
+      (this._techPackCanvas.material as THREE.MeshPhysicalMaterial).setValues({
+        map: texture,
+      });
+    }
+  };
 
   private _createTexture(uri: string): THREE.Texture {
     const texture = new THREE.TextureLoader().load(uri);
@@ -599,15 +610,16 @@ export class Boundary {
   };
 
   disposeCanvas2D = async () => {
-    this._workingCanvas2D?.clear();
-    this._workingCanvas2D?.removeListeners();
-    await this._workingCanvas2D?.dispose();
-    this._workingCanvas2D = undefined;
+    this._workingCanvas2D.clear();
   };
 
   hasArtwork = () => {
-    return !!this._workingCanvas2D;
+    return !!this._artworkUrl;
   };
+
+  get artworkURL() {
+    return this._artworkUrl;
+  }
 
   exportArtworkData = () => {
     return {

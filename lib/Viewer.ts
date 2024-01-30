@@ -171,13 +171,16 @@ export class Viewer3D {
     allModelObjects.forEach((child) => {
       const castedChild = child as THREE.Mesh;
       const castedChildMaterial = castedChild.material as THREE.MeshPhysicalMaterial;
+      if (castedChild.isMesh && GroupManager.isBoundary(castedChild)) {
+        castedChildMaterial.setValues({
+          transparent: true,
+          opacity: 0,
+          map: null,
+        });
+      }
+
       if (GroupManager.isNotTechPack(castedChild)) {
         if (castedChild.isMesh && GroupManager.isBoundary(castedChild)) {
-          castedChildMaterial.setValues({
-            transparent: true,
-            opacity: 0,
-          });
-
           const techPackBoundary: THREE.Mesh | null =
             this._groupManager.findTechpackEquivalentByName(castedChild.name) ?? null;
 
@@ -318,7 +321,6 @@ export class Viewer3D {
     artworkMap: {
       boundaryName: string;
       artworkUrl: string;
-      canvas?: HTMLCanvasElement;
       textureApplication?: { color: string; textureOption: TextureOption }[];
       xRatio?: number;
       yRatio?: number;
@@ -337,7 +339,6 @@ export class Viewer3D {
         async ({
           artworkUrl,
           textureApplication = [],
-          canvas,
           boundaryName,
           xRatio,
           yRatio,
@@ -348,7 +349,6 @@ export class Viewer3D {
           await this.changeArtwork(
             {
               artworkUrl,
-              canvas,
               boundary: boundaryName,
               xRatio,
               yRatio,
@@ -443,7 +443,6 @@ export class Viewer3D {
   changeArtwork = async (
     options: {
       boundary: string;
-      canvas?: HTMLCanvasElement;
       artworkUrl: string;
       xRatio?: number;
       yRatio?: number;
@@ -516,8 +515,8 @@ export class Viewer3D {
     return image;
   };
 
-  takeScreenShotAuto = async () => {
-    const rotations = Utils.getEqualAngleRotations(4).map((azimuthAngle) => ({
+  takeScreenShotAuto = async (count = 4) => {
+    const rotations = Utils.getEqualAngleRotations(count).map((azimuthAngle) => ({
       azimuthAngle,
     }));
 
@@ -529,6 +528,9 @@ export class Viewer3D {
 
   createTechPack = async () => {
     const camera = this._camera.clone();
+
+    await this._boundaryManager.prepareForTechpack();
+
     const { renderer, scene, techPackGroup, workingAssetGroup, shadowPlane, modelGroup } =
       this._generateViewerCopy({ sceneBackground: new THREE.Color('rgba(0, 0, 0, 0)') });
     // scene.background = new THREE.Color('rgba(0, 0, 0, 0)');
@@ -556,10 +558,10 @@ export class Viewer3D {
         if (child.isObject3D) {
           const originalMaterial = (child as THREE.Mesh).material as THREE.MeshPhysicalMaterial;
           if (GroupManager.isBoundary(child)) {
+            const boundary = this._boundaryManager.findByTechpackName(child.name);
             (child as THREE.Mesh).material = originalMaterial.clone();
             ((child as THREE.Mesh).material as THREE.MeshPhysicalMaterial).setValues({
-              color: '#7D7D7D',
-              opacity: 1,
+              opacity: boundary?.hasArtwork() ? 1 : 0,
             });
           } else {
             originalMaterial.setValues({
@@ -613,6 +615,31 @@ export class Viewer3D {
         child.visible = false;
       }
     }
+    return result;
+  };
+
+  prepareFilesToExport = async () => {
+    const result = await this.createTechPack();
+    const screenshots = await this.takeScreenShotAuto(6);
+    screenshots.forEach((sc, index) => {
+      result.push({
+        name: `screenshot_${index + 1}`,
+        image: sc,
+      });
+    });
+    const artworks = await Promise.all(
+      this._boundaryManager.boundaryList
+        .filter((bd) => bd.hasArtwork())
+        .map((bd) => {
+          return ImageHelper.resize(bd.artworkURL, 400);
+        }),
+    );
+    artworks.forEach((artwork, index) => {
+      result.push({
+        name: `artwork_${index + 1}`,
+        image: artwork,
+      });
+    });
     return result;
   };
 }

@@ -17,10 +17,9 @@ export function RSidebarView(props: {
   resetAllBoundaries: () => () => any;
   resetModel: () => () => any;
   onFileChange: () => () => any;
-  canvas2DContainerRef: React.RefObject<HTMLCanvasElement>;
   fileRef: React.RefObject<HTMLInputElement>;
   images: string[];
-  boundaryActive: boolean;
+  boundaryActive: Boundary | null;
 }) {
   return (
     <SideBar>
@@ -39,12 +38,16 @@ export function RSidebarView(props: {
       <Button onClick={props.resetAllBoundaries()}>Reset All Boundaries</Button>
       <Button onClick={props.resetModel()}>Reset Model</Button>
 
-      <canvas
-        ref={props.canvas2DContainerRef}
-        hidden={!props.boundaryActive}
-        width={500}
-        height={500}
-      ></canvas>
+      {props.boundaryActive ? (
+        <div
+          ref={(ref) => {
+            const element = props.boundaryActive?.imageEditor;
+            if (ref && element) {
+              ref.appendChild(element);
+            }
+          }}
+        />
+      ) : null}
 
       <input
         type="file"

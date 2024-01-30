@@ -24,15 +24,14 @@ export function RSidebarViewModel({
       (await viewer?.changeArtwork(
         {
           boundary: defaultModelConfig.app.boundary,
-          canvas: model.canvas2DContainerRef.current ?? undefined,
           artworkUrl: './logo.png',
           sizeRatio: 0.5,
           xRatio: 0.5,
-          yRatio: 0.5,
+          yRatio: 0.2,
         },
         false,
       )) ?? null;
-    model.setBoundaryActive(true);
+    model.setBoundaryActive(boundary);
   };
 
   const toggleAutoRotate = () => viewer?.toggleAutoRotate();
@@ -41,7 +40,7 @@ export function RSidebarViewModel({
 
   const removeArtwork = () => {
     viewer?.removeArtwork(defaultModelConfig.app.boundary);
-    model.setBoundaryActive(false);
+    model.setBoundaryActive(null);
   };
 
   function onFileChange() {
@@ -122,7 +121,7 @@ export function RSidebarViewModel({
   function createTechpack() {
     return async () => {
       if (viewer) {
-        const newImages = await viewer.createTechPack();
+        const newImages = await viewer.prepareFilesToExport();
         model.setImages(model.images.concat(newImages.map((img) => img.image)));
       }
     };
@@ -154,7 +153,6 @@ export function RSidebarViewModel({
   }
 
   return {
-    canvas2DContainerRef: model.canvas2DContainerRef,
     boundaryActive: model.boundaryActive,
     fileRef: model.fileRef,
     images: model.images,

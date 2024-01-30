@@ -40,6 +40,11 @@ export class BoundaryManager {
     return this._boundaryList.find((b) => b.name === name);
   }
 
+  findByTechpackName(name: string) {
+    const filtered = name.replace('_flat', '');
+    return this._boundaryList.find((b) => b.name === filtered);
+  }
+
   organizeGroup() {
     this._boundaryList.forEach((child) => {
       child.organizeGroup();
@@ -108,7 +113,6 @@ export class BoundaryManager {
   changeArtwork = async (
     options: {
       boundary: string;
-      canvas?: HTMLCanvasElement;
       artworkUrl: string;
       xRatio?: number;
       yRatio?: number;
@@ -125,14 +129,12 @@ export class BoundaryManager {
       rotation = 0,
       sizeRatio = 0.5,
       artworkUrl,
-      canvas,
       shouldShowOriginalArtwork,
     } = options;
 
     let boundaryObj = this.findByName(boundary) ?? null;
 
     await boundaryObj?.addArtwork({
-      workingCanvas: canvas,
       artworkUrl,
       xRatio,
       yRatio,
@@ -195,5 +197,13 @@ export class BoundaryManager {
 
   exportData = () => {
     return this._boundaryList.map((bd) => bd.exportArtworkData());
+  };
+
+  prepareForTechpack = async () => {
+    await Promise.all(
+      this._boundaryList.map((bd) => {
+        return bd.prepareForTechpack();
+      }),
+    );
   };
 }

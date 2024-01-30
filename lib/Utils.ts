@@ -196,7 +196,7 @@ export class Utils {
   static getEqualAngleRotations = (numberOfSplits: number) => {
     return Array(numberOfSplits)
       .fill(0)
-      .map((e, index) => index * (Math.PI / 2));
+      .map((e, index) => index * ((2 * Math.PI) / numberOfSplits));
   };
 }
 
