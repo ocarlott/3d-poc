@@ -618,6 +618,8 @@ export class Viewer3D {
     return result;
   };
 
+  getBoundary = (name: string) => this._boundaryManager.findByName(name);
+
   prepareFilesToExport = async () => {
     const result = await this.createTechPack();
     const screenshots = await this.takeScreenShotAuto(6);
