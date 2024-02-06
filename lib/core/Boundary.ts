@@ -3,11 +3,13 @@ import { ControlName, TextureOption } from '../type';
 import * as fabric from 'fabric';
 import _ from 'underscore';
 import { ImageHelper } from './ImageHelper';
-import { Utils } from '../Utils';
+import { PointToInchesRatio, Utils } from '../Utils';
 import crystalAlpha from '../assets/crystal_alpha.webp';
 import crystalNormal from '../assets/crystal_normal.webp';
 import glitterRoughness from '../assets/glitter_roughness.webp';
 import { Utils3D } from '../Utils3D';
+
+const CanvasSize = 300;
 
 export class Boundary {
   readonly group = new THREE.Group();
@@ -34,8 +36,10 @@ export class Boundary {
   private _xRatio = 0.5;
   private _yRatio = 0.5;
   private _rotation = 0;
-  private _canvasWidth = 300;
-  private _canvasHeight = 300;
+  private _canvasWidth = CanvasSize;
+  private _canvasHeight = CanvasSize;
+  private _canvasSmallerSide = 1;
+  private _canvasBiggerSize = 1;
   private _workingColors: number[][] = [];
   private _textureApplication: {
     color: string;
@@ -70,7 +74,13 @@ export class Boundary {
     this.name = this._initializeCanvas(canvas);
     this._initializeGroup();
 
-    const { boundingRatio, biggerSide } = this._calculateBoundary(canvas, techPackCanvas);
+    const { boundingRatio, biggerSide, smallerSide } = this._calculateBoundary(
+      canvas,
+      techPackCanvas,
+    );
+    this._canvasSmallerSide = smallerSide / PointToInchesRatio;
+    this._canvasBiggerSize = biggerSide / PointToInchesRatio;
+
     this._boundaryRatio = boundingRatio;
 
     this.center = this._calculateCenter(canvas);
@@ -83,8 +93,8 @@ export class Boundary {
     this._addHelpersToGroup();
 
     const canvasElement = window.document.createElement('canvas');
-    canvasElement.width = 300;
-    canvasElement.height = 300;
+    canvasElement.width = CanvasSize;
+    canvasElement.height = CanvasSize;
     this._workingCanvas2D = new fabric.Canvas(canvasElement);
     this._configure2DCanvas();
   }
@@ -244,6 +254,8 @@ export class Boundary {
     rotation: number;
     sizeRatio: number;
     shouldShowOriginalArtwork?: boolean;
+    widthLimitInInches: number;
+    heightLimitInInches: number;
     onArtworkChanged?: (params: {
       forBoundary: string;
       xRatio: number;
@@ -263,6 +275,8 @@ export class Boundary {
       onArtworkChanged,
       disableEditing = true,
       shouldShowOriginalArtwork = false,
+      widthLimitInInches,
+      heightLimitInInches,
     } = options;
 
     await this.resetBoundary();
@@ -285,7 +299,14 @@ export class Boundary {
     this._artworkUrl = artworkUrl;
     const { canvasHeight, canvasWidth, clipPathHeight, clipPathWidth } = this._getClipPathSize();
     const img = await this._createFabricImage(computedArtworkUrl);
-    this._scaleImage(img, clipPathWidth, clipPathHeight, sizeRatio);
+    this._scaleImage(
+      img,
+      clipPathWidth,
+      clipPathHeight,
+      sizeRatio,
+      widthLimitInInches,
+      heightLimitInInches,
+    );
     this._setPositionImage(img, canvasWidth, xRatio, canvasHeight, yRatio);
     this._configureImage(img, rotation, disableEditing);
 
@@ -343,10 +364,17 @@ export class Boundary {
     clipPathWidth: number,
     clipPathHeight: number,
     sizeRatio: number,
+    widthLimitInInches: number,
+    heightLimitInInches: number,
   ) => {
     const { width = 1, height = 1 } = img;
     this._useWidthToScale = width / clipPathWidth > height / clipPathHeight;
-
+    const canvasWidth = this._boundaryRatio > 1 ? this._canvasBiggerSize : this._canvasSmallerSide;
+    const canvasHeight = this._boundaryRatio > 1 ? this._canvasSmallerSide : this._canvasBiggerSize;
+    const maxSizeX = (widthLimitInInches / canvasWidth) * clipPathWidth;
+    const maxSizeY = (heightLimitInInches / canvasHeight) * clipPathHeight;
+    const maxScaleX = maxSizeX / img.width;
+    const maxScaleY = maxSizeY / img.height;
     if (this._useWidthToScale) {
       img.scaleToWidth(clipPathWidth * sizeRatio);
     } else {
@@ -355,6 +383,19 @@ export class Boundary {
 
     img.originX = 'center';
     img.originY = 'center';
+    img.on('scaling', function (this: fabric.Image, _: any) {
+      const self = this as any;
+      if (self.scaleX > maxScaleX || self.scaleY > maxScaleY) {
+        self.left = self.lastGoodLeft;
+        self.top = self.lastGoodTop;
+        self.scaleX = self.lastGoodScaleX;
+        self.scaleY = self.lastGoodScaleY;
+      }
+      self.lastGoodTop = self.top;
+      self.lastGoodLeft = self.left;
+      self.lastGoodScaleX = self.scaleX;
+      self.lastGoodScaleY = self.scaleY;
+    });
   };
 
   private _setPositionImage = (

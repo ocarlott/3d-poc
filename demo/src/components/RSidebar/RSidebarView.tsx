@@ -8,6 +8,7 @@ export function RSidebarView(props: {
   changeTexture: () => any;
   removeArtwork: () => any;
   takeSnapshot: () => any;
+  getModelDimensions: () => any;
   takeSnapshot45: () => () => any;
   takeSnapshotsAuto: () => () => any;
   createTechpack: () => () => any;
@@ -26,6 +27,7 @@ export function RSidebarView(props: {
       <Button onClick={props.toggleAutoRotate}>Toggle Rotate</Button>
       <Button onClick={props.toggleDeveloperMode}>Toggle Dev Mode</Button>
       <Button onClick={props.addArtwork}>Add Artwork</Button>
+      <Button onClick={props.getModelDimensions}>Print Dimensions</Button>
       <Button onClick={props.changeTexture}>Change Texture</Button>
       <Button onClick={props.removeArtwork}>Remove Artwork</Button>
       <Button onClick={props.takeSnapshot}>Take Snapshot</Button>

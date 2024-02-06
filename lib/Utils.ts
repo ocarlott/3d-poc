@@ -3,6 +3,7 @@ const boundaryTest = /\w*_?boundary_[a-zA-Z]+/;
 const boundaryTPTest = /\w*_?boundary_[a-zA-Z]+_flat/;
 const changeableGroupTest = /\w*_?changeable_group_\d{1,2}_[a-zA-Z]+/;
 const changeableGroupTPTest = /\w*_?changeable_group_\d{1,2}_[a-zA-Z]+_flat/;
+export const PointToInchesRatio = 0.73;
 
 export class Utils {
   static lab2rgb = (lab: number[]) => {

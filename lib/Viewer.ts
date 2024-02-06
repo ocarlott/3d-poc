@@ -3,7 +3,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { TextureOption } from './type';
 import CameraControls from 'camera-controls';
 import { ImageHelper } from './core/ImageHelper';
-import { Utils } from './Utils';
+import { PointToInchesRatio, Utils } from './Utils';
 import { LightManager } from './managers/LightManager';
 import { SceneBuilder } from './managers/SceneBuilder';
 import { SizeUpdateParams, UIManager } from './managers/UIManager';
@@ -449,6 +449,8 @@ export class Viewer3D {
       rotation?: number;
       sizeRatio?: number;
       shouldShowOriginalArtwork?: boolean;
+      widthLimitInInches?: number;
+      heightLimitInInches?: number;
     },
     disableEditing = true,
   ) => {
@@ -643,5 +645,14 @@ export class Viewer3D {
       });
     });
     return result;
+  };
+
+  getModelDimensions = () => {
+    const boundingBox = this._groupManager.modelBoundingBox;
+    return {
+      width: (boundingBox.max.x - boundingBox.min.x) / PointToInchesRatio,
+      height: (boundingBox.max.y - boundingBox.min.y) / PointToInchesRatio,
+      depth: (boundingBox.max.z - boundingBox.min.z) / PointToInchesRatio,
+    };
   };
 }

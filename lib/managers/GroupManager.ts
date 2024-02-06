@@ -5,8 +5,10 @@ import { Utils } from '../Utils';
 
 export class GroupManager {
   private _modelGroup!: THREE.Group;
+  private _modelBoundingBox: THREE.Box3;
   constructor(modelGroup?: THREE.Group) {
     this._modelGroup = modelGroup || new THREE.Group();
+    this._modelBoundingBox = new THREE.Box3();
   }
 
   private _reset() {
@@ -60,6 +62,7 @@ export class GroupManager {
         }
       }
     });
+    this._modelBoundingBox.setFromObject(this.workingAssetGroup!);
   }
 
   getChildNamesListSnapshot() {
@@ -145,6 +148,10 @@ export class GroupManager {
     return this.findByName(ControlName.WorkingAssetGroup);
     // FIXME  is this needed?
     // return this._modelGroup.getObjectByName(ControlName.WorkingAssetGroup) as THREE.Object3D;
+  }
+
+  get modelBoundingBox() {
+    return this._modelBoundingBox;
   }
 
   static formTechpackName(name: string) {

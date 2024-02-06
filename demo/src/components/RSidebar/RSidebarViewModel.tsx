@@ -34,6 +34,18 @@ export function RSidebarViewModel({
     model.setBoundaryActive(boundary);
   };
 
+  const getModelDimensions = () => {
+    if (viewer) {
+      const { height, width } = viewer.getModelDimensions();
+      console.log({
+        height,
+        width,
+      });
+      return { height, width };
+    }
+    return { height: 0, width: 0 };
+  };
+
   const toggleAutoRotate = () => viewer?.toggleAutoRotate();
 
   const toggleDeveloperMode = () => viewer?.toggleDeveloperMode();
@@ -171,5 +183,6 @@ export function RSidebarViewModel({
     changeTexture,
     resetAllColorsToDefault,
     resetAllBoundaries,
+    getModelDimensions,
   };
 }

@@ -4,7 +4,7 @@ import { TextureOption } from 'microstore-3d/lib/type';
 const jacketConfig = {
   app: {
     glb: './tshirt.glb',
-    boundary: 'LongSleeveVneck_boundary_front',
+    boundary: 'LongSleeveVneck_boundary_back',
   },
   configure: {
     colorMap: [
