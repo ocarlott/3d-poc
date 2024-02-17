@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
-import { TextureOption } from './type';
+import { ControlName, TextureOption } from './type';
 import CameraControls from 'camera-controls';
 import { ImageHelper } from './core/ImageHelper';
 import { PointToInchesRatio, Utils } from './Utils';
@@ -146,10 +146,10 @@ export class Viewer3D {
       rendererHeight: Viewer3D.getRendererHeight(renderer),
       obj: workingAssetGroup,
       padding: {
-        top: 20,
-        bottom: 20,
-        left: 20,
-        right: 20,
+        top: 10,
+        bottom: 10,
+        left: 10,
+        right: 10,
       },
     });
 
@@ -158,10 +158,7 @@ export class Viewer3D {
       controlsManager.rotateTo(rotation);
       controlsManager.update(this._clock);
       renderer.render(scene, camera);
-      const imgData = await ImageHelper.cropImageToRatio(
-        renderer.domElement.toDataURL(strMime),
-        modelRatio,
-      );
+      const imgData = renderer.domElement.toDataURL(strMime);
       images.push(imgData);
     }
     return images;
@@ -198,14 +195,15 @@ export class Viewer3D {
     camera: THREE.PerspectiveCamera,
     controlsManager: CameraControlsManager,
     target: THREE.Object3D,
+    padding: number = 0.5,
   ) => {
     controlsManager.fitToBounds({
       obj: target,
       padding: {
-        bottom: 0.5,
-        left: 0.5,
-        right: 0.5,
-        top: 0.5,
+        bottom: padding,
+        left: padding,
+        right: padding,
+        top: padding,
       },
       transition: false,
     });
@@ -573,7 +571,7 @@ export class Viewer3D {
           }
         }
       });
-      workingAssetGroup.visible = false;
+
       if (shadowPlane) {
         shadowPlane.visible = false;
       }
@@ -582,6 +580,48 @@ export class Viewer3D {
           child.visible = false;
         }
       });
+      workingAssetGroup.visible = true;
+      const canvasList: THREE.Mesh[] = [];
+      workingAssetGroup.children.forEach((child) => {
+        if (child.name !== ControlName.BoundaryGroup) {
+          child.visible = false;
+        } else {
+          child.visible = true;
+          child.children.forEach((gChild) => {
+            if (gChild.name.includes('boundary_copy')) {
+              canvasList.push(gChild as THREE.Mesh);
+            }
+            gChild.visible = false;
+          });
+        }
+      });
+
+      const layerList = techPackGroup.children.filter((child) => child.name.includes('changeable'));
+      layerList.forEach((child) => (child.visible = false));
+
+      canvasList.forEach(async (canvas) => {
+        canvas.visible = true;
+
+        const img = await this._captureTechPackImage(
+          renderer,
+          scene,
+          camera,
+          controlsManager,
+          canvas,
+          0.5,
+        );
+        const displayName =
+          Utils.getDisplayNameIfBoundary(canvas.userData.boundaryName) ?? 'boundary';
+        const texture = canvas.userData.texture as TextureOption;
+        result.push({
+          name: `artwork_${displayName.toLowerCase()}_part_${texture.toLowerCase()}_${(
+            canvas.material as THREE.MeshBasicMaterial
+          ).color.getHexString()}`,
+          image: img,
+        });
+        canvas.visible = false;
+      });
+      workingAssetGroup.visible = false;
 
       const img = await this._captureTechPackImage(
         renderer,
@@ -595,11 +635,8 @@ export class Viewer3D {
         image: img,
       });
 
-      const layerList = techPackGroup.children.filter((child) => child.name.includes('changeable'));
-      layerList.forEach((child) => (child.visible = false));
       for (let child of layerList) {
         child.visible = true;
-
         const img = await this._captureTechPackImage(
           renderer,
           scene,
@@ -616,6 +653,8 @@ export class Viewer3D {
 
         child.visible = false;
       }
+
+      layerList.forEach((child) => (child.visible = true));
     }
     return result;
   };
@@ -623,7 +662,7 @@ export class Viewer3D {
   getBoundary = (name: string) => this._boundaryManager.findByName(name);
 
   prepareFilesToExport = async () => {
-    const result = await this.createTechPack();
+    const result: { name: string; image: string }[] = [];
     const screenshots = await this.takeScreenShotAuto(6);
     screenshots.forEach((sc, index) => {
       result.push({
@@ -631,19 +670,26 @@ export class Viewer3D {
         image: sc,
       });
     });
+    const techpacks = await this.createTechPack();
+    result.push(...techpacks);
     const artworks = await Promise.all(
       this._boundaryManager.boundaryList
         .filter((bd) => bd.hasArtwork())
-        .map((bd) => {
-          return ImageHelper.resize(bd.artworkURL, 400);
+        .map(async (bd) => {
+          const image = await ImageHelper.resize(bd.artworkURL, 400);
+          return {
+            image,
+            name: Utils.getDisplayNameIfBoundary(bd.name) ?? 'boundary',
+          };
         }),
     );
-    artworks.forEach((artwork, index) => {
+    artworks.forEach((artwork) => {
       result.push({
-        name: `artwork_${index + 1}`,
-        image: artwork,
+        name: `artwork_${artwork.name.toLowerCase()}`,
+        image: artwork.image,
       });
     });
+
     return result;
   };
 

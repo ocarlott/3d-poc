@@ -2,6 +2,23 @@ import getColors from 'image-pal';
 import { Utils } from '../Utils';
 import ImageJS from 'image-js';
 const strMime = 'image/webp';
+
+class ImageEditor {
+  private _canvas: HTMLCanvasElement;
+
+  constructor() {
+    this._canvas = window.document.createElement('canvas');
+  }
+
+  private _orignalImage: string | null = null;
+
+  edit = (imageUrl: string) => {
+    this._orignalImage = imageUrl;
+
+    return this;
+  };
+}
+
 export class ImageHelper {
   static reduceImageColor = async (params: {
     url: string;

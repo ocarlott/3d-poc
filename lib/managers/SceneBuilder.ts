@@ -12,7 +12,7 @@ export class SceneBuilder {
   }
 
   static createRenderer(canvas: HTMLCanvasElement): THREE.WebGLRenderer {
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
     renderer.shadowMap.type = THREE.PCFShadowMap;
     renderer.toneMapping = THREE.ReinhardToneMapping;
     renderer.toneMappingExposure = 1;
