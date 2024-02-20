@@ -315,7 +315,7 @@ export class Boundary {
     }
     this.group.add(...this._canvasList);
 
-    this._artworkUrl = artworkUrl;
+    this._artworkUrl = computedArtworkUrl;
     const { clipPathHeight, clipPathWidth, widthPadding, heightPadding } = this._getClipPathSize(
       this._workingCanvasSize,
       this._workingCanvasSize,
@@ -627,6 +627,26 @@ export class Boundary {
         map: texture,
       });
     }
+  };
+
+  getImageParts = async () => {
+    if (this._artworkUrl) {
+      const imagePartUrls = await ImageHelper.generateImageParts(
+        this._artworkUrl,
+        this._workingColors,
+      );
+      return imagePartUrls.map((uri, index) => {
+        const textureApplication = this._textureApplication.find((v) =>
+          Utils.testHexMatch(v.color, Utils.rgb2hex(this._workingColors[index])),
+        );
+        return {
+          uri,
+          textureOption: textureApplication?.textureOption ?? TextureOption.Matte,
+          color: Utils.rgb2hex(this._workingColors[index]),
+        };
+      });
+    }
+    return [];
   };
 
   private _createTexture(uri: string): THREE.Texture {

@@ -28,7 +28,7 @@ const jacketConfig = {
     artworkMap: [
       {
         boundaryName: 'LongSleeveVneck_boundary_front',
-        artworkUrl: './logo.png',
+        artworkUrl: './test.jpeg',
         xRatio: 0.5,
         textureApplication: [
           {

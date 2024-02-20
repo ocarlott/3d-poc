@@ -1,22 +1,80 @@
 import getColors from 'image-pal';
 import { Utils } from '../Utils';
 import ImageJS from 'image-js';
+import * as fabric from 'fabric';
+
 const strMime = 'image/webp';
 
-class ImageEditor {
-  private _canvas: HTMLCanvasElement;
+export class ImageEditor {
+  private _canvasEl: HTMLCanvasElement;
+  private _canvasSize = 300;
+  private _canvas: fabric.Canvas;
+  private _currentHexColorList: string[] = [];
 
-  constructor() {
-    this._canvas = window.document.createElement('canvas');
+  constructor(size?: number) {
+    this._canvasEl = window.document.createElement('canvas');
+    if (size) {
+      this._canvasSize = size;
+    }
+    this._canvasEl.width = this._canvasSize;
+    this._canvasEl.height = this._canvasSize;
+    this._canvas = new fabric.Canvas(this._canvasEl);
   }
 
   private _orignalImage: string | null = null;
 
-  edit = (imageUrl: string) => {
+  edit = async (imageUrl: string, colorsToRemove: number[][] = []) => {
     this._orignalImage = imageUrl;
-
-    return this;
+    await this.updateSensitivity(5, colorsToRemove);
   };
+
+  private _render = async (imageUrl: string) => {
+    const img = await fabric.Image.fromURL(imageUrl, {
+      crossOrigin: 'anonymous',
+    });
+    img.originX = 'center';
+    img.originY = 'center';
+    const { width, height } = img;
+    const useWidthToScale = width > height;
+    if (useWidthToScale) {
+      img.scaleToWidth(this._canvasSize);
+    } else {
+      img.scaleToHeight(this._canvasSize);
+    }
+    img.setPositionByOrigin(
+      new fabric.Point(this._canvasSize / 2, this._canvasSize / 2),
+      'center',
+      'center',
+    );
+    img.selectable = false;
+    img.evented = false;
+    img.hoverCursor = 'pointer';
+    this._canvas.clear();
+    this._canvas.add(img);
+    this._canvas.renderAll();
+  };
+
+  updateSensitivity = async (sensitivity: number, colorsToRemove: number[][] = []) => {
+    if (this._orignalImage) {
+      const { computed, colorList } = await ImageHelper.reduceImageColor({
+        url: this._orignalImage,
+        minDensity: sensitivity / 100,
+        colorsToRemove,
+      });
+
+      this._currentHexColorList = colorList.map(Utils.rgb2hex);
+
+      await this._render(computed);
+    }
+  };
+
+  get currentHexColorList() {
+    return this._currentHexColorList;
+  }
+
+  get viewer() {
+    return this._canvas.elements.container;
+  }
 }
 
 export class ImageHelper {
@@ -24,8 +82,9 @@ export class ImageHelper {
     url: string;
     limit?: number;
     minDensity?: number;
+    colorsToRemove?: number[][];
   }) => {
-    let { url, limit = 4, minDensity = 0.05 } = params;
+    let { url, limit = 4, minDensity = 0.05, colorsToRemove = [] } = params;
     return new Promise<{
       computed: string;
       colors: string[];
@@ -56,10 +115,21 @@ export class ImageHelper {
       const labList = colors.map((color) => Utils.rgb2lab(color));
       let listCount = colors.map(() => 0);
       let totalNontransparentPixels = 0;
+      const labColorsToRemove = colorsToRemove.map((color) => Utils.rgb2lab(color));
       for (let i = 0; i < totalPixels; i++) {
         if (data[i * 4 + 3] > 0) {
           totalNontransparentPixels += 1;
           const color = Utils.rgb2lab([data[i * 4], data[i * 4 + 1], data[i * 4 + 2]]);
+          const shouldRemove = labColorsToRemove.some((labColor) => {
+            return Utils.deltaE(labColor, color) <= 2;
+          });
+          if (shouldRemove) {
+            newData[i * 4] = 0;
+            newData[i * 4 + 1] = 0;
+            newData[i * 4 + 2] = 0;
+            newData[i * 4 + 3] = 0;
+            continue;
+          }
           const index = Utils.findClosetIndexColorFromLabColorList(labList, color);
           listCount[index] += 1;
           newData[i * 4] = colors[index][0];

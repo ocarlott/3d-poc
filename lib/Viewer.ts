@@ -580,47 +580,32 @@ export class Viewer3D {
           child.visible = false;
         }
       });
-      workingAssetGroup.visible = true;
-      const canvasList: THREE.Mesh[] = [];
-      workingAssetGroup.children.forEach((child) => {
-        if (child.name !== ControlName.BoundaryGroup) {
-          child.visible = false;
-        } else {
-          child.visible = true;
-          child.children.forEach((gChild) => {
-            if (gChild.name.includes('boundary_copy')) {
-              canvasList.push(gChild as THREE.Mesh);
-            }
-            gChild.visible = false;
-          });
-        }
-      });
 
       const layerList = techPackGroup.children.filter((child) => child.name.includes('changeable'));
       layerList.forEach((child) => (child.visible = false));
 
-      canvasList.forEach(async (canvas) => {
-        canvas.visible = true;
+      // canvasList.forEach(async (canvas) => {
+      //   canvas.visible = true;
 
-        const img = await this._captureTechPackImage(
-          renderer,
-          scene,
-          camera,
-          controlsManager,
-          canvas,
-          0.5,
-        );
-        const displayName =
-          Utils.getDisplayNameIfBoundary(canvas.userData.boundaryName) ?? 'boundary';
-        const texture = canvas.userData.texture as TextureOption;
-        result.push({
-          name: `artwork_${displayName.toLowerCase()}_part_${texture.toLowerCase()}_${(
-            canvas.material as THREE.MeshBasicMaterial
-          ).color.getHexString()}`,
-          image: img,
-        });
-        canvas.visible = false;
-      });
+      //   const img = await this._captureTechPackImage(
+      //     renderer,
+      //     scene,
+      //     camera,
+      //     controlsManager,
+      //     canvas,
+      //     0.5,
+      //   );
+      //   const displayName =
+      //     Utils.getDisplayNameIfBoundary(canvas.userData.boundaryName) ?? 'boundary';
+      //   const texture = canvas.userData.texture as TextureOption;
+      //   result.push({
+      //     name: `artwork_${displayName.toLowerCase()}_part_${texture.toLowerCase()}_${(
+      //       canvas.material as THREE.MeshBasicMaterial
+      //     ).color.getHexString()}`,
+      //     image: img,
+      //   });
+      //   canvas.visible = false;
+      // });
       workingAssetGroup.visible = false;
 
       const img = await this._captureTechPackImage(
@@ -687,6 +672,28 @@ export class Viewer3D {
       result.push({
         name: `artwork_${artwork.name.toLowerCase()}`,
         image: artwork.image,
+      });
+    });
+
+    const artworkParts = await Promise.all(
+      this._boundaryManager.boundaryList
+        .filter((bd) => bd.hasArtwork())
+        .map(async (bd) => {
+          const parts = await bd.getImageParts();
+          return parts.map((part) => {
+            return {
+              image: part.uri,
+              name: `artwork_${
+                Utils.getDisplayNameIfBoundary(bd.name) ?? 'boundary'
+              }_${part.textureOption.toLowerCase()}_texture_${part.color.toLowerCase()}_color`,
+            };
+          });
+        }),
+    );
+
+    artworkParts.forEach((parts) => {
+      parts.forEach((part) => {
+        result.push(part);
       });
     });
 
