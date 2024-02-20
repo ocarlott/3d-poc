@@ -9,7 +9,7 @@ export class ImageEditor {
   private _canvasEl: HTMLCanvasElement;
   private _canvasSize = 300;
   private _canvas: fabric.Canvas;
-  private _currentHexColorList: string[] = [];
+  private _currentColorList: number[][] = [];
 
   constructor(size?: number) {
     this._canvasEl = window.document.createElement('canvas');
@@ -62,14 +62,14 @@ export class ImageEditor {
         colorsToRemove,
       });
 
-      this._currentHexColorList = colorList.map(Utils.rgb2hex);
+      this._currentColorList = colorList;
 
       await this._render(computed);
     }
   };
 
-  get currentHexColorList() {
-    return this._currentHexColorList;
+  get currentColorList() {
+    return this._currentColorList;
   }
 
   get viewer() {
