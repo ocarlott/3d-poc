@@ -316,7 +316,7 @@ export class Boundary {
     this.group.add(...this._canvasList);
 
     this._artworkUrl = artworkUrl;
-    const { canvasHeight, canvasWidth, clipPathHeight, clipPathWidth } = this._getClipPathSize(
+    const { clipPathHeight, clipPathWidth, widthPadding, heightPadding } = this._getClipPathSize(
       this._workingCanvasSize,
       this._workingCanvasSize,
     );
@@ -341,14 +341,24 @@ export class Boundary {
       widthLimitInInches,
       heightLimitInInches,
     });
-    this._setPositionImage(img, canvasWidth, xRatio, canvasHeight, yRatio);
-    this._setPositionImage(
-      internalImage,
-      canvasWidth * this._canvasRatio,
+    this._setPositionImage({
+      img,
+      clipPathWidth,
+      clipPathHeight,
       xRatio,
-      canvasHeight * this._canvasRatio,
       yRatio,
-    );
+      widthPadding,
+      heightPadding,
+    });
+    this._setPositionImage({
+      img: internalImage,
+      clipPathWidth: clipPathWidth * this._canvasRatio,
+      clipPathHeight: clipPathHeight * this._canvasRatio,
+      xRatio,
+      yRatio,
+      widthPadding: widthPadding * this._canvasRatio,
+      heightPadding: heightPadding * this._canvasRatio,
+    });
     this._configureImage(img, rotation, disableEditing);
     this._configureImage(internalImage, rotation, true);
 
@@ -470,15 +480,22 @@ export class Boundary {
     }
   };
 
-  private _setPositionImage = (
-    img: fabric.Image,
-    canvasWidth: number,
-    xRatio: number,
-    canvasHeight: number,
-    yRatio: number,
-  ) => {
+  private _setPositionImage = (params: {
+    img: fabric.Image;
+    clipPathWidth: number;
+    xRatio: number;
+    clipPathHeight: number;
+    yRatio: number;
+    widthPadding: number;
+    heightPadding: number;
+  }) => {
+    const { img, clipPathWidth, xRatio, clipPathHeight, yRatio, widthPadding, heightPadding } =
+      params;
     img.setPositionByOrigin(
-      new fabric.Point(canvasWidth * xRatio, canvasHeight * yRatio),
+      new fabric.Point(
+        clipPathWidth * xRatio + widthPadding,
+        clipPathHeight * yRatio + heightPadding,
+      ),
       'center',
       'center',
     );
