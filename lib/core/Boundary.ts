@@ -284,6 +284,7 @@ export class Boundary {
       sizeRatio: number;
       rotation: number;
     }) => void;
+    sensitivity?: number;
     disableEditing?: boolean;
   }): Promise<void> => {
     const {
@@ -297,6 +298,7 @@ export class Boundary {
       shouldShowOriginalArtwork = false,
       widthLimitInInches,
       heightLimitInInches,
+      sensitivity,
     } = options;
 
     await this.resetBoundary();
@@ -304,7 +306,7 @@ export class Boundary {
     let computedArtworkUrl = artworkUrl;
     this._shouldShowOriginalArtwork = shouldShowOriginalArtwork;
     if (!shouldShowOriginalArtwork) {
-      const { computed, colorList } = await this._reduceImageColor(artworkUrl);
+      const { computed, colorList } = await this._reduceImageColor(artworkUrl, sensitivity);
       computedArtworkUrl = computed;
       this._canvasList = this._createCanvasList(colorList);
       this._techPackCanvasList = this._createTechPackCanvasList(this._canvasList);
@@ -374,10 +376,10 @@ export class Boundary {
     await this._renderCanvasOnBoundary();
   };
 
-  private _reduceImageColor = async (artworkUrl: string) => {
+  private _reduceImageColor = async (artworkUrl: string, sensitivity: number = 5) => {
     const { computed, colorList } = await ImageHelper.reduceImageColor({
       url: artworkUrl,
-      minDensity: 0.1,
+      minDensity: sensitivity / 100,
     });
     return { computed, colorList };
   };

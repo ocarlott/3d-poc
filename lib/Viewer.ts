@@ -325,6 +325,7 @@ export class Viewer3D {
       rotation?: number;
       sizeRatio?: number;
       shouldShowOriginalArtwork?: boolean;
+      sensitivity?: number;
     }[];
     disableEditing?: boolean;
   }) => {
@@ -343,6 +344,7 @@ export class Viewer3D {
           rotation,
           sizeRatio,
           shouldShowOriginalArtwork,
+          sensitivity,
         }) => {
           await this.changeArtwork(
             {
@@ -353,6 +355,7 @@ export class Viewer3D {
               rotation,
               sizeRatio,
               shouldShowOriginalArtwork,
+              sensitivity,
             },
             disableEditing,
           );
@@ -449,6 +452,7 @@ export class Viewer3D {
       shouldShowOriginalArtwork?: boolean;
       widthLimitInInches?: number;
       heightLimitInInches?: number;
+      sensitivity?: number;
     },
     disableEditing = true,
   ) => {
@@ -581,31 +585,6 @@ export class Viewer3D {
         }
       });
 
-      const layerList = techPackGroup.children.filter((child) => child.name.includes('changeable'));
-      layerList.forEach((child) => (child.visible = false));
-
-      // canvasList.forEach(async (canvas) => {
-      //   canvas.visible = true;
-
-      //   const img = await this._captureTechPackImage(
-      //     renderer,
-      //     scene,
-      //     camera,
-      //     controlsManager,
-      //     canvas,
-      //     0.5,
-      //   );
-      //   const displayName =
-      //     Utils.getDisplayNameIfBoundary(canvas.userData.boundaryName) ?? 'boundary';
-      //   const texture = canvas.userData.texture as TextureOption;
-      //   result.push({
-      //     name: `artwork_${displayName.toLowerCase()}_part_${texture.toLowerCase()}_${(
-      //       canvas.material as THREE.MeshBasicMaterial
-      //     ).color.getHexString()}`,
-      //     image: img,
-      //   });
-      //   canvas.visible = false;
-      // });
       workingAssetGroup.visible = false;
 
       const img = await this._captureTechPackImage(
@@ -619,6 +598,9 @@ export class Viewer3D {
         name: 'whole',
         image: img,
       });
+
+      const layerList = techPackGroup.children.filter((child) => child.name.includes('changeable'));
+      layerList.forEach((child) => (child.visible = false));
 
       for (let child of layerList) {
         child.visible = true;
