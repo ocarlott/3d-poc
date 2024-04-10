@@ -5,6 +5,7 @@ const jacketConfig = {
   app: {
     glb: './tshirt.glb',
     boundary: 'LongSleeveVneck_boundary_back',
+    panel: 'LongSleeveVneck_changeable_group_1_front',
   },
   configure: {
     colorMap: [

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
-import { ControlName, TextureOption } from './type';
+import { TextureOption } from './type';
 import CameraControls from 'camera-controls';
 import { ImageHelper } from './core/ImageHelper';
 import { PointToInchesRatio, Utils } from './Utils';
@@ -96,7 +96,11 @@ export class Viewer3D {
 
   private _generateViewerCopy = ({
     sceneBackground = new THREE.Color('#f5f5f5'),
-  }: { sceneBackground?: THREE.Color | null } = {}) => {
+    colorMap = [],
+  }: {
+    sceneBackground?: THREE.Color | null;
+    colorMap?: { layerName: string; color: string }[];
+  } = {}) => {
     const renderer = new THREE.WebGLRenderer({
       preserveDrawingBuffer: true,
       antialias: true,
@@ -112,6 +116,17 @@ export class Viewer3D {
     newScene.add(this._lightManager.getLightGroup().clone());
 
     const newGroupManager = this._groupManager.clone();
+    newGroupManager.workingAssetGroup?.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        const colorConfig = colorMap.find((config) => config.layerName === child.name);
+        if (colorConfig) {
+          child.material = child.material.clone();
+          (child.material as THREE.MeshStandardMaterial).color.set(
+            `#${colorConfig.color.replace(/#/g, '')}`,
+          );
+        }
+      }
+    });
 
     newScene.add(newGroupManager.modelGroup);
 
@@ -133,12 +148,14 @@ export class Viewer3D {
       azimuthAngle?: number;
       polarAngle?: number;
     }[];
+    colorMap?: { layerName: string; color: string }[];
   }) => {
-    const { rotations, modelRatio } = params;
+    const { rotations, modelRatio, colorMap } = params;
 
     const camera = this._camera.clone();
     const { renderer, scene, workingAssetGroup } = this._generateViewerCopy({
       sceneBackground: null,
+      colorMap,
     });
 
     const controlsManager = new CameraControlsManager(renderer.domElement, camera);
@@ -324,6 +341,7 @@ export class Viewer3D {
       yRatio?: number;
       rotation?: number;
       sizeRatio?: number;
+      sizeRatioLimit?: number;
       shouldShowOriginalArtwork?: boolean;
       sensitivity?: number;
     }[];
@@ -343,6 +361,7 @@ export class Viewer3D {
           yRatio,
           rotation,
           sizeRatio,
+          sizeRatioLimit,
           shouldShowOriginalArtwork,
           sensitivity,
         }) => {
@@ -354,6 +373,7 @@ export class Viewer3D {
               yRatio,
               rotation,
               sizeRatio,
+              sizeRatioLimit,
               shouldShowOriginalArtwork,
               sensitivity,
             },
@@ -449,9 +469,8 @@ export class Viewer3D {
       yRatio?: number;
       rotation?: number;
       sizeRatio?: number;
+      sizeRatioLimit?: number;
       shouldShowOriginalArtwork?: boolean;
-      widthLimitInInches?: number;
-      heightLimitInInches?: number;
       sensitivity?: number;
     },
     disableEditing = true,
@@ -493,7 +512,7 @@ export class Viewer3D {
     }
   };
 
-  takeScreenShot = async () => {
+  takeScreenShot = async (colorMap?: { layerName: string; color: string }[]) => {
     const { azimuthAngle, polarAngle } = this._cameraControlsManager.controls;
     const [image] = await this._takeScreenShot({
       modelRatio: this._modelRatio,
@@ -503,11 +522,15 @@ export class Viewer3D {
           polarAngle,
         },
       ],
+      colorMap,
     });
     return image;
   };
 
-  takeScreenShotAt = async (azimuthAngle: number) => {
+  takeScreenShotAt = async (
+    azimuthAngle: number,
+    colorMap?: { layerName: string; color: string }[],
+  ) => {
     const [image] = await this._takeScreenShot({
       modelRatio: this._modelRatio,
       rotations: [
@@ -515,11 +538,12 @@ export class Viewer3D {
           azimuthAngle,
         },
       ],
+      colorMap,
     });
     return image;
   };
 
-  takeScreenShotAuto = async (count = 4) => {
+  takeScreenShotAuto = async (count = 4, colorMap?: { layerName: string; color: string }[]) => {
     const rotations = Utils.getEqualAngleRotations(count).map((azimuthAngle) => ({
       azimuthAngle,
     }));
@@ -527,6 +551,7 @@ export class Viewer3D {
     return await this._takeScreenShot({
       modelRatio: this._modelRatio,
       rotations: rotations,
+      colorMap,
     });
   };
 

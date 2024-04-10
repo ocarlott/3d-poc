@@ -1,5 +1,7 @@
 import { Boundary } from 'microstore-3d/lib/core/Boundary';
 import { Button, Image, ImageList, SideBar } from '../../AppStyles';
+import { ImageEditor } from 'microstore-3d';
+import { useRef, useState } from 'react';
 
 export function RSidebarView(props: {
   toggleAutoRotate: () => any;
@@ -21,7 +23,10 @@ export function RSidebarView(props: {
   fileRef: React.RefObject<HTMLInputElement>;
   images: string[];
   boundaryActive: Boundary | null;
+  imageEditor: ImageEditor;
 }) {
+  const [sensitivity, setSensitivity] = useState(5);
+  const imageUploaderRef = useRef<HTMLInputElement>(null);
   return (
     <SideBar>
       <Button onClick={props.toggleAutoRotate}>Toggle Rotate</Button>
@@ -39,6 +44,18 @@ export function RSidebarView(props: {
       <Button onClick={props.resetAllColorsToDefault()}>Reset All Colors To Default</Button>
       <Button onClick={props.resetAllBoundaries()}>Reset All Boundaries</Button>
       <Button onClick={props.resetModel()}>Reset Model</Button>
+      <Button onClick={() => imageUploaderRef.current?.click()}>Upload Image</Button>
+      <input
+        type="text"
+        value={sensitivity}
+        onChange={async (e) => {
+          const value = parseInt(e.target.value);
+          if (!isNaN(value)) {
+            setSensitivity(value);
+            await props.imageEditor.updateSensitivity(value, [[255, 255, 255]]);
+          }
+        }}
+      />
 
       {props.boundaryActive ? (
         <div
@@ -50,6 +67,28 @@ export function RSidebarView(props: {
           }}
         />
       ) : null}
+      <div
+        ref={(ref) => {
+          const editor = props.imageEditor;
+          if (ref) {
+            ref.appendChild(editor.viewer);
+          }
+        }}
+      />
+
+      <input
+        type="file"
+        ref={imageUploaderRef}
+        onChange={(e) => {
+          if (e.target?.files && e.target.files[0]) {
+            props.imageEditor.edit(URL.createObjectURL(e.target.files[0]));
+          }
+        }}
+        style={{
+          width: 0.1,
+          height: 0.1,
+        }}
+      />
 
       <input
         type="file"

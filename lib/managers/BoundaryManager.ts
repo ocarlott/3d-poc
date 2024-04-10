@@ -118,6 +118,7 @@ export class BoundaryManager {
       yRatio?: number;
       rotation?: number;
       sizeRatio?: number;
+      sizeRatioLimit?: number;
       shouldShowOriginalArtwork?: boolean;
       widthLimitInInches?: number;
       heightLimitInInches?: number;
@@ -133,9 +134,8 @@ export class BoundaryManager {
       sizeRatio = 0.5,
       artworkUrl,
       shouldShowOriginalArtwork,
-      widthLimitInInches = 12,
-      heightLimitInInches = 12,
       sensitivity,
+      sizeRatioLimit = 1,
     } = options;
 
     let boundaryObj = this.findByName(boundary) ?? null;
@@ -149,9 +149,8 @@ export class BoundaryManager {
       onArtworkChanged: this._onArtworkChanged,
       disableEditing,
       shouldShowOriginalArtwork,
-      widthLimitInInches,
-      heightLimitInInches,
       sensitivity,
+      sizeRatioLimit,
     });
     return boundaryObj;
   };

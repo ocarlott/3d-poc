@@ -26,6 +26,7 @@ export function RSidebarViewModel({
           boundary: defaultModelConfig.app.boundary,
           artworkUrl: './logo.png',
           sizeRatio: 0.5,
+          sizeRatioLimit: 0.7,
           xRatio: 0.5,
           yRatio: 0.2,
         },
@@ -141,7 +142,12 @@ export function RSidebarViewModel({
 
   const takeSnapshot = async () => {
     if (viewer) {
-      const image = await viewer.takeScreenShot();
+      const image = await viewer.takeScreenShot([
+        {
+          layerName: defaultModelConfig.app.panel,
+          color: '3585c9',
+        },
+      ]);
       model.setImages(model.images.concat(image));
     }
   };
@@ -168,6 +174,7 @@ export function RSidebarViewModel({
     boundaryActive: model.boundaryActive,
     fileRef: model.fileRef,
     images: model.images,
+    imageEditor: model.imageEditor,
     addArtwork,
     removeArtwork,
     toggleAutoRotate,
