@@ -10,8 +10,8 @@ const jacketConfig = {
   configure: {
     colorMap: [
       {
-        layerName: 'Jacket_changeable_group_1_front',
-        color: '#ff0000',
+        layerName: 'LongSleeveVneck_changeable_group_1_front',
+        color: '#4444ff',
       },
       {
         layerName: 'Jacket_changeable_group_2_back',

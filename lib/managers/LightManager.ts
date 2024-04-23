@@ -2,23 +2,14 @@ import * as THREE from 'three';
 
 export class LightManager {
   private _lights: { position: THREE.Vector3; light: THREE.SpotLight }[] = [];
-  private _ambientLight = new THREE.AmbientLight('#f1e9e9', 3);
+  private _ambientLight = new THREE.AmbientLight('#f1e9e9', 0.3);
   private _lightGroup = new THREE.Group();
   private _lightGroupHeper = new THREE.Group();
   private _spotLightHelpers: THREE.SpotLightHelper[] = [];
   private _devMode = false;
 
   constructor() {
-    this._lights = [
-      {
-        position: new THREE.Vector3(0, 30, 40),
-        light: new THREE.SpotLight('#FFEFE0', 5, 100, Math.PI / 2, 1, 0),
-      },
-      {
-        position: new THREE.Vector3(0, 30, -40),
-        light: new THREE.SpotLight('#FFEFE0', 5, 100, Math.PI / 2, 1, 0),
-      },
-    ];
+    this._lights = this.createLights();
     this._lights.forEach((l) => {
       const helper = new THREE.SpotLightHelper(
         l.light,
@@ -47,6 +38,19 @@ export class LightManager {
     this._spotLightHelpers.forEach((h) => {
       h.update();
     });
+  }
+
+  createLights() {
+    return [
+      {
+        position: new THREE.Vector3(0, 30, 70),
+        light: new THREE.SpotLight('#FFEFE0', 0.2, 100, Math.PI / 2, 1, 1),
+      },
+      {
+        position: new THREE.Vector3(0, 30, -40),
+        light: new THREE.SpotLight('#FFEFE0', 0.2, 100, Math.PI / 2, 1, 1),
+      },
+    ];
   }
 
   getLightGroup() {

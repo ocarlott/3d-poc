@@ -40,7 +40,7 @@ export class Viewer3D {
 
     this._scene = SceneBuilder.createScene();
     this._camera = SceneBuilder.createCamera(this._uiManager.aspectRatio);
-    this._renderer = SceneBuilder.createRenderer(canvas);
+    this._renderer = SceneBuilder.createRenderer(canvas, this._scene);
     this._lightManager = new LightManager();
 
     this._cameraControlsManager = new CameraControlsManager(canvas, this._camera, {
@@ -106,14 +106,13 @@ export class Viewer3D {
       antialias: true,
       alpha: true,
     });
-    renderer.shadowMap.type = THREE.PCFShadowMap;
-    renderer.toneMapping = THREE.ReinhardToneMapping;
-    renderer.toneMappingExposure = 1;
+    renderer.toneMappingExposure = 0.5;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
 
     const newScene = new THREE.Scene();
     newScene.background = sceneBackground || null;
-    newScene.add(this._lightManager.getLightGroup().clone());
+    newScene.add(this._lightManager.getLightGroup().clone(true));
+    newScene.add(new THREE.AmbientLight('#f1e9e9', 0.9));
 
     const newGroupManager = this._groupManager.clone();
     newGroupManager.workingAssetGroup?.traverse((child) => {

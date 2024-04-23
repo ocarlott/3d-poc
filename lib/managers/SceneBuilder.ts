@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import env from '../assets/env.hdr';
+import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader';
 
 export class SceneBuilder {
   static createCamera(aspectRatio = 1): THREE.PerspectiveCamera {
@@ -11,12 +13,18 @@ export class SceneBuilder {
     return scene;
   }
 
-  static createRenderer(canvas: HTMLCanvasElement): THREE.WebGLRenderer {
+  static createRenderer(canvas: HTMLCanvasElement, scene: THREE.Scene): THREE.WebGLRenderer {
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-    renderer.shadowMap.type = THREE.PCFShadowMap;
-    renderer.toneMapping = THREE.ReinhardToneMapping;
-    renderer.toneMappingExposure = 1;
+    renderer.toneMappingExposure = 0.8;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    const hdriLoader = new RGBELoader();
+    hdriLoader.load(env, (texture) => {
+      const envMap = pmremGenerator.fromEquirectangular(texture).texture;
+      scene.environment = envMap;
+      texture.dispose();
+      pmremGenerator.dispose();
+    });
     return renderer;
   }
 }

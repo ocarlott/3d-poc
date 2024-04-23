@@ -13,7 +13,7 @@ export class CameraControlsManager {
   ) {
     this._controls = new CameraControls(camera, canvasOrDomElement);
     this._camera = camera;
-    this._camera.add(new THREE.PointLight(0xffffff, 0.3));
+    // this._camera.add(new THREE.PointLight(0xffffff, 0.3));
 
     options?.lockPolarAngle && this._lockPolarAngle();
   }
