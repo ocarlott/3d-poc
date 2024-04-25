@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import env from '../assets/env.hdr';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader';
 
 export class SceneBuilder {
@@ -19,7 +18,7 @@ export class SceneBuilder {
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     const pmremGenerator = new THREE.PMREMGenerator(renderer);
     const hdriLoader = new RGBELoader();
-    hdriLoader.load(env, (texture) => {
+    hdriLoader.load('/env.hdr', (texture) => {
       const envMap = pmremGenerator.fromEquirectangular(texture).texture;
       scene.environment = envMap;
       texture.dispose();
