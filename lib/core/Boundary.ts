@@ -417,6 +417,7 @@ export class Boundary {
     });
     img.originX = 'center';
     img.originY = 'center';
+    (img.centeredScaling as any) = true;
     return img;
   };
 
