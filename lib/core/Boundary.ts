@@ -480,10 +480,9 @@ export class Boundary {
       }
 
       // Handle resized
-      this._sizeRatio =
-        (this._useWidthToScale
-          ? (img.scaleX * img.width) / clipPathWidth
-          : (img.scaleY * img.height) / clipPathHeight) / window.devicePixelRatio;
+      this._sizeRatio = this._useWidthToScale
+        ? (img.scaleX * img.width) / clipPathWidth
+        : (img.scaleY * img.height) / clipPathHeight;
       if (this._internalImage) {
         this._internalImage.scaleX = img.scaleX * this._canvasRatio;
         this._internalImage.scaleY = img.scaleY * this._canvasRatio;
