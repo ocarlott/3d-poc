@@ -420,6 +420,7 @@ export class Boundary {
     img.originX = 'center';
     img.originY = 'center';
     img.centeredScaling = true;
+    img.lockScalingFlip = true;
     return img;
   };
 
@@ -439,6 +440,13 @@ export class Boundary {
     img.on('scaling', () => {
       // Handle scaling
       const self = img as any;
+      if (self.scaleX < 0.02 || self.scaleY < 0.02) {
+        self.scaleX = self.lastGoodScaleX ?? 0.02;
+        self.scaleY = self.lastGoodScaleY ?? 0.02;
+        self.left = self.lastGoodLeft ?? self.left;
+        self.top = self.lastGoodTop ?? self.top;
+        return;
+      }
       if (self.scaleX >= maxScaleX || self.scaleY >= maxScaleY) {
         self.left = self.lastGoodLeft ?? self.left;
         self.top = self.lastGoodTop ?? self.top;
