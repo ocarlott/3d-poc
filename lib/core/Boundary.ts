@@ -317,12 +317,17 @@ export class Boundary {
       clipPathHeight,
     });
     const internalImage = await img.clone();
-    this._scaleImage(img, clipPathWidth, clipPathHeight, sizeRatio);
+    this._scaleImage(
+      img,
+      clipPathWidth,
+      clipPathHeight,
+      sizeRatio < sizeRatioLimit ? sizeRatio : sizeRatioLimit,
+    );
     this._scaleImage(
       internalImage,
       clipPathWidth * this._canvasRatio,
       clipPathHeight * this._canvasRatio,
-      sizeRatio,
+      sizeRatio < sizeRatioLimit ? sizeRatio : sizeRatioLimit,
     );
     this._attachEvents({
       img,
@@ -434,11 +439,12 @@ export class Boundary {
     img.on('scaling', () => {
       // Handle scaling
       const self = img as any;
-      if (self.scaleX > maxScaleX || self.scaleY > maxScaleY) {
-        self.left = self.lastGoodLeft;
-        self.top = self.lastGoodTop;
-        self.scaleX = self.lastGoodScaleX;
-        self.scaleY = self.lastGoodScaleY;
+      if (self.scaleX >= maxScaleX || self.scaleY >= maxScaleY) {
+        self.left = self.lastGoodLeft ?? self.left;
+        self.top = self.lastGoodTop ?? self.top;
+        self.scaleX = self.lastGoodScaleX ?? maxScaleX;
+        self.scaleY = self.lastGoodScaleY ?? maxScaleY;
+        return;
       }
       self.lastGoodTop = self.top;
       self.lastGoodLeft = self.left;
