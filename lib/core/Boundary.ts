@@ -246,9 +246,6 @@ export class Boundary {
     this._internalWorkingCanvas2D.backgroundColor = 'rgba(0, 0, 0, 0.1)';
 
     this._workingCanvas2D.on('after:render', this._renderCanvasOnBoundary);
-    this._workingCanvas2D.on('object:moving', this._onArtworkMove);
-    this._workingCanvas2D.on('object:scaling', this._onArtworkResize);
-    this._workingCanvas2D.on('object:rotating', this._onArtworkRotate);
     this._workingCanvas2D.clipPath = this._generateClipPath(
       this._workingCanvasSize,
       this._workingCanvasSize,
@@ -327,7 +324,7 @@ export class Boundary {
       clipPathHeight * this._canvasRatio,
       sizeRatio,
     );
-    this._attachScaleEvent({
+    this._attachEvents({
       img,
       clipPathWidth,
       clipPathHeight,
@@ -417,11 +414,11 @@ export class Boundary {
     });
     img.originX = 'center';
     img.originY = 'center';
-    (img.centeredScaling as any) = true;
+    img.centeredScaling = true;
     return img;
   };
 
-  private _attachScaleEvent = (params: {
+  private _attachEvents = (params: {
     img: fabric.Image;
     clipPathWidth: number;
     clipPathHeight: number;
@@ -433,8 +430,10 @@ export class Boundary {
     const maxSizeY = sizeForScale * sizeRatioLimit;
     const maxScaleX = maxSizeX / img.width;
     const maxScaleY = maxSizeY / img.height;
-    img.on('scaling', function (this: fabric.Image, _: any) {
-      const self = this as any;
+
+    img.on('scaling', () => {
+      // Handle scaling
+      const self = img as any;
       if (self.scaleX > maxScaleX || self.scaleY > maxScaleY) {
         self.left = self.lastGoodLeft;
         self.top = self.lastGoodTop;
@@ -445,6 +444,38 @@ export class Boundary {
       self.lastGoodLeft = self.left;
       self.lastGoodScaleX = self.scaleX;
       self.lastGoodScaleY = self.scaleY;
+    });
+
+    img.on('modified', () => {
+      // Handle rotated
+      this._rotation = img.angle;
+      if (this._internalImage) {
+        this._internalImage.angle = img.angle;
+      }
+
+      // Handle moved
+      const { clipPathWidth, clipPathHeight, widthPadding, heightPadding } = this._getClipPathSize(
+        this._workingCanvasSize,
+        this._workingCanvasSize,
+      );
+      this._xRatio = (img.left - widthPadding) / clipPathWidth;
+      this._yRatio = (img.top - heightPadding) / clipPathHeight;
+      if (this._internalImage) {
+        this._internalImage.left = img.left * this._canvasRatio;
+        this._internalImage.top = img.top * this._canvasRatio;
+      }
+
+      // Handle resized
+      this._sizeRatio =
+        (this._useWidthToScale
+          ? (img.scaleX * img.width) / clipPathWidth
+          : (img.scaleY * img.height) / clipPathHeight) / window.devicePixelRatio;
+      if (this._internalImage) {
+        this._internalImage.scaleX = img.scaleX * this._canvasRatio;
+        this._internalImage.scaleY = img.scaleY * this._canvasRatio;
+      }
+
+      this._updateListener();
     });
   };
 
@@ -497,7 +528,7 @@ export class Boundary {
     img.set({ angle: angle, selectable: !disableEditing });
   };
 
-  private _updateListener = () => {
+  private _updateListener = _.throttle(() => {
     this._onArtworkChanged?.({
       forBoundary: this.name,
       xRatio: this._xRatio,
@@ -506,46 +537,7 @@ export class Boundary {
       whRatio: this._boundaryRatio,
       rotation: this._rotation,
     });
-  };
-
-  private _onArtworkResize = _.throttle((e: fabric.TEvent<MouseEvent>) => {
-    const { clipPathWidth, clipPathHeight } = this._getClipPathSize(
-      this._workingCanvasSize,
-      this._workingCanvasSize,
-    );
-    this._sizeRatio =
-      (this._useWidthToScale
-        ? (((e as any).target?.scaleX ?? 1) * ((e as any).target?.width ?? 1)) / clipPathWidth
-        : (((e as any).target?.scaleY ?? 1) * ((e as any).target?.height ?? 1)) / clipPathHeight) /
-      window.devicePixelRatio;
-    if (this._internalImage) {
-      this._internalImage.scaleX = (e as any).target?.scaleX * this._canvasRatio;
-      this._internalImage.scaleY = (e as any).target?.scaleY * this._canvasRatio;
-    }
-    this._updateListener();
   }, 300);
-
-  private _onArtworkRotate = _.throttle((e: fabric.TEvent<MouseEvent>) => {
-    this._rotation = (e as any).target.angle ?? 0;
-    if (this._internalImage) {
-      this._internalImage.rotate(this._rotation);
-    }
-    this._updateListener();
-  }, 300);
-
-  private _onArtworkMove = (event: fabric.TEvent<MouseEvent>) => {
-    const { clipPathWidth, clipPathHeight, widthPadding, heightPadding } = this._getClipPathSize(
-      this._workingCanvasSize,
-      this._workingCanvasSize,
-    );
-    this._xRatio = (((event as any).target?.left ?? 0) - widthPadding) / clipPathWidth;
-    this._yRatio = (((event as any).target?.top ?? 0) - heightPadding) / clipPathHeight;
-    if (this._internalImage) {
-      this._internalImage.left = ((event as any).target?.left ?? 0) * this._canvasRatio;
-      this._internalImage.top = ((event as any).target?.top ?? 0) * this._canvasRatio;
-    }
-    this._updateListener();
-  };
 
   private _renderCanvasOnBoundary = _.throttle(async () => {
     if (this._artworkUrl) {
