@@ -293,8 +293,18 @@ export class Viewer3D {
           this._model = obj;
 
           this._scene.add(this._groupManager.modelGroup);
-          onProgress(100);
-          resolve();
+          const { layerNames } = this._groupManager.getChildNamesListSnapshot();
+          const firstLayer = this._groupManager.findByName(layerNames[0]);
+          if (firstLayer) {
+            firstLayer.onAfterRender = () => {
+              onProgress(100);
+              resolve();
+              firstLayer.onAfterRender = () => {};
+            };
+          } else {
+            onProgress(100);
+            resolve();
+          }
         },
         (event) => {
           onProgress(Math.min((event.loaded / event.total) * 100, 95));

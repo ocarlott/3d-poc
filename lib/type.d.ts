@@ -28,6 +28,11 @@ declare module '*.glb' {
   export = value;
 }
 
+declare module '*.svg' {
+  const value: any;
+  export = value;
+}
+
 declare module 'skmeans' {
   export type CentroidValues = 'kmrand' | 'kmpp' | null;
 
