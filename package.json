@@ -1,6 +1,6 @@
 {
   "name": "microstore-3d",
-  "version": "0.0.79",
+  "version": "0.0.80",
   "description": "",
   "main": "./lib/index.ts",
   "directories": {

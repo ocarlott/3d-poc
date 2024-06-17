@@ -1,5 +1,6 @@
 import { Boundary } from '../core/Boundary';
 import { TextureOption } from '../type';
+import * as THREE from 'three';
 
 export class BoundaryManager {
   private _boundaryList: Boundary[] = [];
