@@ -142,10 +142,10 @@ export function RSidebarViewModel({
 
   const takeSnapshot = async () => {
     if (viewer) {
-      const image = await viewer.takeScreenShot([
+      const image = viewer.takeScreenShot([
         {
           layerName: defaultModelConfig.app.panel,
-          color: '3585c9',
+          color: 'cccccc',
         },
       ]);
       model.setImages(model.images.concat(image));
@@ -155,7 +155,7 @@ export function RSidebarViewModel({
   function takeSnapshotsAuto() {
     return async () => {
       if (viewer) {
-        const newImages = await viewer.takeScreenShotAuto();
+        const newImages = viewer.takeScreenShotAuto();
         model.setImages(model.images.concat(newImages));
       }
     };
@@ -164,7 +164,7 @@ export function RSidebarViewModel({
   function takeSnapshot45() {
     return async () => {
       if (viewer) {
-        const image = await viewer.takeScreenShotAt(Math.PI / 4);
+        const image = viewer.takeScreenShotAt(Math.PI / 4);
         model.setImages(model.images.concat(image));
       }
     };

@@ -34,18 +34,42 @@ export class Viewer3D {
   private _modelRatio = 1;
   private _clock = new THREE.Clock();
   private _axesHelper = new THREE.AxesHelper(1);
+  private _stationaryScreenshotCameras: THREE.PerspectiveCamera[] = [];
+  private _stationaryScreenshotCameraManagers: CameraControlsManager[] = [];
+  private _rotatableScreenshotCamera: THREE.PerspectiveCamera;
+  private _rotatableScreenshotCameraManager: CameraControlsManager;
+  private _canvas: HTMLCanvasElement;
 
   constructor(canvas: HTMLCanvasElement) {
     this._uiManager = new UIManager(canvas, this._onCanvasSizeUpdated);
-
+    this._canvas = canvas;
     this._scene = SceneBuilder.createScene();
+
     this._camera = SceneBuilder.createCamera(this._uiManager.aspectRatio);
-    this._renderer = SceneBuilder.createRenderer(canvas, this._scene);
+    this._stationaryScreenshotCameras = SceneBuilder.createStationaryScreenshotCameras(
+      this._uiManager.aspectRatio,
+    );
+    this._rotatableScreenshotCamera = SceneBuilder.createRotatableScreenshotCamera(
+      this._uiManager.aspectRatio,
+    );
+
+    this._renderer = SceneBuilder.createRenderer(this._scene, {
+      withDrawingBuffer: false,
+      canvas,
+    });
+
     this._lightManager = new LightManager();
 
     this._cameraControlsManager = new CameraControlsManager(canvas, this._camera, {
       lockPolarAngle: true,
     });
+    this._stationaryScreenshotCameraManagers = this._stationaryScreenshotCameras.map(
+      (camera) => new CameraControlsManager(canvas, camera),
+    );
+    this._rotatableScreenshotCameraManager = new CameraControlsManager(
+      canvas,
+      this._rotatableScreenshotCamera,
+    );
 
     this._groupManager = new GroupManager();
     this._boundaryManager = new BoundaryManager();
@@ -68,6 +92,14 @@ export class Viewer3D {
   }: SizeUpdateParams) => {
     this._camera.aspect = aspectRatio;
     this._camera.updateProjectionMatrix();
+
+    this._stationaryScreenshotCameras.forEach((camera) => {
+      camera.aspect = aspectRatio;
+      camera.updateProjectionMatrix();
+    });
+
+    this._rotatableScreenshotCamera.aspect = aspectRatio;
+    this._rotatableScreenshotCamera.updateProjectionMatrix();
 
     this._renderer.setSize(canvasWidth, canvasHeight);
     this._renderer.setPixelRatio(pixelRatio);
@@ -92,6 +124,37 @@ export class Viewer3D {
       },
       transition: false,
     });
+    this._stationaryScreenshotCameraManagers.forEach((controls, index) => {
+      controls.paddingInCssPixelAndMoveControl({
+        rendererHeight: Viewer3D.getRendererHeight(this._renderer),
+        obj,
+        padding: {
+          top: 20,
+          bottom: 20,
+          left: 20,
+          right: 20,
+        },
+        rotationTo: {
+          polarAngle: Math.PI * 0.5,
+          azimuthAngle: Math.PI / 4 + (Math.PI / 2) * index,
+        },
+        transition: false,
+      });
+    });
+    this._rotatableScreenshotCameraManager.paddingInCssPixelAndMoveControl({
+      rendererHeight: Viewer3D.getRendererHeight(this._renderer),
+      obj,
+      padding: {
+        top: 20,
+        bottom: 20,
+        left: 20,
+        right: 20,
+      },
+      rotationTo: {
+        polarAngle: Math.PI * 0.5,
+      },
+      transition: false,
+    });
   };
 
   private _generateViewerCopy = ({
@@ -101,18 +164,15 @@ export class Viewer3D {
     sceneBackground?: THREE.Color | null;
     colorMap?: { layerName: string; color: string }[];
   } = {}) => {
-    const renderer = new THREE.WebGLRenderer({
-      preserveDrawingBuffer: true,
-      antialias: true,
-      alpha: true,
-    });
-    renderer.toneMappingExposure = 0.5;
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-
     const newScene = new THREE.Scene();
     newScene.background = sceneBackground || null;
-    newScene.add(this._lightManager.getLightGroup().clone(true));
-    newScene.add(new THREE.AmbientLight('#f1e9e9', 0.9));
+    const newLightManager = new LightManager();
+    newScene.add(newLightManager.getLightGroup());
+    newScene.add(new THREE.AmbientLight(0xffffff, 0.5));
+
+    const renderer = SceneBuilder.createRenderer(newScene, {
+      withDrawingBuffer: true,
+    });
 
     const newGroupManager = this._groupManager.clone();
     newGroupManager.workingAssetGroup?.traverse((child) => {
@@ -141,42 +201,38 @@ export class Viewer3D {
     };
   };
 
-  private _takeScreenShot = async (params: {
+  private _takeScreenShot = (params: {
     modelRatio: number;
-    rotations: {
+    rotation: {
       azimuthAngle?: number;
       polarAngle?: number;
-    }[];
+    };
     colorMap?: { layerName: string; color: string }[];
   }) => {
-    const { rotations, modelRatio, colorMap } = params;
-
-    const camera = this._camera.clone();
-    const { renderer, scene, workingAssetGroup } = this._generateViewerCopy({
-      sceneBackground: null,
-      colorMap,
-    });
-
-    const controlsManager = new CameraControlsManager(renderer.domElement, camera);
-    controlsManager.paddingInCssPixelAndMoveControl({
-      rendererHeight: Viewer3D.getRendererHeight(renderer),
-      obj: workingAssetGroup,
-      padding: {
-        top: 10,
-        bottom: 10,
-        left: 10,
-        right: 10,
-      },
-    });
+    const { rotation, modelRatio, colorMap } = params;
 
     const images: string[] = [];
-    for (let rotation of rotations) {
-      controlsManager.rotateTo(rotation);
-      controlsManager.update(this._clock);
-      renderer.render(scene, camera);
-      const imgData = renderer.domElement.toDataURL(strMime);
+
+    this._appyColorTemporarilyForScreenshot(() => {
+      this._rotatableScreenshotCameraManager.rotateTo(rotation, false);
+      this._rotatableScreenshotCameraManager.paddingInCssPixelAndMoveControl({
+        rendererHeight: Viewer3D.getRendererHeight(this._renderer),
+        obj: this._groupManager.workingAssetGroup,
+        padding: {
+          top: 0,
+          bottom: 0,
+          left: 0,
+          right: 0,
+        },
+      });
+      this._rotatableScreenshotCameraManager.update(this._clock);
+
+      this._renderer.render(this._scene, this._rotatableScreenshotCamera);
+      const imgData = this._canvas.toDataURL(strMime, 0.98);
       images.push(imgData);
-    }
+    }, colorMap);
+    this._renderer.render(this._scene, this._rotatableScreenshotCamera);
+
     return images;
   };
 
@@ -521,47 +577,90 @@ export class Viewer3D {
     }
   };
 
-  takeScreenShot = async (colorMap?: { layerName: string; color: string }[]) => {
+  takeScreenShot = (colorMap?: { layerName: string; color: string }[]) => {
     const { azimuthAngle, polarAngle } = this._cameraControlsManager.controls;
-    const [image] = await this._takeScreenShot({
+    const [image] = this._takeScreenShot({
       modelRatio: this._modelRatio,
-      rotations: [
-        {
-          azimuthAngle,
-          polarAngle,
-        },
-      ],
+      rotation: {
+        azimuthAngle,
+        polarAngle,
+      },
       colorMap,
     });
     return image;
   };
 
-  takeScreenShotAt = async (
-    azimuthAngle: number,
+  takeScreenShotAt = (azimuthAngle: number, colorMap?: { layerName: string; color: string }[]) => {
+    const [image] = this._takeScreenShot({
+      modelRatio: this._modelRatio,
+      rotation: {
+        azimuthAngle,
+      },
+      colorMap,
+    });
+    return image;
+  };
+
+  takeScreenShotAuto = (count = 4, colorMap?: { layerName: string; color: string }[]) => {
+    const images: string[] = [];
+
+    this._appyColorTemporarilyForScreenshot(() => {
+      this._stationaryScreenshotCameraManagers.forEach((controls) => {
+        controls.paddingInCssPixelAndMoveControl({
+          rendererHeight: Viewer3D.getRendererHeight(this._renderer),
+          obj: this._groupManager.workingAssetGroup,
+          padding: {
+            top: 0,
+            bottom: 0,
+            left: 0,
+            right: 0,
+          },
+        });
+        controls.update(this._clock);
+      });
+
+      this._stationaryScreenshotCameras.forEach((camera) => {
+        this._renderer.render(this._scene, camera);
+        const imgData = this._canvas.toDataURL(strMime, 0.98);
+        images.push(imgData);
+      });
+    }, colorMap);
+
+    return images;
+  };
+
+  private _appyColorTemporarilyForScreenshot = (
+    cb: () => void,
     colorMap?: { layerName: string; color: string }[],
   ) => {
-    const [image] = await this._takeScreenShot({
-      modelRatio: this._modelRatio,
-      rotations: [
-        {
-          azimuthAngle,
-        },
-      ],
-      colorMap,
-    });
-    return image;
-  };
-
-  takeScreenShotAuto = async (count = 4, colorMap?: { layerName: string; color: string }[]) => {
-    const rotations = Utils.getEqualAngleRotations(count).map((azimuthAngle) => ({
-      azimuthAngle,
-    }));
-
-    return await this._takeScreenShot({
-      modelRatio: this._modelRatio,
-      rotations: rotations,
-      colorMap,
-    });
+    const originalBackgroundColor = this._scene.background;
+    this._scene.background = null;
+    if (!colorMap || colorMap.length === 0) {
+      cb();
+    } else {
+      const currentColorMaps = colorMap.map((config) => {
+        const layer = this._groupManager.findByName(config.layerName);
+        if (layer) {
+          const originalColor = (layer.material as THREE.MeshStandardMaterial).color.getHex();
+          (layer.material as THREE.MeshStandardMaterial).color.set(
+            `#${config.color.replace(/#/g, '')}`,
+          );
+          return {
+            layer,
+            layerName: config.layerName,
+            originalColor,
+          };
+        }
+        return null;
+      });
+      cb();
+      currentColorMaps.forEach((config) => {
+        if (config) {
+          (config.layer.material as THREE.MeshStandardMaterial).color.setHex(config.originalColor);
+        }
+      });
+    }
+    this._scene.background = originalBackgroundColor;
   };
 
   createTechPack = async () => {
@@ -571,7 +670,6 @@ export class Viewer3D {
 
     const { renderer, scene, techPackGroup, workingAssetGroup, shadowPlane, modelGroup } =
       this._generateViewerCopy({ sceneBackground: new THREE.Color('rgba(0, 0, 0, 0)') });
-    // scene.background = new THREE.Color('rgba(0, 0, 0, 0)');
     renderer.toneMappingExposure = 5;
     const controlsManager = new CameraControlsManager(renderer.domElement, camera);
     controlsManager.rotateTo({

@@ -251,6 +251,16 @@ export class Boundary {
       this._workingCanvasSize,
     );
     this._workingCanvas2D.backgroundColor = 'rgba(0, 0, 0, 0.1)';
+    this._workingCanvas2D.add(
+      new fabric.FabricText('Loading image', {
+        left: (this._workingCanvas2D.clipPath?.left ?? 0) + 10,
+        top: (this._workingCanvas2D.clipPath?.top ?? 0) + 10,
+        fontSize: 10,
+        fontFamily: 'Montserrat',
+        fill: '#4c2e83',
+        fontWeight: '400',
+      }),
+    );
   };
 
   organizeGroup = () => {
