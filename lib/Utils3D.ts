@@ -9,6 +9,8 @@ export class Utils3D {
     return {
       size,
       center,
+      min: boundingBox.min,
+      max: boundingBox.max,
     };
   };
 

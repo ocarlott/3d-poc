@@ -1,5 +1,5 @@
 import React from 'react';
-import { Canvas, Container } from '../../AppStyles';
+import { Canvas, Container, CanvasContainer } from '../../AppStyles';
 import { RModal } from '../RModal/RModal';
 import { RSidebar } from '../RSidebar/RSidebar';
 import { Viewer3D } from 'microstore-3d';
@@ -21,7 +21,9 @@ export function AppView(props: {
         setValidationResult={props.setValidationResult}
         viewer={props.viewer}
       />
-      <Canvas ref={props.canvasRef} />
+      <CanvasContainer>
+        <Canvas ref={props.canvasRef} />
+      </CanvasContainer>
       <RSidebar
         workingModel={props.workingModel}
         setWorkingModel={props.setWorkingModel}

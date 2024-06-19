@@ -6,8 +6,14 @@ export const Container = styled.div`
   display: flex;
 `;
 
-export const Canvas = styled.canvas`
+export const CanvasContainer = styled.div`
   width: 80%;
+  height: 100%;
+  position: relative;
+`;
+
+export const Canvas = styled.canvas`
+  width: 100%;
   height: 100%;
 `;
 

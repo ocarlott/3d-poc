@@ -38,6 +38,8 @@ export class Viewer3D {
   private _stationaryScreenshotCameraManagers: CameraControlsManager[] = [];
   private _rotatableScreenshotCamera: THREE.PerspectiveCamera;
   private _rotatableScreenshotCameraManager: CameraControlsManager;
+  private _techpackCamera: THREE.PerspectiveCamera;
+  private _techpackCameraManager: CameraControlsManager;
   private _canvas: HTMLCanvasElement;
 
   constructor(canvas: HTMLCanvasElement) {
@@ -50,6 +52,9 @@ export class Viewer3D {
       this._uiManager.aspectRatio,
     );
     this._rotatableScreenshotCamera = SceneBuilder.createRotatableScreenshotCamera(
+      this._uiManager.aspectRatio,
+    );
+    this._techpackCamera = SceneBuilder.createRotatableScreenshotCamera(
       this._uiManager.aspectRatio,
     );
 
@@ -70,6 +75,7 @@ export class Viewer3D {
       canvas,
       this._rotatableScreenshotCamera,
     );
+    this._techpackCameraManager = new CameraControlsManager(canvas, this._techpackCamera);
 
     this._groupManager = new GroupManager();
     this._boundaryManager = new BoundaryManager();
@@ -100,6 +106,9 @@ export class Viewer3D {
 
     this._rotatableScreenshotCamera.aspect = aspectRatio;
     this._rotatableScreenshotCamera.updateProjectionMatrix();
+
+    this._techpackCamera.aspect = aspectRatio;
+    this._techpackCamera.updateProjectionMatrix();
 
     this._renderer.setSize(canvasWidth, canvasHeight);
     this._renderer.setPixelRatio(pixelRatio);
@@ -228,7 +237,7 @@ export class Viewer3D {
       this._rotatableScreenshotCameraManager.update(this._clock);
 
       this._renderer.render(this._scene, this._rotatableScreenshotCamera);
-      const imgData = this._canvas.toDataURL(strMime, 0.98);
+      const imgData = this._canvas.toDataURL(strMime, 1);
       images.push(imgData);
     }, colorMap);
     this._renderer.render(this._scene, this._rotatableScreenshotCamera);
@@ -283,8 +292,9 @@ export class Viewer3D {
     const ratio = Math.abs(size.x / size.z);
     controlsManager.update(this._clock);
     renderer.render(scene, camera);
-    const img = await ImageHelper.cropImageToRatio(renderer.domElement.toDataURL(strMime), ratio);
-
+    const rawImage = renderer.domElement.toDataURL(strMime);
+    renderer.render(scene, this._camera);
+    const img = await ImageHelper.cropImageToRatio(rawImage, ratio);
     return img;
   };
 
@@ -337,9 +347,20 @@ export class Viewer3D {
           this._boundaryManager.organizeGroup();
 
           this._fitCameraToObject(this._groupManager.workingAssetGroup!);
-          const { size } = Utils3D.getSizeAndCenter(this._groupManager.workingAssetGroup!);
+          const { size, min } = Utils3D.getSizeAndCenter(this._groupManager.workingAssetGroup!);
 
           this._cameraControlsManager.setDistanceLimitsFromSize(size);
+          this._techpackCameraManager.controls.moveTo(0, min.y, 0);
+          this._techpackCameraManager.paddingInCssPixelAndMoveControl({
+            rendererHeight: Viewer3D.getRendererHeight(this._renderer),
+            obj: this._groupManager.techPackGroup,
+            padding: {
+              top: 0,
+              bottom: 0,
+              left: 0,
+              right: 0,
+            },
+          });
 
           this._axesHelper = new THREE.AxesHelper(Math.max(size.x, size.y, size.z) / 2 + 2);
           this._axesHelper.visible = false;
@@ -505,7 +526,7 @@ export class Viewer3D {
     });
 
     await this._boundaryManager.testChangeAllBoundaryArtworks(artworkUrl);
-    const screenshots = await this.takeScreenShotAuto();
+    const screenshots = this.takeScreenShotAuto();
     const techpackImages = await this.createTechPack();
     this._boundaryManager.removeAllBoundaryArtworks();
     this._groupManager.resetAllColorsToDefault();
@@ -621,7 +642,7 @@ export class Viewer3D {
 
       this._stationaryScreenshotCameras.forEach((camera) => {
         this._renderer.render(this._scene, camera);
-        const imgData = this._canvas.toDataURL(strMime, 0.98);
+        const imgData = this._canvas.toDataURL(strMime, 1);
         images.push(imgData);
       });
     }, colorMap);
@@ -633,6 +654,8 @@ export class Viewer3D {
     cb: () => void,
     colorMap?: { layerName: string; color: string }[],
   ) => {
+    const newImage = this._createScreenshotImage();
+    this._renderer.domElement.parentElement?.prepend(newImage);
     const originalBackgroundColor = this._scene.background;
     this._scene.background = null;
     if (!colorMap || colorMap.length === 0) {
@@ -661,35 +684,38 @@ export class Viewer3D {
       });
     }
     this._scene.background = originalBackgroundColor;
+    this._renderer.domElement.parentElement?.removeChild(newImage);
+  };
+
+  private _createScreenshotImage = () => {
+    this._renderer.render(this._scene, this._camera);
+    const img = this._renderer.domElement.toDataURL(strMime, 1);
+    const newImage = document.createElement('img');
+    newImage.style.position = 'absolute';
+    newImage.style.top = '0';
+    newImage.style.left = '0';
+    newImage.style.width = `${this._uiManager.canvasWidth}px`;
+    newImage.style.height = `${this._uiManager.canvasHeight}px`;
+    newImage.style.zIndex = '1000';
+    newImage.src = img;
+    return newImage;
   };
 
   createTechPack = async () => {
-    const camera = this._camera.clone();
-
     await this._boundaryManager.prepareForTechpack();
-
-    const { renderer, scene, techPackGroup, workingAssetGroup, shadowPlane, modelGroup } =
-      this._generateViewerCopy({ sceneBackground: new THREE.Color('rgba(0, 0, 0, 0)') });
-    renderer.toneMappingExposure = 5;
-    const controlsManager = new CameraControlsManager(renderer.domElement, camera);
-    controlsManager.rotateTo({
-      azimuthAngle: 0,
-      polarAngle: 0,
-    });
-    controlsManager.paddingInCssPixelAndMoveControl({
-      rendererHeight: Viewer3D.getRendererHeight(renderer),
-      obj: workingAssetGroup,
-      padding: {
-        top: 20,
-        bottom: 20,
-        left: 20,
-        right: 20,
-      },
-    });
+    const newImage = this._createScreenshotImage();
+    this._renderer.domElement.parentElement?.prepend(newImage);
+    const techPackGroup = this._groupManager.techPackGroup;
+    const workingAssetGroup = this._groupManager.workingAssetGroup;
+    const shadowPlane = this._groupManager.shadowPlane;
+    const modelGroup = this._groupManager.modelGroup;
 
     const result: { name: string; image: string }[] = [];
     if (techPackGroup && workingAssetGroup) {
+      const originalBackground = this._scene.background;
+      this._scene.background = null;
       techPackGroup.visible = true;
+
       techPackGroup.children.forEach((child) => {
         if (child.isObject3D) {
           const originalMaterial = (child as THREE.Mesh).material as THREE.MeshPhysicalMaterial;
@@ -716,14 +742,13 @@ export class Viewer3D {
           child.visible = false;
         }
       });
-
       workingAssetGroup.visible = false;
 
       const img = await this._captureTechPackImage(
-        renderer,
-        scene,
-        camera,
-        controlsManager,
+        this._renderer,
+        this._scene,
+        this._techpackCamera,
+        this._techpackCameraManager,
         techPackGroup,
       );
       result.push({
@@ -737,10 +762,10 @@ export class Viewer3D {
       for (let child of layerList) {
         child.visible = true;
         const img = await this._captureTechPackImage(
-          renderer,
-          scene,
-          camera,
-          controlsManager,
+          this._renderer,
+          this._scene,
+          this._techpackCamera,
+          this._techpackCameraManager,
           child,
         );
         const name = child.name.replace('_flat', '');
@@ -754,7 +779,22 @@ export class Viewer3D {
       }
 
       layerList.forEach((child) => (child.visible = true));
+
+      techPackGroup.visible = false;
+      workingAssetGroup.visible = true;
+      if (shadowPlane) {
+        shadowPlane.visible = true;
+      }
+      modelGroup.traverse((child) => {
+        if (this._layerManager.isExtraLayer(child.name)) {
+          child.visible = true;
+        }
+      });
+      this._scene.background = originalBackground;
+      this._renderer.render(this._scene, this._camera);
+      this._renderer.domElement.parentElement?.removeChild(newImage);
     }
+
     return result;
   };
 
@@ -762,7 +802,7 @@ export class Viewer3D {
 
   prepareFilesToExport = async () => {
     const result: { name: string; image: string }[] = [];
-    const screenshots = await this.takeScreenShotAuto(6);
+    const screenshots = this.takeScreenShotAuto(6);
     screenshots.forEach((sc, index) => {
       result.push({
         name: `screenshot_${index + 1}`,
