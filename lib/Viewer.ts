@@ -41,8 +41,15 @@ export class Viewer3D {
   private _techpackCamera: THREE.PerspectiveCamera;
   private _techpackCameraManager: CameraControlsManager;
   private _canvas: HTMLCanvasElement;
+  private _opacityForUncoloredLayer = 1;
 
-  constructor(canvas: HTMLCanvasElement) {
+  constructor(
+    canvas: HTMLCanvasElement,
+    options?: {
+      opacityForUncoloredLayer?: number;
+    },
+  ) {
+    this._opacityForUncoloredLayer = options?.opacityForUncoloredLayer ?? 1;
     this._uiManager = new UIManager(canvas, this._onCanvasSizeUpdated);
     this._canvas = canvas;
     this._scene = SceneBuilder.createScene();
@@ -166,50 +173,6 @@ export class Viewer3D {
     });
   };
 
-  private _generateViewerCopy = ({
-    sceneBackground = new THREE.Color('#f5f5f5'),
-    colorMap = [],
-  }: {
-    sceneBackground?: THREE.Color | null;
-    colorMap?: { layerName: string; color: string }[];
-  } = {}) => {
-    const newScene = new THREE.Scene();
-    newScene.background = sceneBackground || null;
-    const newLightManager = new LightManager();
-    newScene.add(newLightManager.getLightGroup());
-    newScene.add(new THREE.AmbientLight(0xffffff, 0.5));
-
-    const renderer = SceneBuilder.createRenderer(newScene, {
-      withDrawingBuffer: true,
-    });
-
-    const newGroupManager = this._groupManager.clone();
-    newGroupManager.workingAssetGroup?.traverse((child) => {
-      if (child instanceof THREE.Mesh) {
-        const colorConfig = colorMap.find((config) => config.layerName === child.name);
-        if (colorConfig) {
-          child.material = child.material.clone();
-          (child.material as THREE.MeshStandardMaterial).color.set(
-            `#${colorConfig.color.replace(/#/g, '')}`,
-          );
-        }
-      }
-    });
-
-    newScene.add(newGroupManager.modelGroup);
-
-    renderer.setSize(this._uiManager.canvasWidth, this._uiManager.canvasHeight);
-    renderer.setPixelRatio(this._uiManager.pixelRatio);
-    return {
-      renderer,
-      scene: newScene,
-      modelGroup: newGroupManager.modelGroup,
-      workingAssetGroup: newGroupManager.workingAssetGroup,
-      techPackGroup: newGroupManager.techPackGroup,
-      shadowPlane: newGroupManager.shadowPlane,
-    };
-  };
-
   private _takeScreenShot = (params: {
     modelRatio: number;
     rotation: {
@@ -264,7 +227,7 @@ export class Viewer3D {
 
           this._boundaryManager.loadBoundary(castedChild, techPackBoundary);
         } else {
-          this._layerManager.loadLayer(castedChild);
+          this._layerManager.loadLayer(castedChild, this._opacityForUncoloredLayer);
         }
       }
     });
@@ -318,7 +281,7 @@ export class Viewer3D {
   };
 
   resetAllColorsToDefault = () => {
-    this._groupManager.resetAllColorsToDefault();
+    this._groupManager.resetAllColorsToDefault(this._opacityForUncoloredLayer);
   };
 
   resetAllBoundaries = () => {
@@ -529,7 +492,7 @@ export class Viewer3D {
     const screenshots = this.takeScreenShotAuto();
     const techpackImages = await this.createTechPack();
     this._boundaryManager.removeAllBoundaryArtworks();
-    this._groupManager.resetAllColorsToDefault();
+    this._groupManager.resetAllColorsToDefault(this._opacityForUncoloredLayer);
     return {
       boundaries: boundaryNames,
       techPacks: techPackNames,

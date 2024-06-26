@@ -1,13 +1,14 @@
 {
   "name": "microstore-3d",
-  "version": "0.0.82",
+  "version": "0.0.83",
   "description": "",
   "main": "./lib/index.ts",
   "directories": {
     "lib": "lib"
   },
   "scripts": {
-    "format": "prettier --write './**/*.{js,jsx,ts,tsx,json}'"
+    "format": "prettier --write './**/*.{js,jsx,ts,tsx,json}'",
+    "dev": "(cd demo && npm run dev)"
   },
   "devDependencies": {
     "@react-three/fiber": "8.16.8",

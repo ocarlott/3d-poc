@@ -20,7 +20,10 @@ export class LayerManager {
   changeLayerColor(layerName: string, color: string) {
     const entry = this.findByName(layerName);
     if (entry) {
-      (entry.mesh.material as THREE.MeshStandardMaterial).color.set(`#${color.replace(/#/g, '')}`);
+      (entry.mesh.material as THREE.MeshStandardMaterial).setValues({
+        color: `#${color.replace(/#/g, '')}`,
+        opacity: 1,
+      });
     } else {
       console.log('layer not found', layerName);
     }
@@ -50,9 +53,13 @@ export class LayerManager {
     this._layerMap.clear();
   }
 
-  loadLayer(castedChild: THREE.Mesh) {
+  loadLayer(castedChild: THREE.Mesh, opacityForUncoloredLayer: number) {
     const displayNameForChangableGroup = Utils.getDisplayNameIfChangeableGroup(castedChild.name);
     if (displayNameForChangableGroup) {
+      (castedChild.material as THREE.MeshStandardMaterial).setValues({
+        opacity: opacityForUncoloredLayer,
+        transparent: true,
+      });
       if (this.findByName(displayNameForChangableGroup.groupName)) {
         console.log('Object is not valid. Trying our best to render it');
       } else {

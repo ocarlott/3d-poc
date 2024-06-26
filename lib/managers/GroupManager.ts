@@ -102,7 +102,7 @@ export class GroupManager {
     this.techPackGroup && (this.techPackGroup.visible = isInDeveloperMode);
   }
 
-  resetAllColorsToDefault() {
+  resetAllColorsToDefault(opacityForUncoloredLayer: number) {
     this._modelGroup.traverse((child) => {
       const castedChild = child as THREE.Mesh;
       const castedChildMaterial = castedChild.material as THREE.MeshStandardMaterial;
@@ -110,7 +110,7 @@ export class GroupManager {
         castedChild.userData?.['defaultColor'] &&
           castedChildMaterial.setValues({
             color: new THREE.Color('#' + castedChild.userData['defaultColor']),
-            // wireframe: true,
+            opacity: opacityForUncoloredLayer,
           });
       }
     });
