@@ -186,7 +186,6 @@ export class Viewer3D {
     const images: string[] = [];
 
     this._appyColorTemporarilyForScreenshot(() => {
-      this._rotatableScreenshotCameraManager.rotateTo(rotation, false);
       this._rotatableScreenshotCameraManager.paddingInCssPixelAndMoveControl({
         rendererHeight: Viewer3D.getRendererHeight(this._renderer),
         obj: this._groupManager.workingAssetGroup,
@@ -197,6 +196,7 @@ export class Viewer3D {
           right: 0,
         },
       });
+      this._rotatableScreenshotCameraManager.rotateTo(rotation, false);
       this._rotatableScreenshotCameraManager.update(this._clock);
 
       this._renderer.render(this._scene, this._rotatableScreenshotCamera);
