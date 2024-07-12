@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { ControlName, TextureOption } from '../type';
 import * as fabric from 'fabric';
 import _ from 'underscore';
+import hull from 'hull.js';
 import { ImageHelper } from './ImageHelper';
 import { Utils } from '../Utils';
 import crystalAlpha from '../assets/crystal_alpha.webp';
@@ -211,15 +212,14 @@ export class Boundary {
     };
   }
 
-  private _generateClipPath(canvasWidth: number, canvasHeight: number) {
-    const clipPathWidth = this._getClipPathWidth(canvasWidth, canvasHeight);
-    const clipPathHeight = this._getClipPathHeight(canvasWidth, canvasHeight);
-    return new fabric.Rect({
-      width: clipPathWidth,
-      height: clipPathHeight,
-      top: (canvasHeight - clipPathHeight) / 2,
-      left: (canvasWidth - clipPathWidth) / 2,
-    });
+  private _generateClipPath(canvasWidth: number, canvasHeight: number, polygonPoints: number[][]) {
+    return new fabric.Polygon(
+      polygonPoints.map((p) => ({
+        x: p[0] * canvasWidth,
+        y: p[1] * canvasHeight,
+      })),
+      {},
+    );
   }
 
   get id() {
@@ -239,9 +239,16 @@ export class Boundary {
   }
 
   private _configure2DCanvas = () => {
+    const uvs = this._canvas.geometry.attributes['uv'].array;
+    const points: number[][] = [];
+    for (let i = 0; i < uvs.length; i += 2) {
+      points.push([uvs[i], uvs[i + 1]]);
+    }
+    const hullPoints = hull(points, 20) as number[][];
     this._internalWorkingCanvas2D.clipPath = this._generateClipPath(
       this._canvasWidth,
       this._canvasHeight,
+      hullPoints,
     );
     this._internalWorkingCanvas2D.backgroundColor = 'rgba(0, 0, 0, 0.1)';
 
@@ -249,6 +256,7 @@ export class Boundary {
     this._workingCanvas2D.clipPath = this._generateClipPath(
       this._workingCanvasSize,
       this._workingCanvasSize,
+      hullPoints,
     );
     this._workingCanvas2D.backgroundColor = 'rgba(0, 0, 0, 0.1)';
     this._workingCanvas2D.add(
