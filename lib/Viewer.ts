@@ -122,7 +122,7 @@ export class Viewer3D {
   };
 
   private static getRendererHeight(renderer: THREE.WebGLRenderer) {
-    return (renderer?.getSize(new THREE.Vector2()).height ?? 0) / renderer.getPixelRatio();
+    return renderer.getSize(new THREE.Vector2()).height;
   }
 
   private _fitCameraToObject = (obj: THREE.Object3D, controls?: CameraControls) => {
@@ -184,10 +184,23 @@ export class Viewer3D {
     const { rotation, modelRatio, colorMap } = params;
 
     const images: string[] = [];
+    const renderSize = this._renderer.getSize(new THREE.Vector2());
+    const renderRatio = renderSize.width / renderSize.height;
+    const shouldUseWidth = renderRatio < modelRatio;
+    let finalWidth = Math.floor(shouldUseWidth ? renderSize.width : renderSize.height * modelRatio);
+    let finalHeight = Math.floor(
+      shouldUseWidth ? renderSize.width / modelRatio : renderSize.height,
+    );
 
+    const sourceX = Math.floor((this._canvas.width - finalWidth) / 2);
+    const sourceY = Math.floor((this._canvas.height - finalHeight) / 2);
+    const canvas = document.createElement('canvas');
+    canvas.width = finalWidth;
+    canvas.height = finalHeight;
+    const context = canvas.getContext('2d')!;
     this._appyColorTemporarilyForScreenshot(() => {
       this._rotatableScreenshotCameraManager.paddingInCssPixelAndMoveControl({
-        rendererHeight: Viewer3D.getRendererHeight(this._renderer),
+        rendererHeight: renderSize.height,
         obj: this._groupManager.workingAssetGroup,
         padding: {
           top: 0,
@@ -200,7 +213,18 @@ export class Viewer3D {
       this._rotatableScreenshotCameraManager.update(this._clock);
 
       this._renderer.render(this._scene, this._rotatableScreenshotCamera);
-      const imgData = this._canvas.toDataURL(strMime, 1);
+      context.drawImage(
+        this._canvas,
+        sourceX,
+        sourceY,
+        finalWidth,
+        finalHeight,
+        0,
+        0,
+        finalWidth,
+        finalHeight,
+      );
+      const imgData = canvas.toDataURL(strMime, 1);
       images.push(imgData);
     }, colorMap);
     this._renderer.render(this._scene, this._rotatableScreenshotCamera);
@@ -329,7 +353,7 @@ export class Viewer3D {
           this._axesHelper.visible = false;
           this._scene.add(this._axesHelper);
 
-          this._modelRatio = Math.abs(size.x / size.y);
+          this._modelRatio = Math.abs(Math.max(size.x, size.z) / size.y);
           this._model = obj;
 
           this._scene.add(this._groupManager.modelGroup);
