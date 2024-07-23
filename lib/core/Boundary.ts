@@ -89,7 +89,7 @@ export class Boundary {
     this._normalPositionHelper = this._calculateNormalPositionHelper(biggerSide);
     this._normalUV = this._calculateNormalUV(uvPoints);
     this._normalUVHelper = this._calculateNormalUVHelper(this._normalUV, biggerSide);
-    this._addHelpersToGroup();
+    // this._addHelpersToGroup();
 
     const canvasElement = window.document.createElement('canvas');
     canvasElement.width = InternalCanvasSize;

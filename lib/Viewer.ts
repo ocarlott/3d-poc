@@ -122,7 +122,7 @@ export class Viewer3D {
   };
 
   private static getRendererHeight(renderer: THREE.WebGLRenderer) {
-    return renderer?.getSize(new THREE.Vector2()).height ?? 0;
+    return (renderer?.getSize(new THREE.Vector2()).height ?? 0) / renderer.getPixelRatio();
   }
 
   private _fitCameraToObject = (obj: THREE.Object3D, controls?: CameraControls) => {
@@ -312,7 +312,7 @@ export class Viewer3D {
           this._fitCameraToObject(this._groupManager.workingAssetGroup!);
           const { size, min } = Utils3D.getSizeAndCenter(this._groupManager.workingAssetGroup!);
 
-          this._cameraControlsManager.setDistanceLimitsFromSize(size);
+          this._cameraControlsManager.lockDistanceLimits();
           this._techpackCameraManager.controls.moveTo(0, min.y, 0);
           this._techpackCameraManager.paddingInCssPixelAndMoveControl({
             rendererHeight: Viewer3D.getRendererHeight(this._renderer),

@@ -150,16 +150,9 @@ export class CameraControlsManager {
     });
   };
 
-  private _setDistanceLimits = (minDistance: number, maxDistance: number) => {
-    this._controls.minDistance = minDistance;
-    this._controls.maxDistance = maxDistance;
-  };
-
-  setDistanceLimitsFromSize = (size: THREE.Vector3) => {
-    this._setDistanceLimits(
-      Math.min(size.x, size.y, size.z) * 1.1,
-      Math.max(size.x, size.y, size.z),
-    );
+  lockDistanceLimits = () => {
+    this._controls.minDistance = this._controls.distance;
+    this._controls.maxDistance = this._controls.distance;
   };
 
   setDevMode(isDevMode: boolean) {
