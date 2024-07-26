@@ -184,7 +184,9 @@ export class Viewer3D {
     const { rotation, modelRatio, colorMap } = params;
 
     const images: string[] = [];
-    const renderSize = this._renderer.getSize(new THREE.Vector2());
+    const renderSize = this._renderer
+      .getSize(new THREE.Vector2())
+      .multiplyScalar(this._renderer.getPixelRatio());
     const renderRatio = renderSize.width / renderSize.height;
     const shouldUseWidth = renderRatio < modelRatio;
     let finalWidth = Math.floor(shouldUseWidth ? renderSize.width : renderSize.height * modelRatio);
