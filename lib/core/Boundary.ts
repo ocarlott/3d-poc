@@ -30,6 +30,7 @@ export class Boundary {
   private _internalImage?: fabric.Image;
   private _workingCanvasSize = CanvasSize;
   private _canvasRatio = InternalCanvasSize / CanvasSize;
+  private _isReadyForScreenshot = false;
   private _onArtworkChanged?: (params: {
     forBoundary: string;
     xRatio: number;
@@ -306,7 +307,7 @@ export class Boundary {
       sensitivity,
       sizeRatioLimit,
     } = options;
-
+    this._isReadyForScreenshot = false;
     await this.resetBoundary();
     this._onArtworkChanged = onArtworkChanged;
     let computedArtworkUrl = artworkUrl;
@@ -476,6 +477,7 @@ export class Boundary {
       self.lastGoodLeft = self.left;
       self.lastGoodScaleX = self.scaleX;
       self.lastGoodScaleY = self.scaleY;
+      this._isReadyForScreenshot = false;
     });
 
     img.on('modified', () => {
@@ -507,6 +509,7 @@ export class Boundary {
       }
 
       this._updateListener();
+      this._isReadyForScreenshot = false;
     });
   };
 
@@ -625,10 +628,12 @@ export class Boundary {
         this._applyTexturesToGeometries(textures, colors, imagePartUrls);
       }
     }
+    this._isReadyForScreenshot = true;
   }, 2000);
 
   prepareForTechpack = async () => {
     if (this._artworkUrl) {
+      await this._returnWhenReady();
       const copy = await this._internalWorkingCanvas2D.clone(['elements']);
       copy.backgroundColor = 'rgba(0, 0, 0, 0)';
       const original = copy.toCanvasElement();
@@ -641,6 +646,25 @@ export class Boundary {
         map: texture,
       });
     }
+  };
+
+  prepareForScreenshot = async () => {
+    if (this._artworkUrl) {
+      await this._returnWhenReady();
+    }
+  };
+
+  private _returnWhenReady = async () => {
+    return new Promise((res) => {
+      const check = () => {
+        if (this._isReadyForScreenshot) {
+          return res(true);
+        }
+        setTimeout(check, 100);
+      };
+
+      check();
+    });
   };
 
   getImageParts = async () => {
@@ -851,6 +875,7 @@ export class Boundary {
     color: string;
     textureOption: TextureOption;
   }) => {
+    this._isReadyForScreenshot = false;
     const index = this._textureApplication.findIndex((v) =>
       Utils.testHexMatch(textureApplication.color, v.color),
     );
@@ -863,7 +888,12 @@ export class Boundary {
   };
 
   resetTextureApplication = async () => {
+    this._isReadyForScreenshot = false;
     this._textureApplication = [];
     await this._renderCanvasOnBoundary();
   };
+
+  get isReadyForScreenshot() {
+    return this._isReadyForScreenshot;
+  }
 }

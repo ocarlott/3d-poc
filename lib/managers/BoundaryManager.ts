@@ -215,4 +215,12 @@ export class BoundaryManager {
       }),
     );
   };
+
+  prepareForScreenshot = async () => {
+    await Promise.all(
+      this._boundaryList.map((bd) => {
+        return bd.prepareForScreenshot();
+      }),
+    );
+  };
 }

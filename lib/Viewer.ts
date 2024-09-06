@@ -651,8 +651,9 @@ export class Viewer3D {
       cb();
     } else {
       const currentColorMaps = colorMap.map((config) => {
-        const layer = this._groupManager.findByName(config.layerName);
-        if (layer) {
+        const result = this._layerManager.findByName(config.layerName);
+        if (result) {
+          const layer = result.mesh;
           const originalColor = (layer.material as THREE.MeshStandardMaterial).color.getHex();
           (layer.material as THREE.MeshStandardMaterial).color.set(
             `#${config.color.replace(/#/g, '')}`,
@@ -790,8 +791,15 @@ export class Viewer3D {
   getBoundary = (name: string) => this._boundaryManager.findByName(name);
 
   prepareFilesToExport = async () => {
+    await this._boundaryManager.prepareForScreenshot();
     const result: { name: string; image: string }[] = [];
-    const screenshots = this.takeScreenShotAuto(6);
+    const layerColors = Array.from(this._layerManager.layerMap.keys()).map((layerName) => {
+      return {
+        layerName,
+        color: '#ffffff',
+      };
+    });
+    const screenshots = this.takeScreenShotAuto(6, layerColors);
     screenshots.forEach((sc, index) => {
       result.push({
         name: `screenshot_${index + 1}`,

@@ -17,6 +17,10 @@ export class LayerManager {
     this._extraLayers = new Set<string>();
   }
 
+  get layerMap() {
+    return this._layerMap;
+  }
+
   changeLayerColor(layerName: string, color: string) {
     const entry = this.findByName(layerName);
     if (entry) {
