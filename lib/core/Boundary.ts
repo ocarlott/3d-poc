@@ -240,16 +240,11 @@ export class Boundary {
   }
 
   private _configure2DCanvas = () => {
-    const uvs = this._canvas.geometry.attributes['uv'].array;
-    const points: number[][] = [];
-    for (let i = 0; i < uvs.length; i += 2) {
-      points.push([uvs[i], uvs[i + 1]]);
-    }
-    const hullPoints = hull(points, 20) as number[][];
+    const uvs = Utils3D.getUVBoundaryForGeometry(this._canvas.geometry).map(({ x, y }) => [x, y]);
     this._internalWorkingCanvas2D.clipPath = this._generateClipPath(
       this._canvasWidth,
       this._canvasHeight,
-      hullPoints,
+      uvs,
     );
     this._internalWorkingCanvas2D.backgroundColor = 'rgba(0, 0, 0, 0.1)';
 
@@ -257,7 +252,7 @@ export class Boundary {
     this._workingCanvas2D.clipPath = this._generateClipPath(
       this._workingCanvasSize,
       this._workingCanvasSize,
-      hullPoints,
+      uvs,
     );
     this._workingCanvas2D.backgroundColor = 'rgba(0, 0, 0, 0.1)';
     this._workingCanvas2D.add(

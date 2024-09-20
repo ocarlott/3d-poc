@@ -29,7 +29,7 @@ export class ImageEditor {
   };
 
   private _render = async (imageUrl: string) => {
-    const img = await fabric.Image.fromURL(imageUrl, {
+    const img = await fabric.FabricImage.fromURL(imageUrl, {
       crossOrigin: 'anonymous',
     });
     img.originX = 'center';
