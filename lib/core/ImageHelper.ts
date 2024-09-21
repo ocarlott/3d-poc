@@ -75,6 +75,14 @@ export class ImageEditor {
   get viewer() {
     return this._canvas.elements.container;
   }
+
+  get canvas() {
+    return this._canvas;
+  }
+
+  getRenderedImage = () => {
+    return this._canvasEl.toDataURL(strMime);
+  };
 }
 
 export class ImageHelper {
@@ -102,7 +110,7 @@ export class ImageHelper {
       const newData = new Uint8ClampedArray(data.length);
       const totalPixels = width * height;
       for (let i = 0; i < totalPixels; i++) {
-        if (data[i * 4 + 3] < 10) {
+        if (data[i * 4 + 3] < 30) {
           data[i * 4 + 3] = 0;
         }
       }
