@@ -859,4 +859,8 @@ export class Viewer3D {
       depth: (boundingBox.max.z - boundingBox.min.z) / PointToInchesRatio,
     };
   };
+
+  getAllBoundaries = () => {
+    return this._boundaryManager.boundaryList;
+  };
 }

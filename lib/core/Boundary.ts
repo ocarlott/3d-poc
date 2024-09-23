@@ -240,7 +240,7 @@ export class Boundary {
   }
 
   private _configure2DCanvas = () => {
-    const uvs = Utils3D.getUVBoundaryForGeometry(this._canvas.geometry).map(({ x, y }) => [x, y]);
+    const uvs = Utils3D.getUVBoundaryForGeometry(this._canvas.geometry);
     this._internalWorkingCanvas2D.clipPath = this._generateClipPath(
       this._canvasWidth,
       this._canvasHeight,

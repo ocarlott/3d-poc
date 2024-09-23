@@ -19,11 +19,31 @@ export function RSidebarViewModel({
   const model = RSidebarModel();
   let currentTexture: TextureOption | null = null;
 
+  const nextBoundary = () => {
+    return () => {
+      if (viewer) {
+        const boundaries = viewer.getAllBoundaries();
+        if (boundaries.length > 0) {
+          if (model.boundaryActive) {
+            const index = boundaries.indexOf(model.boundaryActive);
+            if (index === -1) {
+              model.setBoundaryActive(boundaries[0]);
+            } else {
+              model.setBoundaryActive(boundaries[(index + 1) % boundaries.length]);
+            }
+          } else {
+            model.setBoundaryActive(boundaries[0]);
+          }
+        }
+      }
+    };
+  };
+
   const addArtwork = async () => {
-    const boundary =
-      (await viewer?.changeArtwork(
+    if (model.boundaryActive && viewer) {
+      await viewer?.changeArtwork(
         {
-          boundary: defaultModelConfig.app.boundary,
+          boundary: model.boundaryActive.name,
           artworkUrl: './logo.png',
           sizeRatio: 0.5,
           sizeRatioLimit: 0.7,
@@ -31,8 +51,8 @@ export function RSidebarViewModel({
           yRatio: 0.2,
         },
         false,
-      )) ?? null;
-    model.setBoundaryActive(boundary);
+      );
+    }
   };
 
   const getModelDimensions = () => {
@@ -64,6 +84,7 @@ export function RSidebarViewModel({
         if (file) {
           const res = file.name.split('.');
           setWorkingModel(res[0]);
+          model.setBoundaryActive(null);
           const uri = URL.createObjectURL(file);
           await viewer.loadModel(uri, () => {});
         }
@@ -191,5 +212,6 @@ export function RSidebarViewModel({
     resetAllColorsToDefault,
     resetAllBoundaries,
     getModelDimensions,
+    nextBoundary,
   };
 }

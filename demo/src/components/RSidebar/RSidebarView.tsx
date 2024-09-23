@@ -20,6 +20,7 @@ export function RSidebarView(props: {
   resetAllBoundaries: () => () => any;
   resetModel: () => () => any;
   onFileChange: () => () => any;
+  nextBoundary: () => any;
   fileRef: React.RefObject<HTMLInputElement>;
   images: string[];
   boundaryActive: Boundary | null;
@@ -27,6 +28,7 @@ export function RSidebarView(props: {
 }) {
   const [sensitivity, setSensitivity] = useState(5);
   const imageUploaderRef = useRef<HTMLInputElement>(null);
+
   return (
     <SideBar>
       <Button onClick={props.toggleAutoRotate}>Toggle Rotate</Button>
@@ -45,6 +47,8 @@ export function RSidebarView(props: {
       <Button onClick={props.resetAllBoundaries()}>Reset All Boundaries</Button>
       <Button onClick={props.resetModel()}>Reset Model</Button>
       <Button onClick={() => imageUploaderRef.current?.click()}>Upload Image</Button>
+      <Button onClick={props.nextBoundary()}>Next Boundary</Button>
+      <div>Active Boundary: {props.boundaryActive?.name ?? 'None'}</div>
       <input
         type="text"
         value={sensitivity}
@@ -59,6 +63,7 @@ export function RSidebarView(props: {
 
       {props.boundaryActive ? (
         <div
+          style={{ backgroundColor: 'white' }}
           ref={(ref) => {
             const element = props.boundaryActive?.imageEditor;
             if (ref && element) {
@@ -67,14 +72,6 @@ export function RSidebarView(props: {
           }}
         />
       ) : null}
-      <div
-        ref={(ref) => {
-          const editor = props.imageEditor;
-          if (ref) {
-            ref.appendChild(editor.viewer);
-          }
-        }}
-      />
 
       <input
         type="file"
