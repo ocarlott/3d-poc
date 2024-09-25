@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import hull from 'hull.js';
+import { BufferGeometryUtils } from 'three/examples/jsm/Addons.js';
 
 export class Utils3D {
   static getSizeAndCenter = (obj: THREE.Object3D) => {
@@ -58,7 +59,7 @@ export class Utils3D {
     for (let i = 0; i < uvArray.length; i += 2) {
       uvs.push([uvArray[i] * 1000, uvArray[i + 1] * 1000]);
     }
-    const hullPoints = hull(uvs, 20) as number[][];
+    const hullPoints = hull(uvs, 120) as number[][];
     return hullPoints.map((point) => [point[0] / 1000, point[1] / 1000]);
   };
 }
