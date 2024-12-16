@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import { ControlName, TextureOption } from '../type';
 import * as fabric from 'fabric';
 import _ from 'underscore';
-import hull from 'hull.js';
 import { ImageHelper } from './ImageHelper';
 import { Utils } from '../Utils';
 import crystalAlpha from '../assets/crystal_alpha.webp';
@@ -66,16 +65,16 @@ export class Boundary {
     this._canvasMaterial = this._canvas.material as THREE.MeshPhysicalMaterial;
     this._canvasMaterial.setValues({
       map: null,
-      transparent: true,
-      side: THREE.FrontSide,
+      alphaTest: 0.5,
+      side: THREE.DoubleSide,
       toneMapped: false,
       blending: THREE.CustomBlending,
       opacity: 0,
     });
-    (techPackCanvas.material as THREE.MeshPhysicalMaterial).setValues({
-      map: null,
-      transparent: true,
-    });
+    // (techPackCanvas.material as THREE.MeshPhysicalMaterial).setValues({
+    //   map: null,
+    //   transparent: true,
+    // });
     this.name = this._initializeCanvas(canvas);
     this._initializeGroup();
 
@@ -600,11 +599,9 @@ export class Boundary {
         const canvas = this._canvasList[0];
         canvas.material = new THREE.MeshBasicMaterial({
           map: texture,
-          transparent: true,
+          alphaTest: 0.5,
           opacity: 1,
-          depthTest: true,
-          depthWrite: false,
-          side: THREE.FrontSide,
+          side: THREE.DoubleSide,
           toneMapped: false,
         });
         const techpackCanvas = this._getTechPackCanvas(canvas.name);
@@ -743,9 +740,7 @@ export class Boundary {
       roughness: 0.9,
       alphaMap: alphaTexture,
       opacity: 1,
-      transparent: true,
-      depthTest: true,
-      depthWrite: false,
+      alphaTest: 0.5,
     });
     geo.material = material;
     geo.userData.texture = TextureOption.Glitter;
@@ -776,9 +771,7 @@ export class Boundary {
     const material = new THREE.MeshBasicMaterial({
       opacity: 1,
       map: texture,
-      transparent: true,
-      depthTest: true,
-      depthWrite: false,
+      alphaTest: 0.5,
       toneMapped: false,
     });
     geo.material = material;
@@ -811,7 +804,7 @@ export class Boundary {
       map: texture,
       normalMap,
       alphaMap,
-      transparent: true,
+      alphaTest: 0.5,
     });
     geo.material = material;
     geo.userData.texture = TextureOption.Crystals;

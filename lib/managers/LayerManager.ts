@@ -62,7 +62,7 @@ export class LayerManager {
     if (displayNameForChangableGroup) {
       (castedChild.material as THREE.MeshStandardMaterial).setValues({
         opacity: opacityForUncoloredLayer,
-        transparent: true,
+        alphaTest: 0.5,
       });
       if (this.findByName(displayNameForChangableGroup.groupName)) {
         console.log('Object is not valid. Trying our best to render it');

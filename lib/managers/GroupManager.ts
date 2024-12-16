@@ -38,9 +38,9 @@ export class GroupManager {
       if (GroupManager.isTechPack(castedChild)) {
         this.techPackGroup!.add(castedChild);
 
-        if (GroupManager.isNotBoundary(castedChild)) {
-          castedChild.material = new THREE.MeshBasicMaterial();
-        }
+        // if (GroupManager.isNotBoundary(castedChild)) {
+        //   castedChild.material = new THREE.MeshBasicMaterial();
+        // }
       } else {
         // isNotTechPack
         if (GroupManager.isShadow(castedChild)) {

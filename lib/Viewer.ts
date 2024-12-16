@@ -240,7 +240,7 @@ export class Viewer3D {
       const castedChildMaterial = castedChild.material as THREE.MeshPhysicalMaterial;
       if (castedChild.isMesh && GroupManager.isBoundary(castedChild)) {
         castedChildMaterial.setValues({
-          transparent: true,
+          alphaTest: 0.5,
           opacity: 0,
           map: null,
         });
@@ -715,11 +715,6 @@ export class Viewer3D {
             ((child as THREE.Mesh).material as THREE.MeshPhysicalMaterial).setValues({
               opacity: boundary?.hasArtwork() ? 1 : 0,
             });
-          } else {
-            originalMaterial.setValues({
-              color: 'white',
-              opacity: 0.5,
-            });
           }
         }
       });
@@ -793,13 +788,7 @@ export class Viewer3D {
   prepareFilesToExport = async () => {
     await this._boundaryManager.prepareForScreenshot();
     const result: { name: string; image: string }[] = [];
-    const layerColors = Array.from(this._layerManager.layerMap.keys()).map((layerName) => {
-      return {
-        layerName,
-        color: '#ffffff',
-      };
-    });
-    const screenshots = this.takeScreenShotAuto(6, layerColors);
+    const screenshots = this.takeScreenShotAuto(6);
     screenshots.forEach((sc, index) => {
       result.push({
         name: `screenshot_${index + 1}`,
