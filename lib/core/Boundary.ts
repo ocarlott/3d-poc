@@ -344,8 +344,6 @@ export class Boundary {
     );
     this._attachEvents({
       img,
-      clipPathWidth,
-      clipPathHeight,
       sizeRatioLimit,
     });
     this._setPositionImage({
@@ -437,13 +435,12 @@ export class Boundary {
     return img;
   };
 
-  private _attachEvents = (params: {
-    img: fabric.Image;
-    clipPathWidth: number;
-    clipPathHeight: number;
-    sizeRatioLimit: number;
-  }) => {
-    const { img, clipPathWidth, clipPathHeight, sizeRatioLimit } = params;
+  private _attachEvents = (params: { img: fabric.Image; sizeRatioLimit: number }) => {
+    const { img, sizeRatioLimit } = params;
+    const { clipPathWidth, clipPathHeight, widthPadding, heightPadding } = this._getClipPathSize(
+      this._workingCanvasSize,
+      this._workingCanvasSize,
+    );
     const sizeForScale = this._useWidthToScale ? clipPathWidth : clipPathHeight;
     const maxSizeX = sizeForScale * sizeRatioLimit;
     const maxSizeY = sizeForScale * sizeRatioLimit;
@@ -474,6 +471,25 @@ export class Boundary {
       this._isReadyForScreenshot = false;
     });
 
+    img.on('moving', () => {
+      const self = img as any;
+      let pass = true;
+      if (img.left < widthPadding || img.left > widthPadding + clipPathWidth) {
+        self.left = self.lastGoodMovingLeft;
+        pass = false;
+      }
+      if (img.top < heightPadding || img.top > heightPadding + clipPathHeight) {
+        self.top = self.lastGoodMovingTop;
+        pass = false;
+      }
+      if (!pass) {
+        return;
+      }
+      self.lastGoodMovingLeft = self.left;
+      self.lastGoodMovingTop = self.top;
+      this._isReadyForScreenshot = false;
+    });
+
     img.on('modified', () => {
       // Handle rotated
       this._rotation = img.angle;
@@ -482,10 +498,6 @@ export class Boundary {
       }
 
       // Handle moved
-      const { clipPathWidth, clipPathHeight, widthPadding, heightPadding } = this._getClipPathSize(
-        this._workingCanvasSize,
-        this._workingCanvasSize,
-      );
       this._xRatio = (img.left - widthPadding) / clipPathWidth;
       this._yRatio = (img.top - heightPadding) / clipPathHeight;
       if (this._internalImage) {
