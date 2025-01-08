@@ -49,7 +49,7 @@ export class LayerManager {
     const colors = Utils.getShuffledColors();
     const layerList = Array.from(this._layerMap.values());
     layerList.forEach((layer, index) => {
-      this.changeLayerColor(layer.mesh.name, colors[index]);
+      this.changeLayerColor(layer.mesh.name, colors[index % colors.length]);
     });
   }
 
