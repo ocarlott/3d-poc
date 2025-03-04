@@ -58,10 +58,6 @@ export function RSidebarViewModel({
   const getModelDimensions = () => {
     if (viewer) {
       const { height, width } = viewer.getModelDimensions();
-      console.log({
-        height,
-        width,
-      });
       return { height, width };
     }
     return { height: 0, width: 0 };
@@ -82,11 +78,16 @@ export function RSidebarViewModel({
         const file = model.fileRef.current?.files?.[0];
 
         if (file) {
-          const res = file.name.split('.');
-          setWorkingModel(res[0]);
-          model.setBoundaryActive(null);
-          const uri = URL.createObjectURL(file);
-          await viewer.loadModel(uri, () => {});
+          if (model.uploadingFileType === 'model') {
+            const res = file.name.split('.');
+            setWorkingModel(res[0]);
+            model.setBoundaryActive(null);
+            const uri = URL.createObjectURL(file);
+            await viewer.loadModel(uri, () => {});
+          } else {
+            const uri = URL.createObjectURL(file);
+            viewer.loadEnv(uri);
+          }
         }
       }
     };
@@ -147,6 +148,16 @@ export function RSidebarViewModel({
   function uploadModel() {
     return () => {
       if (viewer && model.fileRef.current) {
+        model.setUploadingFileType('model');
+        model.fileRef.current.click();
+      }
+    };
+  }
+
+  function uploadEnv() {
+    return () => {
+      if (viewer && model.fileRef.current) {
+        model.setUploadingFileType('env');
         model.fileRef.current.click();
       }
     };
@@ -191,6 +202,14 @@ export function RSidebarViewModel({
     };
   }
 
+  function randomizeLayerColors() {
+    return () => {
+      if (viewer) {
+        viewer.randomizeLayerColors();
+      }
+    };
+  }
+
   return {
     boundaryActive: model.boundaryActive,
     fileRef: model.fileRef,
@@ -213,5 +232,7 @@ export function RSidebarViewModel({
     resetAllBoundaries,
     getModelDimensions,
     nextBoundary,
+    uploadEnv,
+    randomizeLayerColors,
   };
 }

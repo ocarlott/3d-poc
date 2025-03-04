@@ -13,6 +13,7 @@ import { BoundaryManager } from './managers/BoundaryManager';
 import { LayerManager } from './managers/LayerManager';
 import { Utils3D } from './Utils3D';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
+import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader';
 
 const strMime = 'image/webp';
 export class Viewer3D {
@@ -124,6 +125,17 @@ export class Viewer3D {
   private static getRendererHeight(renderer: THREE.WebGLRenderer) {
     return renderer.getSize(new THREE.Vector2()).height;
   }
+
+  loadEnv = (url: string) => {
+    const pmremGenerator = new THREE.PMREMGenerator(this._renderer);
+    const hdriLoader = new RGBELoader();
+    hdriLoader.load(url, (texture) => {
+      const envMap = pmremGenerator.fromEquirectangular(texture).texture;
+      this._scene.environment = envMap;
+      texture.dispose();
+      pmremGenerator.dispose();
+    });
+  };
 
   private _fitCameraToObject = (obj: THREE.Object3D, controls?: CameraControls) => {
     this._cameraControlsManager.paddingInCssPixelAndMoveControl({
@@ -470,9 +482,12 @@ export class Viewer3D {
     return allLayersFound && allBoundariesFound;
   };
 
-  validateModel = async (artworkUrl = './logo.png') => {
-    this._layerManager.validateLayersModel();
+  randomizeLayerColors = () => {
+    this._layerManager.randomizeLayerColors();
+  };
 
+  validateModel = async (artworkUrl = './logo.png') => {
+    this.randomizeLayerColors();
     const { boundaryNames, techPackNames, layerNames } =
       this._groupManager.getChildNamesListSnapshot();
 

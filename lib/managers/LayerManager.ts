@@ -45,7 +45,7 @@ export class LayerManager {
     return layerNames.every((layer) => !!this.findByName(layer));
   }
 
-  validateLayersModel() {
+  randomizeLayerColors() {
     const colors = Utils.getShuffledColors();
     const layerList = Array.from(this._layerMap.values());
     layerList.forEach((layer, index) => {

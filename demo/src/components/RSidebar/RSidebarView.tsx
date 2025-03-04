@@ -2,30 +2,9 @@ import { Boundary } from 'microstore-3d/lib/core/Boundary';
 import { Button, Image, ImageList, SideBar } from '../../AppStyles';
 import { ImageEditor } from 'microstore-3d';
 import { useRef, useState } from 'react';
+import { RSidebarViewModel } from './RSidebarViewModel';
 
-export function RSidebarView(props: {
-  toggleAutoRotate: () => any;
-  toggleDeveloperMode: () => any;
-  addArtwork: () => any;
-  changeTexture: () => any;
-  removeArtwork: () => any;
-  takeSnapshot: () => any;
-  getModelDimensions: () => any;
-  takeSnapshot45: () => () => any;
-  takeSnapshotsAuto: () => () => any;
-  createTechpack: () => () => any;
-  uploadModel: () => () => any;
-  validateModel: () => () => any;
-  resetAllColorsToDefault: () => () => any;
-  resetAllBoundaries: () => () => any;
-  resetModel: () => () => any;
-  onFileChange: () => () => any;
-  nextBoundary: () => any;
-  fileRef: React.RefObject<HTMLInputElement>;
-  images: string[];
-  boundaryActive: Boundary | null;
-  imageEditor: ImageEditor;
-}) {
+export function RSidebarView(props: ReturnType<typeof RSidebarViewModel>) {
   const [sensitivity, setSensitivity] = useState(5);
   const imageUploaderRef = useRef<HTMLInputElement>(null);
 
@@ -42,7 +21,9 @@ export function RSidebarView(props: {
       <Button onClick={props.takeSnapshotsAuto()}>Take Snapshot Auto</Button>
       <Button onClick={props.createTechpack()}>Create Tech Pack</Button>
       <Button onClick={props.uploadModel()}>Upload Model</Button>
+      <Button onClick={props.uploadEnv()}>Upload Env</Button>
       <Button onClick={props.validateModel()}>Validate Model</Button>
+      <Button onClick={props.randomizeLayerColors()}>Randomize Layer Colors</Button>
       <Button onClick={props.resetAllColorsToDefault()}>Reset All Colors To Default</Button>
       <Button onClick={props.resetAllBoundaries()}>Reset All Boundaries</Button>
       <Button onClick={props.resetModel()}>Reset Model</Button>
