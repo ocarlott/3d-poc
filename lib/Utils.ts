@@ -152,6 +152,14 @@ export class Utils {
       '#C8E4B2',
       '#FFCCCC',
       '#F31559',
+      '#FFFFFF',
+      '#FFD700',
+      '#FFA500',
+      '#FFC0CB',
+      '#FF69B4',
+      '#FFDAB9',
+      '#FFB6C1',
+      '#FFE4E1',
     ];
     let currentIndex = array.length,
       randomIndex;
