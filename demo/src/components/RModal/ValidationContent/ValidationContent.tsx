@@ -40,10 +40,32 @@ function BoundariesSection({ validationResults }: { validationResults: Validatio
 }
 
 function ChangeableGroupSection({ validationResults }: { validationResults: ValidationResults }) {
+  const countMap = validationResults.layers.reduce(
+    (acc, item) => {
+      const res = Utils.getDisplayNameIfChangeableGroup(item);
+      if (!res) {
+        return acc;
+      }
+      acc[res.displayName] = (acc[res.displayName] || 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
+  const duplicates = Object.entries(countMap).filter(([_, count]) => count > 1);
   return (
     <>
       <h4>Changeable Group (Layers)</h4>
       <Info>{`Please follow convention of '..changeable_group_<number>_<display_name>' such as 'CropT_changeable_group_1_left_sleeve'`}</Info>
+      {duplicates.length > 0 ? (
+        <div style={{ paddingLeft: 20 }}>
+          <div>Duplicate Changeable Groups:</div>
+          <Error>
+            {duplicates.map(([displayName, count]) => (
+              <div key={displayName}>{`${displayName} -> ${count} times`}</div>
+            ))}
+          </Error>
+        </div>
+      ) : null}
       {validationResults.layers.length === 0 ? (
         <Warning>
           Could not find any changeable group! Please make sure that the model doesn't have any
