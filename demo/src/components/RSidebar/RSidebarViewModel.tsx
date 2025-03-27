@@ -210,6 +210,8 @@ export function RSidebarViewModel({
     };
   }
 
+  const frameRateController = viewer?.frameRateController;
+
   return {
     boundaryActive: model.boundaryActive,
     fileRef: model.fileRef,
@@ -234,5 +236,6 @@ export function RSidebarViewModel({
     nextBoundary,
     uploadEnv,
     randomizeLayerColors,
+    frameRateController,
   };
 }

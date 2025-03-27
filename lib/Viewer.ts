@@ -14,8 +14,12 @@ import { LayerManager } from './managers/LayerManager';
 import { Utils3D } from './Utils3D';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader';
-
+import _ from 'underscore';
+import { FrameRateController, FrameRateMonitor } from './core/FrameRateHelper';
 const strMime = 'image/webp';
+const MIN_PIXEL_RATIO = 0.7;
+const BUFFER_TIME_TO_FLUSH_FRAME_CHANGE = 100;
+
 export class Viewer3D {
   private _rFID = -1;
   private _camera: THREE.PerspectiveCamera;
@@ -28,6 +32,8 @@ export class Viewer3D {
   private _boundaryManager: BoundaryManager;
   private _layerManager: LayerManager;
   private _model?: THREE.Object3D;
+  private _dirty = true;
+  private _markingDirtyTimer: number = 0;
 
   private _loader = new GLTFLoader();
   private _isInDeveloperMode = false;
@@ -43,6 +49,9 @@ export class Viewer3D {
   private _techpackCameraManager: CameraControlsManager;
   private _canvas: HTMLCanvasElement;
   private _opacityForUncoloredLayer = 1;
+  private _maxPixelRatio = 1;
+  private _frameRateMonitor: FrameRateMonitor = new FrameRateMonitor();
+  private _frameRateController: FrameRateController = new FrameRateController(60, false);
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -71,6 +80,8 @@ export class Viewer3D {
       canvas,
     });
 
+    this._renderer.setPixelRatio(this._renderer.getPixelRatio());
+
     this._lightManager = new LightManager();
 
     this._cameraControlsManager = new CameraControlsManager(canvas, this._camera, {
@@ -86,8 +97,8 @@ export class Viewer3D {
     this._techpackCameraManager = new CameraControlsManager(canvas, this._techpackCamera);
 
     this._groupManager = new GroupManager();
-    this._boundaryManager = new BoundaryManager();
-    this._layerManager = new LayerManager();
+    this._boundaryManager = new BoundaryManager(this);
+    this._layerManager = new LayerManager(this);
 
     const dracoLoader = new DRACOLoader();
     dracoLoader.setDecoderConfig({ type: 'js' });
@@ -120,6 +131,7 @@ export class Viewer3D {
 
     this._renderer.setSize(canvasWidth, canvasHeight);
     this._renderer.setPixelRatio(pixelRatio);
+    this._maxPixelRatio = pixelRatio;
   };
 
   private static getRendererHeight(renderer: THREE.WebGLRenderer) {
@@ -135,7 +147,12 @@ export class Viewer3D {
       texture.dispose();
       pmremGenerator.dispose();
     });
+    this.markDirty();
   };
+
+  get frameRateController() {
+    return this._frameRateController;
+  }
 
   private _fitCameraToObject = (obj: THREE.Object3D, controls?: CameraControls) => {
     this._cameraControlsManager.paddingInCssPixelAndMoveControl({
@@ -299,15 +316,86 @@ export class Viewer3D {
     return img;
   };
 
-  show = () => {
-    this._cameraControlsManager.update(this._clock);
-    this._groupManager.update(this._shouldRotate);
+  /**
+   * Starts the render loop with frame rate control
+   */
+  private _startRenderLoop = () => {
+    // Set up the controlled render loop
+    const renderLoop = () => {
+      // Always request the next animation frame first
+      this._rFID = requestAnimationFrame(renderLoop);
 
-    this._renderer.render(this._scene, this._camera);
+      // Check if we should render this frame based on our target FPS
+      if (this._frameRateController.shouldRenderFrame()) {
+        // Render a frame
+        this._renderFrame();
+      }
+    };
 
-    this._rFID = requestAnimationFrame(this.show);
+    // Start the loop
+    renderLoop();
   };
 
+  /**
+   * Renders a single frame
+   */
+  private _renderFrame = () => {
+    // Record that we're rendering a frame (for FPS calculation)
+    this._frameRateMonitor.recordFrame();
+
+    // Start timing the actual render process
+    // this._frameRateMonitor.tickStart();
+
+    // Adjust pixel ratio based on FPS if needed
+    this._adjustPixelRatio();
+
+    // Only render if something has changed
+    if (this._dirty || this._shouldRotate || this._cameraControlsManager.update(this._clock)) {
+      this._groupManager.update(this._shouldRotate);
+      this._renderer.render(this._scene, this._camera);
+      if (Date.now() > this._markingDirtyTimer + BUFFER_TIME_TO_FLUSH_FRAME_CHANGE) {
+        this._dirty = false;
+      }
+    }
+
+    // End timing the render process
+    // const renderTime = this._frameRateMonitor.tickEnd();
+
+    // // Optionally log render time if it's excessive
+    // if (renderTime > 16) {
+    //   // 16ms = ~60fps
+    //   console.log(`Long render time: ${renderTime.toFixed(2)}ms`);
+    // }
+  };
+
+  /**
+   * Adjusts the pixel ratio based on the current FPS
+   */
+  private _adjustPixelRatio = () => {
+    const currentRatio = this._renderer.getPixelRatio();
+    if (this._frameRateMonitor.averageFps < 40) {
+      if (currentRatio > MIN_PIXEL_RATIO + 0.05) {
+        const adjustedRatio = MIN_PIXEL_RATIO + (currentRatio - MIN_PIXEL_RATIO) * 0.7;
+        this._renderer.setPixelRatio(adjustedRatio);
+        this.markDirty();
+      }
+    } else if (currentRatio < this._maxPixelRatio - 0.05) {
+      const adjustedRatio = currentRatio + (this._maxPixelRatio - currentRatio) * 0.7;
+      this._renderer.setPixelRatio(adjustedRatio);
+      this.markDirty();
+    }
+  };
+
+  /**
+   * Legacy show method - now just starts the render loop
+   */
+  show = () => {
+    this._startRenderLoop();
+  };
+
+  /**
+   * Stops the render loop
+   */
   hide = () => {
     cancelAnimationFrame(this._rFID);
     this._rFID = -1;
@@ -316,14 +404,17 @@ export class Viewer3D {
   resetModel = () => {
     this.resetAllColorsToDefault();
     this.resetAllBoundaries();
+    this.markDirty();
   };
 
   resetAllColorsToDefault = () => {
     this._groupManager.resetAllColorsToDefault(this._opacityForUncoloredLayer);
+    this.markDirty();
   };
 
   resetAllBoundaries = () => {
     this._boundaryManager.resetAllBoundarys();
+    this.markDirty();
   };
 
   loadModel = (url: string, onProgress: (percent: number) => void): Promise<void> => {
@@ -383,6 +474,7 @@ export class Viewer3D {
             onProgress(100);
             resolve();
           }
+          this.markDirty();
         },
         (event) => {
           onProgress(Math.min((event.loaded / event.total) * 100, 95));
@@ -416,6 +508,7 @@ export class Viewer3D {
     this._cameraControlsManager.setDevMode(this._isInDeveloperMode);
     this._boundaryManager.setDeveloperMode(this._isInDeveloperMode);
     this._axesHelper.visible = this._isInDeveloperMode;
+    this.markDirty();
   };
 
   configureModel = async (options: {
@@ -474,6 +567,7 @@ export class Viewer3D {
         },
       ),
     );
+    this.markDirty();
   };
 
   validate = (layers: string[], boundaries: string[]) => {
@@ -484,6 +578,12 @@ export class Viewer3D {
 
   randomizeLayerColors = () => {
     this._layerManager.randomizeLayerColors();
+    this.markDirty();
+  };
+
+  markDirty = () => {
+    this._dirty = true;
+    this._markingDirtyTimer = Date.now();
   };
 
   validateModel = async (artworkUrl = './logo.png') => {
@@ -565,26 +665,32 @@ export class Viewer3D {
     },
     disableEditing = true,
   ) => {
+    this.markDirty();
     return this._boundaryManager.changeArtwork(options, disableEditing);
   };
 
   resetArtworkToDefault = (boundary: string) => {
+    this.markDirty();
     return this._boundaryManager.resetArtworkToDefault(boundary);
   };
 
   removeArtwork = (boundary: string) => {
+    this.markDirty();
     return this._boundaryManager.removeArtwork(boundary);
   };
 
   resetArtworkTextureToDefault = (boundary: string) => {
+    this.markDirty();
     return this._boundaryManager.resetArtworkTextureToDefault(boundary);
   };
 
   changeArtworkTexture = (boundary: string, color: string, textureOption: TextureOption) => {
+    this.markDirty();
     return this._boundaryManager.changeArtworkTexture(boundary, color, textureOption);
   };
 
   resetArtworkTexture = (boundary: string) => {
+    this.markDirty();
     return this._boundaryManager.resetArtworkTexture(boundary);
   };
 
@@ -593,10 +699,12 @@ export class Viewer3D {
   };
 
   toggleAutoRotate = () => {
+    this.markDirty();
     this._shouldRotate = !this._shouldRotate;
   };
 
   changeColor = (layerName: string, color: string) => {
+    this.markDirty();
     if (this._model) {
       this._layerManager.changeLayerColor(layerName, color);
     }

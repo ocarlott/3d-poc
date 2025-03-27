@@ -8,6 +8,7 @@ import crystalAlpha from '../assets/crystal_alpha.webp';
 import crystalNormal from '../assets/crystal_normal.webp';
 import glitterRoughness from '../assets/glitter_roughness.webp';
 import { Utils3D } from '../Utils3D';
+import { Viewer3D } from '../Viewer';
 
 const InternalCanvasSize = 1200;
 const CanvasSize = 300;
@@ -58,8 +59,10 @@ export class Boundary {
   static crystalNormalTexture = Boundary.textureLoader.load(crystalNormal);
   static crystalAlphaTexture = Boundary.textureLoader.load(crystalAlpha);
   static glitterRoughnessTexture = Boundary.textureLoader.load(glitterRoughness);
+  private _viewer: Viewer3D;
 
-  constructor(canvas: THREE.Mesh, techPackCanvas: THREE.Mesh) {
+  constructor(canvas: THREE.Mesh, techPackCanvas: THREE.Mesh, _viewer: Viewer3D) {
+    this._viewer = _viewer;
     this._canvas = canvas;
     this._techPackCanvas = techPackCanvas;
     this._canvasMaterial = this._canvas.material as THREE.MeshPhysicalMaterial;
@@ -101,6 +104,10 @@ export class Boundary {
     this._workingCanvas2D = new fabric.Canvas(workingCanvasElement);
     this._configure2DCanvas();
   }
+
+  private _markDirty = () => {
+    this._viewer.markDirty();
+  };
 
   private _initializeCanvas(canvas: THREE.Mesh) {
     // canvas.material = this._canvasMaterial;
@@ -377,6 +384,7 @@ export class Boundary {
       this._workingCanvas2D.setActiveObject(img);
     }
     await this._renderCanvasOnBoundary();
+    this._markDirty();
   };
 
   private _reduceImageColor = async (artworkUrl: string, sensitivity: number = 5) => {
@@ -577,6 +585,7 @@ export class Boundary {
       whRatio: this._boundaryRatio,
       rotation: this._rotation,
     });
+    this._markDirty();
   }, 300);
 
   private _renderCanvasOnBoundary = _.throttle(async () => {
@@ -589,10 +598,15 @@ export class Boundary {
       texture.wrapT = THREE.RepeatWrapping;
       texture.repeat.set(Math.sign(this._normalUV.x), -Math.sign(this._normalUV.y));
       texture.colorSpace = THREE.SRGBColorSpace;
+      const existingMap = this._canvasMaterial.map;
       this._canvasMaterial.setValues({
         map: texture,
       });
+      if (existingMap) {
+        existingMap.dispose();
+      }
       await this._finalizeCanvasOnBoundary();
+      this._markDirty();
     }
   }, 20);
 
@@ -609,6 +623,7 @@ export class Boundary {
         texture.repeat.set(Math.sign(this._normalUV.x), -Math.sign(this._normalUV.y));
         texture.colorSpace = THREE.SRGBColorSpace;
         const canvas = this._canvasList[0];
+        const existingMaterial = canvas.material as THREE.MeshBasicMaterial;
         canvas.material = new THREE.MeshBasicMaterial({
           map: texture,
           alphaTest: 0.5,
@@ -616,6 +631,9 @@ export class Boundary {
           side: THREE.DoubleSide,
           toneMapped: false,
         });
+        if (existingMaterial) {
+          existingMaterial.dispose();
+        }
         const techpackCanvas = this._getTechPackCanvas(canvas.name);
         if (techpackCanvas) {
           techpackCanvas.material = canvas.material;
@@ -633,6 +651,7 @@ export class Boundary {
       }
     }
     this._isReadyForScreenshot = true;
+    this._markDirty();
   }, 2000);
 
   prepareForTechpack = async () => {
@@ -731,6 +750,7 @@ export class Boundary {
         }
       }
     });
+    this._markDirty();
   }
 
   private async _applyGlitterMaterial(geo: THREE.Mesh, color: string, imagePartUrl: string) {
@@ -744,6 +764,7 @@ export class Boundary {
     mapTexture.wrapT = THREE.RepeatWrapping;
     mapTexture.repeat.set(Math.sign(this._normalUV.x), -Math.sign(this._normalUV.y));
     mapTexture.colorSpace = THREE.SRGBColorSpace;
+    const existingMaterial = geo.material as THREE.MeshPhysicalMaterial;
     const material = new THREE.MeshPhysicalMaterial({
       map: mapTexture,
       roughnessMap: mapTexture,
@@ -755,6 +776,9 @@ export class Boundary {
       alphaTest: 0.5,
     });
     geo.material = material;
+    if (existingMaterial) {
+      existingMaterial.dispose();
+    }
     geo.userData.texture = TextureOption.Glitter;
     const techpackCanvas = this._getTechPackCanvas(geo.name);
     if (techpackCanvas) {
@@ -780,6 +804,7 @@ export class Boundary {
   }
 
   private _applyDefaultMatteMaterial(geo: THREE.Mesh, texture: THREE.Texture): void {
+    const existingMaterial = geo.material as THREE.MeshBasicMaterial;
     const material = new THREE.MeshBasicMaterial({
       opacity: 1,
       map: texture,
@@ -787,6 +812,9 @@ export class Boundary {
       toneMapped: false,
     });
     geo.material = material;
+    if (existingMaterial) {
+      existingMaterial.dispose();
+    }
     geo.userData.texture = TextureOption.Matte;
     const techpackCanvas = this._getTechPackCanvas(geo.name);
     if (techpackCanvas) {
@@ -836,6 +864,7 @@ export class Boundary {
       alphaMap: null,
     });
     this._clearCanvasList();
+    this._markDirty();
   };
 
   disposeCanvas2D = async () => {
@@ -885,12 +914,14 @@ export class Boundary {
       this._textureApplication.splice(index, 1, textureApplication);
     }
     await this._renderCanvasOnBoundary();
+    this._markDirty();
   };
 
   resetTextureApplication = async () => {
     this._isReadyForScreenshot = false;
     this._textureApplication = [];
     await this._renderCanvasOnBoundary();
+    this._markDirty();
   };
 
   get isReadyForScreenshot() {

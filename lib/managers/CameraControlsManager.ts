@@ -169,10 +169,10 @@ export class CameraControlsManager {
     this._controls.maxPolarAngle = isDevMode ? Math.PI : Math.PI / 2;
   }
 
-  update(clockOrDelta: THREE.Clock | number) {
+  update = (clockOrDelta: THREE.Clock | number) => {
     const delta = clockOrDelta instanceof THREE.Clock ? clockOrDelta.getDelta() : clockOrDelta;
-    this._controls.update(delta);
-  }
+    return this._controls.update(delta);
+  };
 
   get controls() {
     return this._controls;

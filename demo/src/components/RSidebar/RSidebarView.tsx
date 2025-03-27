@@ -1,6 +1,4 @@
-import { Boundary } from 'microstore-3d/lib/core/Boundary';
 import { Button, Image, ImageList, SideBar } from '../../AppStyles';
-import { ImageEditor } from 'microstore-3d';
 import { useRef, useState } from 'react';
 import { RSidebarViewModel } from './RSidebarViewModel';
 
@@ -10,6 +8,16 @@ export function RSidebarView(props: ReturnType<typeof RSidebarViewModel>) {
 
   return (
     <SideBar>
+      {/* <input
+        type="range"
+        min="1"
+        max="120"
+        step="1"
+        value={props.frameRateController?.targetFps ?? 60}
+        onChange={(e) => {
+          props.frameRateController?.setTargetFps(parseInt(e.target.value));
+        }}
+      /> */}
       <Button onClick={props.toggleAutoRotate}>Toggle Rotate</Button>
       <Button onClick={props.toggleDeveloperMode}>Toggle Dev Mode</Button>
       <Button onClick={props.addArtwork}>Add Artwork</Button>

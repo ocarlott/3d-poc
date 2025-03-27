@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Utils } from '../Utils';
 import { ControlName } from '../type';
+import { Viewer3D } from '../Viewer';
 
 export class LayerManager {
   private _layerMap: Map<
@@ -11,15 +12,21 @@ export class LayerManager {
     }
   >;
   private _extraLayers: Set<string>;
+  private _viewer: Viewer3D;
 
-  constructor() {
+  constructor(_viewer: Viewer3D) {
     this._layerMap = new Map();
     this._extraLayers = new Set<string>();
+    this._viewer = _viewer;
   }
 
   get layerMap() {
     return this._layerMap;
   }
+
+  private _markDirty = () => {
+    this._viewer.markDirty();
+  };
 
   changeLayerColor(layerName: string, color: string) {
     const entry = this.findByName(layerName);
@@ -28,6 +35,7 @@ export class LayerManager {
         color: `#${color.replace(/#/g, '')}`,
         opacity: 1,
       });
+      this._markDirty();
     } else {
       console.log('layer not found', layerName);
     }
@@ -51,6 +59,7 @@ export class LayerManager {
     layerList.forEach((layer, index) => {
       this.changeLayerColor(layer.mesh.name, colors[index % colors.length]);
     });
+    this._markDirty();
   }
 
   clearLayerMap() {

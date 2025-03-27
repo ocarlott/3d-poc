@@ -1,6 +1,7 @@
 import { Boundary } from '../core/Boundary';
 import { TextureOption } from '../type';
 import * as THREE from 'three';
+import { Viewer3D } from '../Viewer';
 
 export class BoundaryManager {
   private _boundaryList: Boundary[] = [];
@@ -13,9 +14,15 @@ export class BoundaryManager {
     sizeRatio: number;
     rotation: number;
   }) => void;
+  private _viewer: Viewer3D;
 
-  constructor() {
+  constructor(_viewer: Viewer3D) {
     this._boundaryList = [];
+    this._viewer = _viewer;
+  }
+
+  private _markDirty() {
+    this._viewer.markDirty();
   }
 
   get boundaryList() {
@@ -64,7 +71,7 @@ export class BoundaryManager {
     if (!techPackBoundary) {
       console.error(`Could not find techpack version of ${castedChild.name}`);
     } else {
-      const bd = new Boundary(castedChild, techPackBoundary);
+      const bd = new Boundary(castedChild, techPackBoundary, this._viewer);
       this.addBoundary(bd);
     }
   }
@@ -164,12 +171,15 @@ export class BoundaryManager {
     const rBoundary = this.findByName(boundary);
     rBoundary?.resetBoundary();
     rBoundary?.disposeCanvas2D();
+    this._markDirty();
   };
 
   removeAllBoundaryArtworks = () => {
     this._boundaryList.map((bd) => {
       return this.removeArtwork(bd.name);
     });
+    this._markDirty();
+    console.log('removeAllBoundaryArtworks');
   };
 
   testChangeAllBoundaryArtworks = async (artworkUrl: string) => {
