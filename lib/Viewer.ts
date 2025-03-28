@@ -51,7 +51,7 @@ export class Viewer3D {
   private _opacityForUncoloredLayer = 1;
   private _maxPixelRatio = 1;
   private _frameRateMonitor: FrameRateMonitor = new FrameRateMonitor();
-  private _frameRateController: FrameRateController = new FrameRateController(60, false);
+  private _frameRateController: FrameRateController = new FrameRateController(60, true);
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -213,9 +213,11 @@ export class Viewer3D {
     const { rotation, modelRatio, colorMap } = params;
 
     const images: string[] = [];
+    const currentRatio = this._renderer.getPixelRatio();
+    this._renderer.setPixelRatio(this._maxPixelRatio);
     const renderSize = this._renderer
       .getSize(new THREE.Vector2())
-      .multiplyScalar(this._renderer.getPixelRatio());
+      .multiplyScalar(this._maxPixelRatio);
     const renderRatio = renderSize.width / renderSize.height;
     const shouldUseWidth = renderRatio < modelRatio;
     let finalWidth = Math.floor(shouldUseWidth ? renderSize.width : renderSize.height * modelRatio);
@@ -259,7 +261,8 @@ export class Viewer3D {
       images.push(imgData);
     }, colorMap);
     this._renderer.render(this._scene, this._rotatableScreenshotCamera);
-
+    this._renderer.setPixelRatio(currentRatio);
+    this.markDirty();
     return images;
   };
 
@@ -376,11 +379,19 @@ export class Viewer3D {
     if (this._frameRateMonitor.averageFps < 40) {
       if (currentRatio > MIN_PIXEL_RATIO + 0.05) {
         const adjustedRatio = MIN_PIXEL_RATIO + (currentRatio - MIN_PIXEL_RATIO) * 0.7;
+        console.info(`Dropping resolution due to low FPS: ${adjustedRatio}`);
         this._renderer.setPixelRatio(adjustedRatio);
         this.markDirty();
       }
-    } else if (currentRatio < this._maxPixelRatio - 0.05) {
-      const adjustedRatio = currentRatio + (this._maxPixelRatio - currentRatio) * 0.7;
+    } else {
+      if (currentRatio === this._maxPixelRatio) {
+        return;
+      }
+      const adjustedRatio =
+        currentRatio > this._maxPixelRatio - 0.1
+          ? this._maxPixelRatio
+          : currentRatio + (this._maxPixelRatio - currentRatio) * 0.7;
+      console.info(`Increasing resolution due to high FPS: ${adjustedRatio}`);
       this._renderer.setPixelRatio(adjustedRatio);
       this.markDirty();
     }
@@ -736,6 +747,8 @@ export class Viewer3D {
 
   takeScreenShotAuto = (count = 4, colorMap?: { layerName: string; color: string }[]) => {
     const images: string[] = [];
+    const currentRatio = this._renderer.getPixelRatio();
+    this._renderer.setPixelRatio(this._maxPixelRatio);
 
     this._appyColorTemporarilyForScreenshot(() => {
       this._stationaryScreenshotCameraManagers.forEach((controls) => {
@@ -758,6 +771,9 @@ export class Viewer3D {
         images.push(imgData);
       });
     }, colorMap);
+
+    this._renderer.setPixelRatio(currentRatio);
+    this.markDirty();
 
     return images;
   };
@@ -815,6 +831,8 @@ export class Viewer3D {
   };
 
   createTechPack = async () => {
+    const currentRatio = this._renderer.getPixelRatio();
+    this._renderer.setPixelRatio(this._maxPixelRatio);
     await this._boundaryManager.prepareForTechpack();
     const newImage = this._createScreenshotImage();
     this._renderer.domElement.parentElement?.prepend(newImage);
@@ -902,6 +920,8 @@ export class Viewer3D {
       this._renderer.render(this._scene, this._camera);
       this._renderer.domElement.parentElement?.removeChild(newImage);
     }
+    this._renderer.setPixelRatio(currentRatio);
+    this.markDirty();
 
     return result;
   };

@@ -8,6 +8,7 @@ export function RSidebarModel() {
   const [boundaryActive, setBoundaryActive] = useState<Boundary | null>(null);
   const [imageEditor] = useState<ImageEditor>(new ImageEditor());
   const [uploadingFileType, setUploadingFileType] = useState<'model' | 'env'>('model');
+  const [fps, setFps] = useState(60);
   return {
     fileRef,
     images,
@@ -17,5 +18,7 @@ export function RSidebarModel() {
     imageEditor,
     uploadingFileType,
     setUploadingFileType,
+    fps,
+    setFps,
   };
 }

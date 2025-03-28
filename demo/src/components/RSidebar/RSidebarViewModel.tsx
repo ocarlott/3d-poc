@@ -2,6 +2,7 @@ import { TextureOption, Viewer3D } from 'microstore-3d';
 import { ValidationResults } from '../../types';
 import { RSidebarModel } from './RSidebarModel';
 import { defaultModelConfig } from '../../config';
+import { useEffect } from 'react';
 
 type RSidebarViewModelProps = {
   viewer: Viewer3D | null;
@@ -212,6 +213,17 @@ export function RSidebarViewModel({
 
   const frameRateController = viewer?.frameRateController;
 
+  const setFps = (fps: number) => {
+    model.setFps(fps);
+    frameRateController?.setTargetFps(fps);
+  };
+
+  useEffect(() => {
+    if (frameRateController) {
+      model.setFps(frameRateController.targetFps);
+    }
+  }, []);
+
   return {
     boundaryActive: model.boundaryActive,
     fileRef: model.fileRef,
@@ -237,5 +249,7 @@ export function RSidebarViewModel({
     uploadEnv,
     randomizeLayerColors,
     frameRateController,
+    setFps,
+    fps: model.fps,
   };
 }

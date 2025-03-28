@@ -8,16 +8,16 @@ export function RSidebarView(props: ReturnType<typeof RSidebarViewModel>) {
 
   return (
     <SideBar>
-      {/* <input
+      <input
         type="range"
         min="1"
         max="120"
         step="1"
-        value={props.frameRateController?.targetFps ?? 60}
+        value={props.fps}
         onChange={(e) => {
-          props.frameRateController?.setTargetFps(parseInt(e.target.value));
+          props.setFps(parseInt(e.target.value));
         }}
-      /> */}
+      />
       <Button onClick={props.toggleAutoRotate}>Toggle Rotate</Button>
       <Button onClick={props.toggleDeveloperMode}>Toggle Dev Mode</Button>
       <Button onClick={props.addArtwork}>Add Artwork</Button>
