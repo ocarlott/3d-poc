@@ -19,6 +19,7 @@ import { FrameRateController, FrameRateMonitor } from './core/FrameRateHelper';
 const strMime = 'image/webp';
 const MIN_PIXEL_RATIO = 0.7;
 const BUFFER_TIME_TO_FLUSH_FRAME_CHANGE = 100;
+const SCREENSHOT_PIXEL_RATIO = 1;
 
 export class Viewer3D {
   private _rFID = -1;
@@ -214,10 +215,8 @@ export class Viewer3D {
 
     const images: string[] = [];
     const currentRatio = this._renderer.getPixelRatio();
-    this._renderer.setPixelRatio(this._maxPixelRatio);
-    const renderSize = this._renderer
-      .getSize(new THREE.Vector2())
-      .multiplyScalar(this._maxPixelRatio);
+    this._renderer.setPixelRatio(SCREENSHOT_PIXEL_RATIO);
+    const renderSize = this._renderer.getSize(new THREE.Vector2());
     const renderRatio = renderSize.width / renderSize.height;
     const shouldUseWidth = renderRatio < modelRatio;
     let finalWidth = Math.floor(shouldUseWidth ? renderSize.width : renderSize.height * modelRatio);
@@ -748,7 +747,7 @@ export class Viewer3D {
   takeScreenShotAuto = (count = 4, colorMap?: { layerName: string; color: string }[]) => {
     const images: string[] = [];
     const currentRatio = this._renderer.getPixelRatio();
-    this._renderer.setPixelRatio(this._maxPixelRatio);
+    this._renderer.setPixelRatio(SCREENSHOT_PIXEL_RATIO);
 
     this._appyColorTemporarilyForScreenshot(() => {
       this._stationaryScreenshotCameraManagers.forEach((controls) => {
@@ -832,7 +831,7 @@ export class Viewer3D {
 
   createTechPack = async () => {
     const currentRatio = this._renderer.getPixelRatio();
-    this._renderer.setPixelRatio(this._maxPixelRatio);
+    this._renderer.setPixelRatio(SCREENSHOT_PIXEL_RATIO);
     await this._boundaryManager.prepareForTechpack();
     const newImage = this._createScreenshotImage();
     this._renderer.domElement.parentElement?.prepend(newImage);
