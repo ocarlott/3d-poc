@@ -671,7 +671,9 @@ export class Boundary {
       }
     }
     this._isReadyForScreenshot = true;
-    this._markDirty();
+    setTimeout(() => {
+      this._markDirty();
+    }, 300);
   }, 2000);
 
   prepareForTechpack = async () => {
