@@ -735,6 +735,7 @@ export class Boundary {
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
     texture.repeat.set(Math.sign(this._normalUV.x), -Math.sign(this._normalUV.y));
+    texture.colorSpace = THREE.SRGBColorSpace;
     return texture;
   }
 
@@ -830,6 +831,7 @@ export class Boundary {
       map: texture,
       alphaTest: 0.5,
       toneMapped: false,
+      reflectivity: 0,
     });
     geo.material = material;
     if (existingMaterial) {
