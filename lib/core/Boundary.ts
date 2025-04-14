@@ -433,13 +433,14 @@ export class Boundary {
   };
 
   private _createFabricImage = async (artworkUrl: string) => {
-    const img = await fabric.Image.fromURL(artworkUrl, {
+    const img = await fabric.FabricImage.fromURL(artworkUrl, {
       crossOrigin: 'anonymous',
     });
-    img.originX = 'center';
-    img.originY = 'center';
+    img.centeredRotation = true;
     img.centeredScaling = true;
     img.lockScalingFlip = true;
+    img.objectCaching = false;
+    img.minScaleLimit = 0.05;
     return img;
   };
 
@@ -455,16 +456,15 @@ export class Boundary {
     const maxScaleX = maxSizeX / img.width;
     const maxScaleY = maxSizeY / img.height;
 
+    const goodPercentage = 0.2; // 20% of the clip path width and height
+    const goodLeft = widthPadding + goodPercentage * clipPathWidth;
+    const goodTop = heightPadding + goodPercentage * clipPathHeight;
+    const goodRight = widthPadding + (1 - goodPercentage) * clipPathWidth;
+    const goodBottom = heightPadding + (1 - goodPercentage) * clipPathHeight;
+
     img.on('scaling', () => {
       // Handle scaling
       const self = img as any;
-      if (self.scaleX < 0.02 || self.scaleY < 0.02) {
-        self.scaleX = self.lastGoodScaleX ?? 0.02;
-        self.scaleY = self.lastGoodScaleY ?? 0.02;
-        self.left = self.lastGoodLeft ?? self.left;
-        self.top = self.lastGoodTop ?? self.top;
-        return;
-      }
       if (self.scaleX >= maxScaleX || self.scaleY >= maxScaleY) {
         self.left = self.lastGoodLeft ?? self.left;
         self.top = self.lastGoodTop ?? self.top;
@@ -476,29 +476,49 @@ export class Boundary {
       self.lastGoodLeft = self.left;
       self.lastGoodScaleX = self.scaleX;
       self.lastGoodScaleY = self.scaleY;
+      img.setCoords();
       this._isReadyForScreenshot = false;
     });
 
     img.on('moving', () => {
       const self = img as any;
-      let pass = true;
-      if (img.left < widthPadding || img.left > widthPadding + clipPathWidth) {
-        self.left = self.lastGoodMovingLeft;
-        pass = false;
+      const { left, width, top, height } = img.getBoundingRect();
+      const right = left + width;
+      const bottom = top + height;
+      let isGood = true;
+      if (right >= goodLeft && left <= goodRight) {
+        self.lastGoodMovingLeft = self.left;
+      } else {
+        isGood = false;
       }
-      if (img.top < heightPadding || img.top > heightPadding + clipPathHeight) {
-        self.top = self.lastGoodMovingTop;
-        pass = false;
+      if (bottom >= goodTop && top <= goodBottom) {
+        self.lastGoodMovingTop = self.top;
+      } else {
+        isGood = false;
       }
-      if (!pass) {
-        return;
+      if (isGood) {
+        img.borderColor = 'rgb(178,204,255)';
+      } else {
+        img.borderColor = 'red';
       }
-      self.lastGoodMovingLeft = self.left;
-      self.lastGoodMovingTop = self.top;
       this._isReadyForScreenshot = false;
     });
 
     img.on('modified', () => {
+      const { left, width, top, height } = img.getBoundingRect();
+      const right = left + width;
+      const bottom = top + height;
+
+      const self = img as any;
+
+      if (right < goodLeft || left > goodRight || bottom < goodTop || top > goodBottom) {
+        // Reset to the last good position
+        self.left = self.lastGoodMovingLeft;
+        self.top = self.lastGoodMovingTop;
+        img.borderColor = 'rgb(178,204,255)';
+        img.setCoords();
+      }
+
       // Handle rotated
       this._rotation = img.angle;
       if (this._internalImage) {
