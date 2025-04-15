@@ -553,6 +553,18 @@ export class Boundary {
     });
   };
 
+  get boundaryUsableWidth() {
+    return this._getClipPathWidth(this._workingCanvasSize, this._workingCanvasSize);
+  }
+
+  get boundaryUsableHeight() {
+    return this._getClipPathHeight(this._workingCanvasSize, this._workingCanvasSize);
+  }
+
+  get shouldUseWidthAsBaseLimit() {
+    return this.boundaryUsableWidth < this.boundaryUsableHeight;
+  }
+
   private _setScaleDirection = (params: {
     img: fabric.Image;
     clipPathWidth: number;
