@@ -47,7 +47,7 @@ export function RSidebarViewModel({
           boundary: model.boundaryActive.name,
           artworkUrl: './logo.png',
           sizeRatio: 0.5,
-          sizeRatioLimit: 0.7,
+          // sizeRatioLimit: 0.7,
           xRatio: 0.5,
           yRatio: 0.2,
         },

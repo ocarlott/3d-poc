@@ -143,7 +143,7 @@ export class BoundaryManager {
       artworkUrl,
       shouldShowOriginalArtwork,
       sensitivity,
-      sizeRatioLimit = 1,
+      sizeRatioLimit,
     } = options;
 
     let boundaryObj = this.findByName(boundary) ?? null;

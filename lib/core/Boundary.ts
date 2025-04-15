@@ -283,7 +283,7 @@ export class Boundary {
     yRatio: number;
     rotation: number;
     sizeRatio: number;
-    sizeRatioLimit: number;
+    sizeRatioLimit?: number;
     shouldShowOriginalArtwork?: boolean;
     onArtworkChanged?: (params: {
       forBoundary: string;
@@ -336,22 +336,28 @@ export class Boundary {
       clipPathWidth,
       clipPathHeight,
     });
+
+    const boundarySizeRatio = this._useWidthToScale
+      ? clipPathHeight / clipPathWidth
+      : clipPathWidth / clipPathHeight;
+    const finalSizeRatioLimit = sizeRatioLimit ?? boundarySizeRatio;
+
     const internalImage = await img.clone();
     this._scaleImage(
       img,
       clipPathWidth,
       clipPathHeight,
-      sizeRatio < sizeRatioLimit ? sizeRatio : sizeRatioLimit,
+      sizeRatio < finalSizeRatioLimit ? sizeRatio : finalSizeRatioLimit,
     );
     this._scaleImage(
       internalImage,
       clipPathWidth * this._canvasRatio,
       clipPathHeight * this._canvasRatio,
-      sizeRatio < sizeRatioLimit ? sizeRatio : sizeRatioLimit,
+      sizeRatio < finalSizeRatioLimit ? sizeRatio : finalSizeRatioLimit,
     );
     this._attachEvents({
       img,
-      sizeRatioLimit,
+      sizeRatioLimit: finalSizeRatioLimit,
     });
     this._setPositionImage({
       img,
