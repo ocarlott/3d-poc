@@ -183,15 +183,20 @@ export class Utils {
   };
 
   static hex2rgb = (color: string) => {
-    if (color.length !== 6) {
+    const formattedColor = color.replace('#', '');
+    if (formattedColor.length !== 6) {
       console.error('Invalid hex color');
       return [255, 255, 255];
     }
     return [
-      parseInt(color.slice(0, 2), 16),
-      parseInt(color.slice(2, 4), 16),
-      parseInt(color.slice(4, 6), 16),
+      parseInt(formattedColor.slice(0, 2), 16),
+      parseInt(formattedColor.slice(2, 4), 16),
+      parseInt(formattedColor.slice(4, 6), 16),
     ];
+  };
+
+  static hex2lab = (color: string) => {
+    return Utils.rgb2lab(Utils.hex2rgb(color));
   };
 
   static testHexMatch = (color1: string, color2: string) => {

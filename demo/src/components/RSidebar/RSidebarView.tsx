@@ -37,6 +37,8 @@ export function RSidebarView(props: ReturnType<typeof RSidebarViewModel>) {
       <Button onClick={props.resetModel()}>Reset Model</Button>
       <Button onClick={() => imageUploaderRef.current?.click()}>Upload Image</Button>
       <Button onClick={props.nextBoundary()}>Next Boundary</Button>
+      <Button onClick={props.centerArtworkHorizontally()}>Center A Horizontally</Button>
+      <Button onClick={props.centerArtworkVertically()}>Center A Vertically</Button>
       <div>Active Boundary: {props.boundaryActive?.name ?? 'None'}</div>
       <input
         type="text"

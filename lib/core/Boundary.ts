@@ -4,9 +4,10 @@ import * as fabric from 'fabric';
 import _ from 'underscore';
 import { ImageHelper } from './ImageHelper';
 import { Utils } from '../Utils';
-import crystalAlpha from '../assets/crystal_alpha.webp';
+import crystalBump from '../assets/crystal_bump.webp';
 import crystalNormal from '../assets/crystal_normal.webp';
-import glitterRoughness from '../assets/glitter_roughness.webp';
+import glitterNormal from '../assets/glitter_normal.webp';
+import glitterBump from '../assets/glitter_bump.webp';
 import { Utils3D } from '../Utils3D';
 import { Viewer3D } from '../Viewer';
 
@@ -28,6 +29,7 @@ export class Boundary {
   private _internalWorkingCanvas2D: fabric.Canvas;
   private _workingCanvas2D: fabric.Canvas;
   private _internalImage?: fabric.Image;
+  private _workingImage?: fabric.Image;
   private _workingCanvasSize = CanvasSize;
   private _canvasRatio = InternalCanvasSize / CanvasSize;
   private _isReadyForScreenshot = false;
@@ -57,8 +59,9 @@ export class Boundary {
   private _shouldShowOriginalArtwork = false;
   static textureLoader = new THREE.TextureLoader();
   static crystalNormalTexture = Boundary.textureLoader.load(crystalNormal);
-  static crystalAlphaTexture = Boundary.textureLoader.load(crystalAlpha);
-  static glitterRoughnessTexture = Boundary.textureLoader.load(glitterRoughness);
+  static crystalBumpTexture = Boundary.textureLoader.load(crystalBump);
+  static glitterNormalTexture = Boundary.textureLoader.load(glitterNormal);
+  static glitterBumpTexture = Boundary.textureLoader.load(glitterBump);
   private _viewer: Viewer3D;
 
   constructor(canvas: THREE.Mesh, techPackCanvas: THREE.Mesh, _viewer: Viewer3D) {
@@ -194,6 +197,72 @@ export class Boundary {
     this.group.add(this._normalPositionHelper);
   }
 
+  centerArtworkHorizontally = () => {
+    const { clipPathWidth, clipPathHeight, widthPadding, heightPadding } = this._getClipPathSize(
+      this._workingCanvasSize,
+      this._workingCanvasSize,
+    );
+    if (this._workingImage && this._internalImage) {
+      this._setPositionImage({
+        img: this._workingImage,
+        clipPathWidth,
+        clipPathHeight,
+        xRatio: 0.5,
+        yRatio: this._yRatio,
+        widthPadding,
+        heightPadding,
+      });
+
+      this._setPositionImage({
+        img: this._internalImage,
+        clipPathWidth: clipPathWidth * this._canvasRatio,
+        clipPathHeight: clipPathHeight * this._canvasRatio,
+        xRatio: 0.5,
+        yRatio: this._yRatio,
+        widthPadding: widthPadding * this._canvasRatio,
+        heightPadding: heightPadding * this._canvasRatio,
+      });
+
+      this._updateInternalValuesFromWorkingImage(this._workingImage);
+
+      this._workingCanvas2D.renderAll();
+      this._internalWorkingCanvas2D.renderAll();
+    }
+  };
+
+  centerArtworkVertically = () => {
+    const { clipPathWidth, clipPathHeight, widthPadding, heightPadding } = this._getClipPathSize(
+      this._workingCanvasSize,
+      this._workingCanvasSize,
+    );
+    if (this._workingImage && this._internalImage) {
+      this._setPositionImage({
+        img: this._workingImage,
+        clipPathWidth,
+        clipPathHeight,
+        xRatio: this._xRatio,
+        yRatio: 0.5,
+        widthPadding,
+        heightPadding,
+      });
+
+      this._setPositionImage({
+        img: this._internalImage,
+        clipPathWidth: clipPathWidth * this._canvasRatio,
+        clipPathHeight: clipPathHeight * this._canvasRatio,
+        xRatio: this._xRatio,
+        yRatio: 0.5,
+        widthPadding: widthPadding * this._canvasRatio,
+        heightPadding: heightPadding * this._canvasRatio,
+      });
+
+      this._updateInternalValuesFromWorkingImage(this._workingImage);
+
+      this._workingCanvas2D.renderAll();
+      this._internalWorkingCanvas2D.renderAll();
+    }
+  };
+
   private _getClipPathWidth(canvasWidth: number, canvasHeight: number) {
     return this._boundaryRatio > canvasWidth / canvasHeight
       ? canvasWidth - 20
@@ -220,13 +289,22 @@ export class Boundary {
   }
 
   private _generateClipPath(canvasWidth: number, canvasHeight: number, polygonPoints: number[][]) {
-    return new fabric.Polygon(
+    const minX = Math.min(...polygonPoints.map((p) => p[0]));
+    const minY = Math.min(...polygonPoints.map((p) => p[1]));
+    const maxX = Math.max(...polygonPoints.map((p) => p[0]));
+    const maxY = Math.max(...polygonPoints.map((p) => p[1]));
+    // Calculate offset for x and y to bring the polygon to the center of the canvas
+    const offsetX = (1 - (maxX - minX)) / 2;
+    const offsetY = (1 - (maxY - minY)) / 2;
+    const polygon = new fabric.Polygon(
       polygonPoints.map((p) => ({
-        x: p[0] * canvasWidth,
-        y: p[1] * canvasHeight,
+        x: (p[0] - minX + offsetX) * canvasWidth,
+        y: (p[1] - minY + offsetY) * canvasHeight,
       })),
       {},
     );
+
+    return polygon;
   }
 
   get id() {
@@ -295,6 +373,7 @@ export class Boundary {
     }) => void;
     sensitivity?: number;
     disableEditing?: boolean;
+    colorLimit?: number;
   }): Promise<void> => {
     const {
       artworkUrl,
@@ -307,6 +386,7 @@ export class Boundary {
       shouldShowOriginalArtwork = false,
       sensitivity,
       sizeRatioLimit,
+      colorLimit,
     } = options;
     this._isReadyForScreenshot = false;
     await this.resetBoundary();
@@ -314,7 +394,11 @@ export class Boundary {
     let computedArtworkUrl = artworkUrl;
     this._shouldShowOriginalArtwork = shouldShowOriginalArtwork;
     if (!shouldShowOriginalArtwork) {
-      const { computed, colorList } = await this._reduceImageColor(artworkUrl, sensitivity);
+      const { computed, colorList } = await this._reduceImageColor(
+        artworkUrl,
+        sensitivity,
+        colorLimit,
+      );
       computedArtworkUrl = computed;
       this._canvasList = this._createCanvasList(colorList);
       this._techPackCanvasList = this._createTechPackCanvasList(this._canvasList);
@@ -385,6 +469,19 @@ export class Boundary {
     this._workingCanvas2D.add(img);
     this._internalWorkingCanvas2D.add(internalImage);
     this._internalImage = internalImage;
+    this._workingImage = img;
+
+    // this._workingCanvas2D.add(
+    //   new fabric.Rect({
+    //     left: widthPadding,
+    //     top: heightPadding,
+    //     width: clipPathWidth,
+    //     height: clipPathHeight,
+    //     fill: 'transparent',
+    //     stroke: 'red',
+    //     strokeWidth: 1,
+    //   }),
+    // );
 
     if (!disableEditing) {
       this._workingCanvas2D.setActiveObject(img);
@@ -393,10 +490,15 @@ export class Boundary {
     this._markDirty();
   };
 
-  private _reduceImageColor = async (artworkUrl: string, sensitivity: number = 5) => {
+  private _reduceImageColor = async (
+    artworkUrl: string,
+    sensitivity: number = 5,
+    limit?: number,
+  ) => {
     const { computed, colorList } = await ImageHelper.reduceImageColor({
       url: artworkUrl,
       minDensity: sensitivity / 100,
+      limit,
     });
     return { computed, colorList };
   };
@@ -443,16 +545,31 @@ export class Boundary {
       crossOrigin: 'anonymous',
     });
     img.centeredRotation = true;
-    img.centeredScaling = true;
+    img.centeredRotation = true;
     img.lockScalingFlip = true;
     img.objectCaching = false;
     img.minScaleLimit = 0.05;
+    img.originX = 'center';
+    img.originY = 'center';
     return img;
+  };
+
+  private _getGoodConstants = () => {
+    const { clipPathWidth, clipPathHeight, widthPadding, heightPadding } = this._getClipPathSize(
+      this._workingCanvasSize,
+      this._workingCanvasSize,
+    );
+    const goodPercentage = 0.2; // 20% of the clip path width and height
+    const goodLeft = widthPadding + goodPercentage * clipPathWidth;
+    const goodTop = heightPadding + goodPercentage * clipPathHeight;
+    const goodRight = widthPadding + (1 - goodPercentage) * clipPathWidth;
+    const goodBottom = heightPadding + (1 - goodPercentage) * clipPathHeight;
+    return { goodLeft, goodTop, goodRight, goodBottom };
   };
 
   private _attachEvents = (params: { img: fabric.Image; sizeRatioLimit: number }) => {
     const { img, sizeRatioLimit } = params;
-    const { clipPathWidth, clipPathHeight, widthPadding, heightPadding } = this._getClipPathSize(
+    const { clipPathWidth, clipPathHeight } = this._getClipPathSize(
       this._workingCanvasSize,
       this._workingCanvasSize,
     );
@@ -462,11 +579,7 @@ export class Boundary {
     const maxScaleX = maxSizeX / img.width;
     const maxScaleY = maxSizeY / img.height;
 
-    const goodPercentage = 0.2; // 20% of the clip path width and height
-    const goodLeft = widthPadding + goodPercentage * clipPathWidth;
-    const goodTop = heightPadding + goodPercentage * clipPathHeight;
-    const goodRight = widthPadding + (1 - goodPercentage) * clipPathWidth;
-    const goodBottom = heightPadding + (1 - goodPercentage) * clipPathHeight;
+    const { goodLeft, goodTop, goodRight, goodBottom } = this._getGoodConstants();
 
     img.on('scaling', () => {
       // Handle scaling
@@ -511,46 +624,54 @@ export class Boundary {
     });
 
     img.on('modified', () => {
-      const { left, width, top, height } = img.getBoundingRect();
-      const right = left + width;
-      const bottom = top + height;
-
-      const self = img as any;
-
-      if (right < goodLeft || left > goodRight || bottom < goodTop || top > goodBottom) {
-        // Reset to the last good position
-        self.left = self.lastGoodMovingLeft;
-        self.top = self.lastGoodMovingTop;
-        img.borderColor = 'rgb(178,204,255)';
-        img.setCoords();
-      }
-
-      // Handle rotated
-      this._rotation = img.angle;
-      if (this._internalImage) {
-        this._internalImage.angle = img.angle;
-      }
-
-      // Handle moved
-      this._xRatio = (img.left - widthPadding) / clipPathWidth;
-      this._yRatio = (img.top - heightPadding) / clipPathHeight;
-      if (this._internalImage) {
-        this._internalImage.left = img.left * this._canvasRatio;
-        this._internalImage.top = img.top * this._canvasRatio;
-      }
-
-      // Handle resized
-      this._sizeRatio = this._useWidthToScale
-        ? (img.scaleX * img.width) / clipPathWidth
-        : (img.scaleY * img.height) / clipPathHeight;
-      if (this._internalImage) {
-        this._internalImage.scaleX = img.scaleX * this._canvasRatio;
-        this._internalImage.scaleY = img.scaleY * this._canvasRatio;
-      }
-
+      this._updateInternalValuesFromWorkingImage(img);
       this._updateListener();
       this._isReadyForScreenshot = false;
     });
+  };
+
+  private _updateInternalValuesFromWorkingImage = (img: fabric.Image) => {
+    const { clipPathWidth, clipPathHeight, widthPadding, heightPadding } = this._getClipPathSize(
+      this._workingCanvasSize,
+      this._workingCanvasSize,
+    );
+    const { goodLeft, goodTop, goodRight, goodBottom } = this._getGoodConstants();
+    const { left, width, top, height } = img.getBoundingRect();
+    const right = left + width;
+    const bottom = top + height;
+
+    const self = img as any;
+
+    if (right < goodLeft || left > goodRight || bottom < goodTop || top > goodBottom) {
+      // Reset to the last good position
+      self.left = self.lastGoodMovingLeft;
+      self.top = self.lastGoodMovingTop;
+      img.borderColor = 'rgb(178,204,255)';
+      img.setCoords();
+    }
+
+    // Handle rotated
+    this._rotation = img.angle;
+    if (this._internalImage) {
+      this._internalImage.angle = img.angle;
+    }
+
+    // Handle moved
+    this._xRatio = (img.left - widthPadding) / clipPathWidth;
+    this._yRatio = (img.top - heightPadding) / clipPathHeight;
+    if (this._internalImage) {
+      this._internalImage.left = img.left * this._canvasRatio;
+      this._internalImage.top = img.top * this._canvasRatio;
+    }
+
+    // Handle resized
+    this._sizeRatio = this._useWidthToScale
+      ? (img.scaleX * img.width) / clipPathWidth
+      : (img.scaleY * img.height) / clipPathHeight;
+    if (this._internalImage) {
+      this._internalImage.scaleX = img.scaleX * this._canvasRatio;
+      this._internalImage.scaleY = img.scaleY * this._canvasRatio;
+    }
   };
 
   get boundaryUsableWidth() {
@@ -599,19 +720,15 @@ export class Boundary {
   }) => {
     const { img, clipPathWidth, xRatio, clipPathHeight, yRatio, widthPadding, heightPadding } =
       params;
-    img.setPositionByOrigin(
-      new fabric.Point(
-        clipPathWidth * xRatio + widthPadding,
-        clipPathHeight * yRatio + heightPadding,
-      ),
-      'center',
-      'center',
-    );
+    const x = clipPathWidth * xRatio + widthPadding;
+    const y = clipPathHeight * yRatio + heightPadding;
+    img.setPositionByOrigin(new fabric.Point(x, y), 'center', 'center');
+    img.setCoords();
   };
 
   private _configureImage = (img: fabric.Image, angle: number, disableEditing: boolean) => {
     img.setControlsVisibility({ mb: false, mt: false, ml: false, mr: false });
-    img.set({ angle: angle, selectable: !disableEditing });
+    img.set({ angle: angle, selectable: !disableEditing, origin: 'center' });
   };
 
   private _updateListener = _.throttle(() => {
@@ -800,21 +917,23 @@ export class Boundary {
     alphaTexture.repeat.set(Math.sign(this._normalUV.x), -Math.sign(this._normalUV.y));
     alphaTexture.wrapS = THREE.RepeatWrapping;
     alphaTexture.wrapT = THREE.RepeatWrapping;
-    const mapTexture = Boundary.glitterRoughnessTexture.clone();
-    mapTexture.wrapS = THREE.RepeatWrapping;
-    mapTexture.wrapT = THREE.RepeatWrapping;
-    mapTexture.repeat.set(Math.sign(this._normalUV.x), -Math.sign(this._normalUV.y));
-    mapTexture.colorSpace = THREE.SRGBColorSpace;
+    const normalTexture = Boundary.glitterNormalTexture.clone();
+    const bumpTexture = Boundary.glitterBumpTexture.clone();
+    normalTexture.wrapS = THREE.RepeatWrapping;
+    normalTexture.wrapT = THREE.RepeatWrapping;
+    normalTexture.repeat.set(Math.sign(this._normalUV.x), -Math.sign(this._normalUV.y));
     const existingMaterial = geo.material as THREE.MeshPhysicalMaterial;
     const material = new THREE.MeshPhysicalMaterial({
-      map: mapTexture,
-      roughnessMap: mapTexture,
+      bumpMap: bumpTexture,
       color: `#${color}`,
-      metalness: 0.8,
-      roughness: 0.9,
+      metalness: 0.6,
+      roughness: 0.4,
+      normalMap: normalTexture,
       alphaMap: alphaTexture,
       opacity: 1,
       alphaTest: 0.5,
+      emissive: `#${color}`,
+      emissiveIntensity: 0.5,
     });
     geo.material = material;
     if (existingMaterial) {
@@ -830,11 +949,12 @@ export class Boundary {
   private _applyMetallicMaterial(geo: THREE.Mesh, color: string, texture: THREE.Texture): void {
     const material = this._canvasMaterial.clone();
     material.setValues({
-      color: `#${color}`,
-      metalness: 0.7,
-      roughness: 0.35,
+      metalness: 0.9,
+      roughness: 0.03,
       opacity: 1,
       map: texture,
+      emissive: `#${color}`,
+      emissiveIntensity: 0.6,
     });
     geo.material = material;
     geo.userData.texture = TextureOption.Metallic;
@@ -872,11 +992,11 @@ export class Boundary {
     const normalMap = Boundary.crystalNormalTexture.clone();
     normalMap.wrapS = THREE.RepeatWrapping;
     normalMap.wrapT = THREE.RepeatWrapping;
-    normalMap.repeat.set(Math.sign(this._normalUV.x), -Math.sign(this._normalUV.y));
-    const alphaMap = Boundary.crystalAlphaTexture.clone();
-    alphaMap.wrapS = THREE.RepeatWrapping;
-    alphaMap.wrapT = THREE.RepeatWrapping;
-    alphaMap.repeat.set(Math.sign(this._normalUV.x), -Math.sign(this._normalUV.y));
+    normalMap.repeat.set(Math.sign(this._normalUV.x) * 6, -Math.sign(this._normalUV.y) * 6);
+    const bumpMap = Boundary.crystalBumpTexture.clone();
+    bumpMap.wrapS = THREE.RepeatWrapping;
+    bumpMap.wrapT = THREE.RepeatWrapping;
+    bumpMap.repeat.set(Math.sign(this._normalUV.x) * 6, -Math.sign(this._normalUV.y) * 6);
     const material = this._canvasMaterial.clone();
     material.setValues({
       opacity: 1,
@@ -885,8 +1005,12 @@ export class Boundary {
       roughness: 0.35,
       map: texture,
       normalMap,
-      alphaMap,
-      alphaTest: 0.5,
+      normalScale: new THREE.Vector2(1, 1),
+      bumpMap,
+      alphaMap: bumpMap,
+      alphaTest: 0.6,
+      emissive: `#${color}`,
+      emissiveIntensity: 0.3,
     });
     geo.material = material;
     geo.userData.texture = TextureOption.Crystals;

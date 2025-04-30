@@ -131,6 +131,7 @@ export class BoundaryManager {
       widthLimitInInches?: number;
       heightLimitInInches?: number;
       sensitivity?: number;
+      colorLimit?: number;
     },
     disableEditing = true,
   ) => {
@@ -144,6 +145,7 @@ export class BoundaryManager {
       shouldShowOriginalArtwork,
       sensitivity,
       sizeRatioLimit,
+      colorLimit,
     } = options;
 
     let boundaryObj = this.findByName(boundary) ?? null;
@@ -159,6 +161,7 @@ export class BoundaryManager {
       shouldShowOriginalArtwork,
       sensitivity,
       sizeRatioLimit,
+      colorLimit,
     });
     return boundaryObj;
   };

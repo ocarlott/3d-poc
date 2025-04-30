@@ -211,6 +211,22 @@ export function RSidebarViewModel({
     };
   }
 
+  function centerArtworkHorizontally() {
+    return () => {
+      if (model.boundaryActive) {
+        model.boundaryActive.centerArtworkHorizontally();
+      }
+    };
+  }
+
+  function centerArtworkVertically() {
+    return () => {
+      if (model.boundaryActive) {
+        model.boundaryActive.centerArtworkVertically();
+      }
+    };
+  }
+
   const frameRateController = viewer?.frameRateController;
 
   const setFps = (fps: number) => {
@@ -251,5 +267,7 @@ export function RSidebarViewModel({
     frameRateController,
     setFps,
     fps: model.fps,
+    centerArtworkHorizontally,
+    centerArtworkVertically,
   };
 }

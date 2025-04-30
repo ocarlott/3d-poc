@@ -534,6 +534,7 @@ export class Viewer3D {
       sizeRatioLimit?: number;
       shouldShowOriginalArtwork?: boolean;
       sensitivity?: number;
+      colorLimit?: number;
     }[];
     disableEditing?: boolean;
   }) => {
@@ -554,6 +555,7 @@ export class Viewer3D {
           sizeRatioLimit,
           shouldShowOriginalArtwork,
           sensitivity,
+          colorLimit,
         }) => {
           await this.changeArtwork(
             {
@@ -566,6 +568,7 @@ export class Viewer3D {
               sizeRatioLimit,
               shouldShowOriginalArtwork,
               sensitivity,
+              colorLimit,
             },
             disableEditing,
           );
@@ -672,6 +675,7 @@ export class Viewer3D {
       sizeRatioLimit?: number;
       shouldShowOriginalArtwork?: boolean;
       sensitivity?: number;
+      colorLimit?: number;
     },
     disableEditing = true,
   ) => {

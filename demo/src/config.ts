@@ -9,10 +9,10 @@ const jacketConfig = {
   },
   configure: {
     colorMap: [
-      {
-        layerName: 'LongSleeveVneck_changeable_group_1_front',
-        color: '#4444ff',
-      },
+      // {
+      //   layerName: 'LongSleeveVneck_changeable_group_1_front',
+      //   color: '#4444ff',
+      // },
       {
         layerName: 'Jacket_changeable_group_2_back',
         color: '#7D7D7D',
@@ -29,12 +29,40 @@ const jacketConfig = {
     artworkMap: [
       {
         boundaryName: 'LongSleeveVneck_boundary_front',
-        artworkUrl: './test.jpeg',
+        artworkUrl: './testing.png',
         xRatio: 0.5,
+        yRatio: 0.5,
+        sizeRatio: 0.8,
+        colorLimit: 7,
+        sensitivity: 0,
         textureApplication: [
           {
-            color: '3585c9',
+            color: 'f4f1f1',
+            textureOption: TextureOption.Matte,
+          },
+          {
+            color: 'c7bf31',
             textureOption: TextureOption.Crystals,
+          },
+          {
+            color: 'f20707',
+            textureOption: TextureOption.Metallic,
+          },
+          {
+            color: '594ccd',
+            textureOption: TextureOption.Glitter,
+          },
+          {
+            color: '5e5757',
+            textureOption: TextureOption.Matte,
+          },
+          {
+            color: '390d0d',
+            textureOption: TextureOption.Crystals,
+          },
+          {
+            color: '000000',
+            textureOption: TextureOption.Glitter,
           },
         ],
       },
