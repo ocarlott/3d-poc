@@ -725,11 +725,9 @@ export class Boundary {
 
   private _renderCanvasOnBoundary = _.throttle(async () => {
     if (this._artworkUrl) {
-      const copy = await this._internalWorkingCanvas2D.clone(['elements']);
-      copy.backgroundColor = 'rgba(0, 0, 0, 0)';
-      const original = copy.toCanvasElement();
+      this._internalWorkingCanvas2D.backgroundColor = 'rgba(0, 0, 0, 0)';
+      const original = this._internalWorkingCanvas2D.toCanvasElement();
       const texture = new THREE.CanvasTexture(original);
-      copy.dispose();
       texture.wrapS = THREE.RepeatWrapping;
       texture.wrapT = THREE.RepeatWrapping;
       texture.repeat.set(Math.sign(this._normalUV.x), -Math.sign(this._normalUV.y));
@@ -749,10 +747,8 @@ export class Boundary {
   private _finalizeCanvasOnBoundary = _.throttle(async () => {
     if (this._artworkUrl) {
       this._canvasMaterial.opacity = 0;
-      const copy = await this._internalWorkingCanvas2D.clone(['elements']);
-      copy.backgroundColor = 'rgba(0, 0, 0, 0)';
-      const original = copy.toCanvasElement();
-      copy.dispose();
+      this._internalWorkingCanvas2D.backgroundColor = 'rgba(0, 0, 0, 0)';
+      const original = this._internalWorkingCanvas2D.toCanvasElement();
       if (this._shouldShowOriginalArtwork) {
         const texture = new THREE.CanvasTexture(original);
         texture.wrapS = THREE.RepeatWrapping;
