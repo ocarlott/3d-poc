@@ -787,6 +787,7 @@ export class Boundary {
           toneMapped: false,
         });
         if (existingMaterial) {
+          Utils3D.disposeMaps(existingMaterial);
           existingMaterial.dispose();
         }
         const techpackCanvas = this._getTechPackCanvas(canvas.name);
@@ -822,9 +823,14 @@ export class Boundary {
       texture.wrapT = THREE.RepeatWrapping;
       texture.repeat.set(Math.sign(this._normalUV.x), -Math.sign(this._normalUV.y));
       texture.colorSpace = THREE.SRGBColorSpace;
-      (this._techPackCanvas.material as THREE.MeshPhysicalMaterial).setValues({
+      const existingMaterial = this._techPackCanvas.material as THREE.MeshPhysicalMaterial;
+      const existingMap = existingMaterial.map;
+      existingMaterial.setValues({
         map: texture,
       });
+      if (existingMap) {
+        existingMap.dispose();
+      }
     }
   };
 
@@ -937,6 +943,7 @@ export class Boundary {
     });
     geo.material = material;
     if (existingMaterial) {
+      Utils3D.disposeMaps(existingMaterial);
       existingMaterial.dispose();
     }
     geo.userData.texture = TextureOption.Glitter;
@@ -956,7 +963,12 @@ export class Boundary {
       emissive: `#${color}`,
       emissiveIntensity: 0.6,
     });
+    const existingMaterial = geo.material as THREE.MeshPhysicalMaterial;
     geo.material = material;
+    if (existingMaterial) {
+      Utils3D.disposeMaps(existingMaterial);
+      existingMaterial.dispose();
+    }
     geo.userData.texture = TextureOption.Metallic;
     const techpackCanvas = this._getTechPackCanvas(geo.name);
     if (techpackCanvas) {
@@ -975,6 +987,7 @@ export class Boundary {
     });
     geo.material = material;
     if (existingMaterial) {
+      Utils3D.disposeMaps(existingMaterial);
       existingMaterial.dispose();
     }
     geo.userData.texture = TextureOption.Matte;
@@ -990,14 +1003,15 @@ export class Boundary {
     texture: THREE.Texture,
   ): Promise<void> {
     const normalMap = Boundary.crystalNormalTexture.clone();
+    const bumpMap = Boundary.crystalBumpTexture.clone();
     normalMap.wrapS = THREE.RepeatWrapping;
     normalMap.wrapT = THREE.RepeatWrapping;
     normalMap.repeat.set(Math.sign(this._normalUV.x) * 6, -Math.sign(this._normalUV.y) * 6);
-    const bumpMap = Boundary.crystalBumpTexture.clone();
     bumpMap.wrapS = THREE.RepeatWrapping;
     bumpMap.wrapT = THREE.RepeatWrapping;
     bumpMap.repeat.set(Math.sign(this._normalUV.x) * 6, -Math.sign(this._normalUV.y) * 6);
     const material = this._canvasMaterial.clone();
+    const existingMaterial = geo.material as THREE.MeshPhysicalMaterial;
     material.setValues({
       opacity: 1,
       color: `#${color}`,
@@ -1013,6 +1027,10 @@ export class Boundary {
       emissiveIntensity: 0.3,
     });
     geo.material = material;
+    if (existingMaterial) {
+      Utils3D.disposeMaps(existingMaterial);
+      existingMaterial.dispose();
+    }
     geo.userData.texture = TextureOption.Crystals;
     const techpackCanvas = this._getTechPackCanvas(geo.name);
     if (techpackCanvas) {
