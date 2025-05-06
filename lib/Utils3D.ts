@@ -38,19 +38,48 @@ export class Utils3D {
   };
 
   static disposeMaps = (node: any) => {
-    node?.map?.dispose();
-    node?.lightMap?.dispose();
-    node?.bumpMap?.dispose();
-    node?.normalMap?.dispose();
-    node?.specularMap?.dispose();
-    node?.envMap?.dispose();
-    node?.alphaMap?.dispose();
-    node?.aoMap?.dispose();
-    node?.displacementMap?.dispose();
-    node?.emissiveMap?.dispose();
-    node?.gradientMap?.dispose();
-    node?.metalnessMap?.dispose();
-    node?.roughnessMap?.dispose();
+    if (node?.map) {
+      node.map.dispose();
+    }
+    if (node?.lightMap) {
+      node.lightMap.dispose();
+    }
+    if (node?.bumpMap) {
+      node.bumpMap.dispose();
+    }
+    if (node?.normalMap) {
+      node.normalMap.dispose();
+    }
+    if (node?.specularMap) {
+      node.specularMap.dispose();
+    }
+    if (node?.envMap) {
+      node.envMap.dispose();
+    }
+    if (node?.alphaMap) {
+      node.alphaMap.dispose();
+    }
+    if (node?.aoMap) {
+      node.aoMap.dispose();
+    }
+    if (node?.displacementMap) {
+      node.displacementMap.dispose();
+    }
+    if (node?.emissiveMap) {
+      node.emissiveMap.dispose();
+    }
+    if (node?.gradientMap) {
+      node.gradientMap.dispose();
+    }
+    if (node?.metalnessMap) {
+      node.metalnessMap.dispose();
+    }
+    if (node?.roughnessMap) {
+      node.roughnessMap.dispose();
+    }
+    if (node?.displacementMap) {
+      node.displacementMap.dispose();
+    }
   };
 
   static getUVBoundaryForGeometry = (geometry: THREE.BufferGeometry) => {
