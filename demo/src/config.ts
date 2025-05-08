@@ -32,8 +32,8 @@ const jacketConfig = {
         artworkUrl: './testing.png',
         xRatio: 0.5,
         yRatio: 0.5,
-        sizeRatio: 0.5,
-        sizeLimit: 0.7,
+        sizeRatio: 0.7,
+        sizeLimit: 0.4,
         colorLimit: 7,
         sensitivity: 0,
         textureApplication: [

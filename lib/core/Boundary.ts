@@ -13,6 +13,7 @@ import { Viewer3D } from '../Viewer';
 
 const InternalCanvasSize = 1200;
 const CanvasSize = 300;
+const MINIMUM_VISIBILITY = 0.3; // 30% visibility requirement
 
 export class Boundary {
   readonly group = new THREE.Group();
@@ -557,12 +558,33 @@ export class Boundary {
       initialLeft = img.left;
       initialTop = img.top;
       initialScale = img.scaleX;
+      // Initialize lastGoodScale if not set
+      if (!(img as any).lastGoodScale) {
+        (img as any).lastGoodScale = img.scaleX;
+      }
+      console.log('Mousedown - Initial values:', {
+        initialLeft,
+        initialTop,
+        initialScale,
+        lastGoodScale: (img as any).lastGoodScale,
+      });
     });
 
     img.on('scaling', () => {
       // Handle scaling
       const self = img as any;
+      console.log('Scaling - Current values:', {
+        currentScale: self.scaleX,
+        lastGoodScale: self.lastGoodScale,
+        maxScale,
+        maxScaleForVisibility: Math.min(
+          (maxX - minX) / (self.width * MINIMUM_VISIBILITY),
+          (maxY - minY) / (self.height * MINIMUM_VISIBILITY),
+        ),
+      });
+
       if (self.scaleX > maxScale) {
+        console.log('Scaling - Hit max scale limit');
         // If at max scale, prevent any movement
         self.scaleX = maxScale;
         self.scaleY = maxScale;
@@ -575,33 +597,47 @@ export class Boundary {
       const halfWidth = (self.width * self.scaleX) / 2;
       const halfHeight = (self.height * self.scaleY) / 2;
 
-      // Calculate boundaries that ensure 20% visibility
-      const minCenterX = minX - halfWidth * 0.6;
-      const maxCenterX = maxX + halfWidth * 0.6;
-      const minCenterY = minY - halfHeight * 0.6;
-      const maxCenterY = maxY + halfHeight * 0.6;
+      // Calculate boundaries that ensure minimum visibility
+      const minCenterX = minX - halfWidth * (1 - MINIMUM_VISIBILITY);
+      const maxCenterX = maxX + halfWidth * (1 - MINIMUM_VISIBILITY);
+      const minCenterY = minY - halfHeight * (1 - MINIMUM_VISIBILITY);
+      const maxCenterY = maxY + halfHeight * (1 - MINIMUM_VISIBILITY);
 
-      // If scaling would make the image too large to maintain 20% visibility,
+      // If scaling would make the image too large to maintain minimum visibility,
       // maintain the current scale and position
       const maxScaleForVisibility = Math.min(
-        (maxX - minX) / (self.width * 0.4), // 40% of width must fit in clip path
-        (maxY - minY) / (self.height * 0.4), // 40% of height must fit in clip path
+        (maxX - minX) / (self.width * MINIMUM_VISIBILITY), // Minimum visibility of width must fit in clip path
+        (maxY - minY) / (self.height * MINIMUM_VISIBILITY), // Minimum visibility of height must fit in clip path
       );
 
       // If we're already beyond visibility limit, prevent scale reduction
       if (self.scaleX > maxScaleForVisibility) {
+        console.log('Scaling - Beyond visibility limit:', {
+          currentScale: self.scaleX,
+          lastGoodScale: self.lastGoodScale,
+          maxScaleForVisibility,
+        });
+
+        // Ensure lastGoodScale is initialized
+        if (!self.lastGoodScale) {
+          console.log('Scaling - Initializing lastGoodScale');
+          self.lastGoodScale = self.scaleX;
+        }
+
         // If trying to scale down, prevent it
         if (self.scaleX < self.lastGoodScale) {
+          console.log('Scaling - Preventing scale down');
           self.scaleX = self.lastGoodScale;
           self.scaleY = self.lastGoodScale;
         } else {
           // If scaling up, allow it but store the new scale
+          console.log('Scaling - Allowing scale up, updating lastGoodScale');
           self.lastGoodScale = self.scaleX;
         }
         return;
       }
 
-      // Only ensure position maintains 20% visibility if not at max scale
+      // Only ensure position maintains minimum visibility if not at max scale
       if (self.scaleX < maxScale) {
         if (self.left < minCenterX) {
           self.left = minCenterX;
@@ -636,15 +672,15 @@ export class Boundary {
       const halfWidth = (self.width * self.scaleX) / 2;
       const halfHeight = (self.height * self.scaleY) / 2;
 
-      // Calculate boundaries that ensure 20% visibility
-      const minCenterX = minX - halfWidth * 0.6;
-      const maxCenterX = maxX + halfWidth * 0.6;
-      const minCenterY = minY - halfHeight * 0.6;
-      const maxCenterY = maxY + halfHeight * 0.6;
+      // Calculate boundaries that ensure minimum visibility
+      const minCenterX = minX - halfWidth * (1 - MINIMUM_VISIBILITY);
+      const maxCenterX = maxX + halfWidth * (1 - MINIMUM_VISIBILITY);
+      const minCenterY = minY - halfHeight * (1 - MINIMUM_VISIBILITY);
+      const maxCenterY = maxY + halfHeight * (1 - MINIMUM_VISIBILITY);
 
       // If at max scale, prevent movement beyond boundaries
       if (self.scaleX >= maxScale) {
-        // Clamp to the 20% visibility boundaries
+        // Clamp to the minimum visibility boundaries
         if (centerX < minCenterX) {
           self.left = minCenterX;
         } else if (centerX > maxCenterX) {
@@ -727,11 +763,11 @@ export class Boundary {
     const halfWidth = (img.width * img.scaleX) / 2;
     const halfHeight = (img.height * img.scaleY) / 2;
 
-    // Calculate boundaries that ensure 20% visibility
-    const minCenterX = minX - halfWidth * 0.6;
-    const maxCenterX = maxX + halfWidth * 0.6;
-    const minCenterY = minY - halfHeight * 0.6;
-    const maxCenterY = maxY + halfHeight * 0.6;
+    // Calculate boundaries that ensure minimum visibility
+    const minCenterX = minX - halfWidth * (1 - MINIMUM_VISIBILITY);
+    const maxCenterX = maxX + halfWidth * (1 - MINIMUM_VISIBILITY);
+    const minCenterY = minY - halfHeight * (1 - MINIMUM_VISIBILITY);
+    const maxCenterY = maxY + halfHeight * (1 - MINIMUM_VISIBILITY);
 
     // Calculate threshold for warning (5% buffer)
     const minXThreshold = minX - halfWidth * 0.55;
