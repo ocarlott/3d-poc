@@ -551,30 +551,24 @@ export class Boundary {
 
     let initialLeft = 0;
     let initialTop = 0;
+    let initialScale = 1;
 
     img.on('mousedown', () => {
       initialLeft = img.left;
       initialTop = img.top;
+      initialScale = img.scaleX;
     });
 
     img.on('scaling', () => {
       // Handle scaling
       const self = img as any;
       if (self.scaleX > maxScale) {
-        // Calculate the scale ratio to maintain aspect ratio
-        const scaleRatio = maxScale / self.scaleX;
-
-        // Calculate the center point of scaling
-        const centerX = initialLeft + (self.left - initialLeft) * scaleRatio;
-        const centerY = initialTop + (self.top - initialTop) * scaleRatio;
-
-        // Apply the scale limit while maintaining position
+        // If at max scale, prevent any movement
         self.scaleX = maxScale;
         self.scaleY = maxScale;
-
-        // Keep the center point stable
-        self.left = centerX;
-        self.top = centerY;
+        self.left = initialLeft;
+        self.top = initialTop;
+        return;
       }
 
       // Calculate current dimensions
@@ -588,34 +582,38 @@ export class Boundary {
       const maxCenterY = maxY + halfHeight * 0.6;
 
       // If scaling would make the image too large to maintain 20% visibility,
-      // limit the scale to the maximum allowed
+      // maintain the current scale and position
       const maxScaleForVisibility = Math.min(
         (maxX - minX) / (self.width * 0.4), // 40% of width must fit in clip path
         (maxY - minY) / (self.height * 0.4), // 40% of height must fit in clip path
       );
 
+      // If we're already beyond visibility limit, prevent scale reduction
       if (self.scaleX > maxScaleForVisibility) {
-        const scaleRatio = maxScaleForVisibility / self.scaleX;
-        const centerX = initialLeft + (self.left - initialLeft) * scaleRatio;
-        const centerY = initialTop + (self.top - initialTop) * scaleRatio;
-
-        self.scaleX = maxScaleForVisibility;
-        self.scaleY = maxScaleForVisibility;
-        self.left = centerX;
-        self.top = centerY;
+        // If trying to scale down, prevent it
+        if (self.scaleX < self.lastGoodScale) {
+          self.scaleX = self.lastGoodScale;
+          self.scaleY = self.lastGoodScale;
+        } else {
+          // If scaling up, allow it but store the new scale
+          self.lastGoodScale = self.scaleX;
+        }
+        return;
       }
 
-      // Ensure position maintains 20% visibility after scaling
-      if (self.left < minCenterX) {
-        self.left = minCenterX;
-      } else if (self.left > maxCenterX) {
-        self.left = maxCenterX;
-      }
+      // Only ensure position maintains 20% visibility if not at max scale
+      if (self.scaleX < maxScale) {
+        if (self.left < minCenterX) {
+          self.left = minCenterX;
+        } else if (self.left > maxCenterX) {
+          self.left = maxCenterX;
+        }
 
-      if (self.top < minCenterY) {
-        self.top = minCenterY;
-      } else if (self.top > maxCenterY) {
-        self.top = maxCenterY;
+        if (self.top < minCenterY) {
+          self.top = minCenterY;
+        } else if (self.top > maxCenterY) {
+          self.top = maxCenterY;
+        }
       }
 
       // Only update last good position if we're within clip path bounds
@@ -644,17 +642,33 @@ export class Boundary {
       const minCenterY = minY - halfHeight * 0.6;
       const maxCenterY = maxY + halfHeight * 0.6;
 
-      // Clamp center point to boundaries
-      if (centerX < minCenterX) {
-        self.left = minCenterX;
-      } else if (centerX > maxCenterX) {
-        self.left = maxCenterX;
-      }
+      // If at max scale, prevent movement beyond boundaries
+      if (self.scaleX >= maxScale) {
+        // Clamp to the 20% visibility boundaries
+        if (centerX < minCenterX) {
+          self.left = minCenterX;
+        } else if (centerX > maxCenterX) {
+          self.left = maxCenterX;
+        }
 
-      if (centerY < minCenterY) {
-        self.top = minCenterY;
-      } else if (centerY > maxCenterY) {
-        self.top = maxCenterY;
+        if (centerY < minCenterY) {
+          self.top = minCenterY;
+        } else if (centerY > maxCenterY) {
+          self.top = maxCenterY;
+        }
+      } else {
+        // Only clamp position if not at max scale
+        if (centerX < minCenterX) {
+          self.left = minCenterX;
+        } else if (centerX > maxCenterX) {
+          self.left = maxCenterX;
+        }
+
+        if (centerY < minCenterY) {
+          self.top = minCenterY;
+        } else if (centerY > maxCenterY) {
+          self.top = maxCenterY;
+        }
       }
 
       // Only update last good position if we're within clip path bounds
