@@ -451,18 +451,6 @@ export class Boundary {
     this._internalImage = internalImage;
     this._workingImage = img;
 
-    // this._workingCanvas2D.add(
-    //   new fabric.Rect({
-    //     left: widthPadding,
-    //     top: heightPadding,
-    //     width: clipPathWidth,
-    //     height: clipPathHeight,
-    //     fill: 'transparent',
-    //     stroke: 'red',
-    //     strokeWidth: 1,
-    //   }),
-    // );
-
     if (!disableEditing) {
       this._workingCanvas2D.setActiveObject(img);
     }
@@ -525,7 +513,6 @@ export class Boundary {
       crossOrigin: 'anonymous',
     });
     img.centeredRotation = true;
-    img.centeredRotation = true;
     img.lockScalingFlip = true;
     img.objectCaching = false;
     img.minScaleLimit = 0.05;
@@ -539,12 +526,12 @@ export class Boundary {
       this._workingCanvasSize,
       this._workingCanvasSize,
     );
-    const goodPercentage = 0.2; // 20% of the clip path width and height
-    const goodLeft = widthPadding + goodPercentage * clipPathWidth;
-    const goodTop = heightPadding + goodPercentage * clipPathHeight;
-    const goodRight = widthPadding + (1 - goodPercentage) * clipPathWidth;
-    const goodBottom = heightPadding + (1 - goodPercentage) * clipPathHeight;
-    return { goodLeft, goodTop, goodRight, goodBottom };
+    // Calculate the boundaries of the clip path
+    const minX = widthPadding;
+    const maxX = widthPadding + clipPathWidth;
+    const minY = heightPadding;
+    const maxY = heightPadding + clipPathHeight;
+    return { minX, minY, maxX, maxY };
   };
 
   private _attachEvents = (params: { img: fabric.Image; sizeRatioLimit: number }) => {
@@ -558,48 +545,128 @@ export class Boundary {
     const maxSizeY = sizeForScale * sizeRatioLimit;
     const maxScaleX = maxSizeX / img.width;
     const maxScaleY = maxSizeY / img.height;
+    const maxScale = Math.min(maxScaleX, maxScaleY);
 
-    const { goodLeft, goodTop, goodRight, goodBottom } = this._getGoodConstants();
+    const { minX, minY, maxX, maxY } = this._getGoodConstants();
+
+    let initialLeft = 0;
+    let initialTop = 0;
+
+    img.on('mousedown', () => {
+      initialLeft = img.left;
+      initialTop = img.top;
+    });
 
     img.on('scaling', () => {
       // Handle scaling
       const self = img as any;
-      if (self.scaleX >= maxScaleX || self.scaleY >= maxScaleY) {
-        self.left = self.lastGoodLeft ?? self.left;
-        self.top = self.lastGoodTop ?? self.top;
-        self.scaleX = self.lastGoodScaleX ?? maxScaleX;
-        self.scaleY = self.lastGoodScaleY ?? maxScaleY;
-        return;
+      if (self.scaleX > maxScale) {
+        // Calculate the scale ratio to maintain aspect ratio
+        const scaleRatio = maxScale / self.scaleX;
+
+        // Calculate the center point of scaling
+        const centerX = initialLeft + (self.left - initialLeft) * scaleRatio;
+        const centerY = initialTop + (self.top - initialTop) * scaleRatio;
+
+        // Apply the scale limit while maintaining position
+        self.scaleX = maxScale;
+        self.scaleY = maxScale;
+
+        // Keep the center point stable
+        self.left = centerX;
+        self.top = centerY;
       }
-      self.lastGoodTop = self.top;
-      self.lastGoodLeft = self.left;
-      self.lastGoodScaleX = self.scaleX;
-      self.lastGoodScaleY = self.scaleY;
+
+      // Calculate current dimensions
+      const halfWidth = (self.width * self.scaleX) / 2;
+      const halfHeight = (self.height * self.scaleY) / 2;
+
+      // Calculate boundaries that ensure 20% visibility
+      const minCenterX = minX - halfWidth * 0.6;
+      const maxCenterX = maxX + halfWidth * 0.6;
+      const minCenterY = minY - halfHeight * 0.6;
+      const maxCenterY = maxY + halfHeight * 0.6;
+
+      // If scaling would make the image too large to maintain 20% visibility,
+      // limit the scale to the maximum allowed
+      const maxScaleForVisibility = Math.min(
+        (maxX - minX) / (self.width * 0.4), // 40% of width must fit in clip path
+        (maxY - minY) / (self.height * 0.4), // 40% of height must fit in clip path
+      );
+
+      if (self.scaleX > maxScaleForVisibility) {
+        const scaleRatio = maxScaleForVisibility / self.scaleX;
+        const centerX = initialLeft + (self.left - initialLeft) * scaleRatio;
+        const centerY = initialTop + (self.top - initialTop) * scaleRatio;
+
+        self.scaleX = maxScaleForVisibility;
+        self.scaleY = maxScaleForVisibility;
+        self.left = centerX;
+        self.top = centerY;
+      }
+
+      // Ensure position maintains 20% visibility after scaling
+      if (self.left < minCenterX) {
+        self.left = minCenterX;
+      } else if (self.left > maxCenterX) {
+        self.left = maxCenterX;
+      }
+
+      if (self.top < minCenterY) {
+        self.top = minCenterY;
+      } else if (self.top > maxCenterY) {
+        self.top = maxCenterY;
+      }
+
+      // Only update last good position if we're within clip path bounds
+      const isWithinClipPath =
+        self.left >= minX && self.left <= maxX && self.top >= minY && self.top <= maxY;
+
+      if (isWithinClipPath) {
+        self.lastGoodTop = self.top;
+        self.lastGoodMovingLeft = self.left;
+      }
+
       img.setCoords();
       this._isReadyForScreenshot = false;
     });
 
     img.on('moving', () => {
       const self = img as any;
-      const { left, width, top, height } = img.getBoundingRect();
-      const right = left + width;
-      const bottom = top + height;
-      let isGood = true;
-      if (right >= goodLeft && left <= goodRight) {
+      const centerX = self.left;
+      const centerY = self.top;
+      const halfWidth = (self.width * self.scaleX) / 2;
+      const halfHeight = (self.height * self.scaleY) / 2;
+
+      // Calculate boundaries that ensure 20% visibility
+      const minCenterX = minX - halfWidth * 0.6;
+      const maxCenterX = maxX + halfWidth * 0.6;
+      const minCenterY = minY - halfHeight * 0.6;
+      const maxCenterY = maxY + halfHeight * 0.6;
+
+      // Clamp center point to boundaries
+      if (centerX < minCenterX) {
+        self.left = minCenterX;
+      } else if (centerX > maxCenterX) {
+        self.left = maxCenterX;
+      }
+
+      if (centerY < minCenterY) {
+        self.top = minCenterY;
+      } else if (centerY > maxCenterY) {
+        self.top = maxCenterY;
+      }
+
+      // Only update last good position if we're within clip path bounds
+      const isWithinClipPath =
+        centerX >= minX && centerX <= maxX && centerY >= minY && centerY <= maxY;
+
+      if (isWithinClipPath) {
         self.lastGoodMovingLeft = self.left;
-      } else {
-        isGood = false;
-      }
-      if (bottom >= goodTop && top <= goodBottom) {
         self.lastGoodMovingTop = self.top;
-      } else {
-        isGood = false;
       }
-      if (isGood) {
-        img.borderColor = 'rgb(178,204,255)';
-      } else {
-        img.borderColor = 'red';
-      }
+
+      img.setCoords();
       this._isReadyForScreenshot = false;
     });
 
@@ -615,20 +682,6 @@ export class Boundary {
       this._workingCanvasSize,
       this._workingCanvasSize,
     );
-    const { goodLeft, goodTop, goodRight, goodBottom } = this._getGoodConstants();
-    const { left, width, top, height } = img.getBoundingRect();
-    const right = left + width;
-    const bottom = top + height;
-
-    const self = img as any;
-
-    if (right < goodLeft || left > goodRight || bottom < goodTop || top > goodBottom) {
-      // Reset to the last good position
-      self.left = self.lastGoodMovingLeft;
-      self.top = self.lastGoodMovingTop;
-      img.borderColor = 'rgb(178,204,255)';
-      img.setCoords();
-    }
 
     // Handle rotated
     this._rotation = img.angle;
@@ -652,6 +705,35 @@ export class Boundary {
       this._internalImage.scaleX = img.scaleX * this._canvasRatio;
       this._internalImage.scaleY = img.scaleY * this._canvasRatio;
     }
+
+    // Get clip path boundaries
+    const { minX, minY, maxX, maxY } = this._getGoodConstants();
+
+    // Calculate how close we are to the visibility threshold
+    const halfWidth = (img.width * img.scaleX) / 2;
+    const halfHeight = (img.height * img.scaleY) / 2;
+
+    // Calculate boundaries that ensure 20% visibility
+    const minCenterX = minX - halfWidth * 0.6;
+    const maxCenterX = maxX + halfWidth * 0.6;
+    const minCenterY = minY - halfHeight * 0.6;
+    const maxCenterY = maxY + halfHeight * 0.6;
+
+    // Calculate threshold for warning (5% buffer)
+    const minXThreshold = minX - halfWidth * 0.55;
+    const maxXThreshold = maxX + halfWidth * 0.55;
+    const minYThreshold = minY - halfHeight * 0.55;
+    const maxYThreshold = maxY + halfHeight * 0.55;
+
+    // Check if we're approaching the visibility threshold
+    const isNearThreshold =
+      img.left <= minXThreshold ||
+      img.left >= maxXThreshold ||
+      img.top <= minYThreshold ||
+      img.top >= maxYThreshold;
+
+    // Update border color based on threshold
+    img.borderColor = isNearThreshold ? 'red' : 'rgb(178,204,255)';
   };
 
   get boundaryUsableWidth() {
