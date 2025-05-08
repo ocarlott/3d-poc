@@ -13,6 +13,7 @@ import { Viewer3D } from '../Viewer';
 
 const InternalCanvasSize = 1200;
 const CanvasSize = 300;
+const IMAGE_MIN_SIZE_IN_PIXEL = 50;
 const MINIMUM_VISIBILITY = 0.3; // 30% visibility requirement
 
 export class Boundary {
@@ -516,7 +517,7 @@ export class Boundary {
     img.centeredRotation = true;
     img.lockScalingFlip = true;
     img.objectCaching = false;
-    img.minScaleLimit = 0.05;
+    img.minScaleLimit = IMAGE_MIN_SIZE_IN_PIXEL / img.width;
     img.originX = 'center';
     img.originY = 'center';
     return img;
@@ -562,29 +563,12 @@ export class Boundary {
       if (!(img as any).lastGoodScale) {
         (img as any).lastGoodScale = img.scaleX;
       }
-      console.log('Mousedown - Initial values:', {
-        initialLeft,
-        initialTop,
-        initialScale,
-        lastGoodScale: (img as any).lastGoodScale,
-      });
     });
 
     img.on('scaling', () => {
       // Handle scaling
       const self = img as any;
-      console.log('Scaling - Current values:', {
-        currentScale: self.scaleX,
-        lastGoodScale: self.lastGoodScale,
-        maxScale,
-        maxScaleForVisibility: Math.min(
-          (maxX - minX) / (self.width * MINIMUM_VISIBILITY),
-          (maxY - minY) / (self.height * MINIMUM_VISIBILITY),
-        ),
-      });
-
       if (self.scaleX > maxScale) {
-        console.log('Scaling - Hit max scale limit');
         // If at max scale, prevent any movement
         self.scaleX = maxScale;
         self.scaleY = maxScale;
@@ -612,26 +596,17 @@ export class Boundary {
 
       // If we're already beyond visibility limit, prevent scale reduction
       if (self.scaleX > maxScaleForVisibility) {
-        console.log('Scaling - Beyond visibility limit:', {
-          currentScale: self.scaleX,
-          lastGoodScale: self.lastGoodScale,
-          maxScaleForVisibility,
-        });
-
         // Ensure lastGoodScale is initialized
         if (!self.lastGoodScale) {
-          console.log('Scaling - Initializing lastGoodScale');
           self.lastGoodScale = self.scaleX;
         }
 
         // If trying to scale down, prevent it
         if (self.scaleX < self.lastGoodScale) {
-          console.log('Scaling - Preventing scale down');
           self.scaleX = self.lastGoodScale;
           self.scaleY = self.lastGoodScale;
         } else {
           // If scaling up, allow it but store the new scale
-          console.log('Scaling - Allowing scale up, updating lastGoodScale');
           self.lastGoodScale = self.scaleX;
         }
         return;
