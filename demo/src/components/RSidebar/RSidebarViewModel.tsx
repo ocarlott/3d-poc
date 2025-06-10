@@ -2,7 +2,8 @@ import { TextureOption, Viewer3D } from 'microstore-3d';
 import { ValidationResults } from '../../types';
 import { RSidebarModel } from './RSidebarModel';
 import { defaultModelConfig } from '../../config';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { Utils } from 'microstore-3d/lib/Utils';
 
 type RSidebarViewModelProps = {
   viewer: Viewer3D | null;
@@ -19,6 +20,7 @@ export function RSidebarViewModel({
 }: RSidebarViewModelProps) {
   const model = RSidebarModel();
   let currentTexture: TextureOption | null = null;
+  const [selectedColor, setSelectedColor] = useState<string>('#ffffff');
 
   const nextBoundary = () => {
     return () => {
@@ -227,6 +229,51 @@ export function RSidebarViewModel({
     };
   }
 
+  function selectNextColor() {
+    return () => {
+      if (viewer && model.boundaryActive) {
+        const colors = model.boundaryActive.workingColors;
+        if (colors && colors.length > 0) {
+          const currentColorIndex = colors.findIndex(
+            (color: number[]) => '#' + Utils.rgb2hex(color) === selectedColor,
+          );
+          const nextColorIndex = (currentColorIndex + 1) % colors.length;
+          const nextColor = colors[nextColorIndex];
+          const hexColor = '#' + Utils.rgb2hex(nextColor);
+          setSelectedColor(hexColor);
+          return hexColor;
+        }
+      }
+      return null;
+    };
+  }
+
+  function applyGlitterTexture() {
+    return () => {
+      if (viewer && model.boundaryActive && selectedColor) {
+        const colorWithoutHash = selectedColor.substring(1); // Remove the # prefix
+        viewer.changeArtworkTexture(
+          model.boundaryActive.name,
+          colorWithoutHash,
+          TextureOption.Glitter,
+        );
+      }
+    };
+  }
+
+  function applyCrystalTexture() {
+    return () => {
+      if (viewer && model.boundaryActive && selectedColor) {
+        const colorWithoutHash = selectedColor.substring(1); // Remove the # prefix
+        viewer.changeArtworkTexture(
+          model.boundaryActive.name,
+          colorWithoutHash,
+          TextureOption.Crystals,
+        );
+      }
+    };
+  }
+
   const frameRateController = viewer?.frameRateController;
 
   const setFps = (fps: number) => {
@@ -245,6 +292,7 @@ export function RSidebarViewModel({
     fileRef: model.fileRef,
     images: model.images,
     imageEditor: model.imageEditor,
+    selectedColor,
     addArtwork,
     removeArtwork,
     toggleAutoRotate,
@@ -269,5 +317,8 @@ export function RSidebarViewModel({
     fps: model.fps,
     centerArtworkHorizontally,
     centerArtworkVertically,
+    selectNextColor,
+    applyGlitterTexture,
+    applyCrystalTexture,
   };
 }

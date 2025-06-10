@@ -8,7 +8,7 @@ export class LayerManager {
     string,
     {
       displayName: string;
-      mesh: THREE.Mesh;
+      originalName: string;
     }
   >;
   private _extraLayers: Set<string>;
@@ -31,7 +31,10 @@ export class LayerManager {
   changeLayerColor(layerName: string, color: string) {
     const entry = this.findByName(layerName);
     if (entry) {
-      (entry.mesh.material as THREE.MeshStandardMaterial).setValues({
+      (
+        this._viewer.groupManager.findByName(entry.originalName)
+          ?.material as THREE.MeshStandardMaterial
+      ).setValues({
         color: `#${color.replace(/#/g, '')}`,
         opacity: 1,
       });
@@ -57,7 +60,7 @@ export class LayerManager {
     const colors = Utils.getShuffledColors();
     const layerList = Array.from(this._layerMap.values());
     layerList.forEach((layer, index) => {
-      this.changeLayerColor(layer.mesh.name, colors[index % colors.length]);
+      this.changeLayerColor(layer.originalName, colors[index % colors.length]);
     });
     this._markDirty();
   }
@@ -78,7 +81,7 @@ export class LayerManager {
       } else {
         this._layerMap.set(castedChild.name, {
           displayName: displayNameForChangableGroup.displayName,
-          mesh: castedChild,
+          originalName: castedChild.name,
         });
       }
     } else if (castedChild.name !== ControlName.ShadowPlane) {

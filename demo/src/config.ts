@@ -62,8 +62,12 @@ const jacketConfig = {
             textureOption: TextureOption.Crystals,
           },
           {
+            color: 'ffffff',
+            textureOption: TextureOption.Crystals,
+          },
+          {
             color: '000000',
-            textureOption: TextureOption.Glitter,
+            textureOption: TextureOption.Crystals,
           },
         ],
       },

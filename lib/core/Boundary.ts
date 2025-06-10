@@ -1003,10 +1003,10 @@ export class Boundary {
     const bumpTexture = Boundary.glitterBumpTexture.clone();
     normalTexture.wrapS = THREE.RepeatWrapping;
     normalTexture.wrapT = THREE.RepeatWrapping;
-    normalTexture.repeat.set(Math.sign(this._normalUV.x) * 6, -Math.sign(this._normalUV.y) * 6);
+    normalTexture.repeat.set(Math.sign(this._normalUV.x) * 7, -Math.sign(this._normalUV.y) * 7);
     bumpTexture.wrapS = THREE.RepeatWrapping;
     bumpTexture.wrapT = THREE.RepeatWrapping;
-    bumpTexture.repeat.set(Math.sign(this._normalUV.x) * 6, -Math.sign(this._normalUV.y) * 6);
+    bumpTexture.repeat.set(Math.sign(this._normalUV.x) * 7, -Math.sign(this._normalUV.y) * 7);
     const existingMaterial = geo.material as THREE.MeshPhysicalMaterial;
     const material = new THREE.MeshPhysicalMaterial({
       bumpMap: bumpTexture,
@@ -1083,10 +1083,10 @@ export class Boundary {
     const bumpMap = Boundary.crystalBumpTexture.clone();
     normalMap.wrapS = THREE.RepeatWrapping;
     normalMap.wrapT = THREE.RepeatWrapping;
-    normalMap.repeat.set(Math.sign(this._normalUV.x) * 6, -Math.sign(this._normalUV.y) * 6);
+    normalMap.repeat.set(Math.sign(this._normalUV.x) * 10, -Math.sign(this._normalUV.y) * 10);
     bumpMap.wrapS = THREE.RepeatWrapping;
     bumpMap.wrapT = THREE.RepeatWrapping;
-    bumpMap.repeat.set(Math.sign(this._normalUV.x) * 6, -Math.sign(this._normalUV.y) * 6);
+    bumpMap.repeat.set(Math.sign(this._normalUV.x) * 10, -Math.sign(this._normalUV.y) * 10);
     const material = this._canvasMaterial.clone();
     const existingMaterial = geo.material as THREE.MeshPhysicalMaterial;
     material.setValues({
@@ -1187,5 +1187,9 @@ export class Boundary {
 
   get isReadyForScreenshot() {
     return this._isReadyForScreenshot;
+  }
+
+  get workingColors() {
+    return this._workingColors;
   }
 }

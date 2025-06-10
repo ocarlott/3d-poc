@@ -155,6 +155,10 @@ export class Viewer3D {
     return this._frameRateController;
   }
 
+  get groupManager() {
+    return this._groupManager;
+  }
+
   private _fitCameraToObject = (obj: THREE.Object3D, controls?: CameraControls) => {
     this._cameraControlsManager.paddingInCssPixelAndMoveControl({
       rendererHeight: Viewer3D.getRendererHeight(this._renderer),
@@ -795,16 +799,18 @@ export class Viewer3D {
       const currentColorMaps = colorMap.map((config) => {
         const result = this._layerManager.findByName(config.layerName);
         if (result) {
-          const layer = result.mesh;
-          const originalColor = (layer.material as THREE.MeshStandardMaterial).color.getHex();
-          (layer.material as THREE.MeshStandardMaterial).color.set(
-            `#${config.color.replace(/#/g, '')}`,
-          );
-          return {
-            layer,
-            layerName: config.layerName,
-            originalColor,
-          };
+          const layer = this._groupManager.findByName(result.originalName);
+          if (layer) {
+            const originalColor = (layer.material as THREE.MeshStandardMaterial).color.getHex();
+            (layer.material as THREE.MeshStandardMaterial).color.set(
+              `#${config.color.replace(/#/g, '')}`,
+            );
+            return {
+              layer,
+              layerName: config.layerName,
+              originalColor,
+            };
+          }
         }
         return null;
       });

@@ -39,6 +39,63 @@ export function RSidebarView(props: ReturnType<typeof RSidebarViewModel>) {
       <Button onClick={props.nextBoundary()}>Next Boundary</Button>
       <Button onClick={props.centerArtworkHorizontally()}>Center A Horizontally</Button>
       <Button onClick={props.centerArtworkVertically()}>Center A Vertically</Button>
+      <Button
+        onClick={props.selectNextColor()}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+        }}
+      >
+        <div
+          style={{
+            width: '16px',
+            height: '16px',
+            backgroundColor: props.selectedColor,
+            border: '1px solid #ccc',
+            borderRadius: '2px',
+          }}
+        />
+        Select Next Color
+      </Button>
+      <Button
+        onClick={props.applyGlitterTexture()}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+        }}
+      >
+        <div
+          style={{
+            width: '16px',
+            height: '16px',
+            backgroundColor: props.selectedColor,
+            border: '1px solid #ccc',
+            borderRadius: '2px',
+          }}
+        />
+        Apply Glitter
+      </Button>
+      <Button
+        onClick={props.applyCrystalTexture()}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+        }}
+      >
+        <div
+          style={{
+            width: '16px',
+            height: '16px',
+            backgroundColor: props.selectedColor,
+            border: '1px solid #ccc',
+            borderRadius: '2px',
+          }}
+        />
+        Apply Crystal
+      </Button>
       <div>Active Boundary: {props.boundaryActive?.name ?? 'None'}</div>
       <input
         type="text"
