@@ -8,16 +8,27 @@ export function RSidebarView(props: ReturnType<typeof RSidebarViewModel>) {
 
   return (
     <SideBar>
-      <input
-        type="range"
-        min="1"
-        max="120"
-        step="1"
-        value={props.fps}
-        onChange={(e) => {
-          props.setFps(parseInt(e.target.value));
-        }}
-      />
+      <div style={{ marginBottom: '10px' }}>
+        Adaptive Resolution: {props.adaptiveResolution ? 'On' : 'Off'}
+      </div>
+      <div style={{ marginBottom: '10px' }}>Current FPS: {Math.round(props.currentFps)}</div>
+      <div style={{ display: 'flex', alignItems: 'center' }}>
+        <span style={{ marginLeft: '5px', marginRight: '5px' }}>1</span>
+        <div style={{ display: 'flex', alignItems: 'center', flexDirection: 'column' }}>
+          <input
+            type="range"
+            min="1"
+            max="120"
+            step="1"
+            value={props.fps}
+            onChange={(e) => {
+              props.setFps(parseInt(e.target.value));
+            }}
+          />
+        </div>
+        <span style={{ marginLeft: '5px', marginRight: '5px' }}>120</span>
+      </div>
+      <div style={{ marginBottom: '10px' }}>{props.fps}</div>
       <Button onClick={props.toggleAutoRotate}>Toggle Rotate</Button>
       <Button onClick={props.toggleDeveloperMode}>Toggle Dev Mode</Button>
       <Button onClick={props.addArtwork}>Add Artwork</Button>
@@ -39,6 +50,9 @@ export function RSidebarView(props: ReturnType<typeof RSidebarViewModel>) {
       <Button onClick={props.nextBoundary()}>Next Boundary</Button>
       <Button onClick={props.centerArtworkHorizontally()}>Center A Horizontally</Button>
       <Button onClick={props.centerArtworkVertically()}>Center A Vertically</Button>
+      <Button onClick={() => props.setAdaptiveResolution(!props.adaptiveResolution)}>
+        Toggle Adaptive Resolution
+      </Button>
       <Button
         onClick={props.selectNextColor()}
         style={{

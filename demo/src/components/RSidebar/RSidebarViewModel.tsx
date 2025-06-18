@@ -285,7 +285,22 @@ export function RSidebarViewModel({
     if (frameRateController) {
       model.setFps(frameRateController.targetFps);
     }
-  }, []);
+    if (viewer) {
+      viewer.onFpsUpdate((fps) => {
+        model.setCurrentFps(fps);
+      });
+    }
+    return () => {
+      if (viewer) {
+        viewer.clearOnFpsUpdate();
+      }
+    };
+  }, [viewer, frameRateController]);
+
+  const setAdaptiveResolution = (enabled: boolean) => {
+    model.setAdaptiveResolution(enabled);
+    viewer?.setAdaptiveResolution(enabled);
+  };
 
   return {
     boundaryActive: model.boundaryActive,
@@ -320,5 +335,8 @@ export function RSidebarViewModel({
     selectNextColor,
     applyGlitterTexture,
     applyCrystalTexture,
+    setAdaptiveResolution,
+    currentFps: model.currentFps,
+    adaptiveResolution: model.adaptiveResolution,
   };
 }

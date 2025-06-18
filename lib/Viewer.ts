@@ -19,7 +19,7 @@ import { FrameRateController, FrameRateMonitor } from './core/FrameRateHelper';
 const strMime = 'image/webp';
 const MIN_PIXEL_RATIO = 0.7;
 const BUFFER_TIME_TO_FLUSH_FRAME_CHANGE = 100;
-const SCREENSHOT_PIXEL_RATIO = 1;
+const SCREENSHOT_PIXEL_RATIO = window.devicePixelRatio;
 
 export class Viewer3D {
   private _rFID = -1;
@@ -53,6 +53,7 @@ export class Viewer3D {
   private _maxPixelRatio = 1;
   private _frameRateMonitor: FrameRateMonitor = new FrameRateMonitor();
   private _frameRateController: FrameRateController = new FrameRateController(60, true);
+  private _apdaptiveResolutionEnabled = false;
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -353,7 +354,9 @@ export class Viewer3D {
     // this._frameRateMonitor.tickStart();
 
     // Adjust pixel ratio based on FPS if needed
-    this._adjustPixelRatio();
+    if (this._apdaptiveResolutionEnabled) {
+      this._adjustPixelRatio();
+    }
 
     // Only render if something has changed
     if (this._dirty || this._shouldRotate || this._cameraControlsManager.update(this._clock)) {
@@ -1003,5 +1006,18 @@ export class Viewer3D {
 
   getAllBoundaries = () => {
     return this._boundaryManager.boundaryList;
+  };
+
+  setAdaptiveResolution = (enabled: boolean) => {
+    this._apdaptiveResolutionEnabled = enabled;
+    this.markDirty();
+  };
+
+  onFpsUpdate = (onFpsUpdate: (fps: number) => void) => {
+    this._frameRateMonitor.setOnFpsUpdate(onFpsUpdate);
+  };
+
+  clearOnFpsUpdate = () => {
+    this._frameRateMonitor.clearOnFpsUpdate();
   };
 }

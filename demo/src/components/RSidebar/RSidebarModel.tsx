@@ -9,6 +9,8 @@ export function RSidebarModel() {
   const [imageEditor] = useState<ImageEditor>(new ImageEditor());
   const [uploadingFileType, setUploadingFileType] = useState<'model' | 'env'>('model');
   const [fps, setFps] = useState(60);
+  const [currentFps, setCurrentFps] = useState(60);
+  const [adaptiveResolution, setAdaptiveResolution] = useState(false);
   return {
     fileRef,
     images,
@@ -19,6 +21,10 @@ export function RSidebarModel() {
     uploadingFileType,
     setUploadingFileType,
     fps,
+    currentFps,
     setFps,
+    setCurrentFps,
+    adaptiveResolution,
+    setAdaptiveResolution,
   };
 }

@@ -37,6 +37,14 @@ export class FrameRateMonitor {
     this._frameDurations = new Array(maxStoredValues).fill(0);
   }
 
+  setOnFpsUpdate(onFpsUpdate: (fps: number) => void): void {
+    this._onFpsUpdate = onFpsUpdate;
+  }
+
+  clearOnFpsUpdate(): void {
+    this._onFpsUpdate = undefined;
+  }
+
   /**
    * Records a frame being rendered and updates FPS tracking
    * @returns The current average FPS
