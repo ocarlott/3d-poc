@@ -2,6 +2,7 @@ import { Boundary } from '../core/Boundary';
 import { TextureOption } from '../type';
 import * as THREE from 'three';
 import { Viewer3D } from '../Viewer';
+import { MemoryOptimizer } from '../core/MemoryOptimizer';
 
 export class BoundaryManager {
   private _boundaryList: Boundary[] = [];
@@ -42,6 +43,9 @@ export class BoundaryManager {
       bd.resetBoundary();
       bd.disposeCanvas2D();
     });
+
+    // Force memory cleanup after resetting all boundaries
+    MemoryOptimizer.forceCleanup();
   }
 
   findByName(name: string) {
@@ -183,6 +187,9 @@ export class BoundaryManager {
     });
     this._markDirty();
     console.log('removeAllBoundaryArtworks');
+
+    // Force memory cleanup after removing all artworks
+    MemoryOptimizer.forceCleanup();
   };
 
   testChangeAllBoundaryArtworks = async (artworkUrl: string) => {

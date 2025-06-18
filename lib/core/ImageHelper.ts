@@ -759,4 +759,78 @@ export class ImageHelper {
       (window as any).gc();
     }
   }
+
+  // Enhanced memory optimization for low-spec devices
+  static optimizeForLowMemory() {
+    // Reduce cache sizes for low memory devices
+    this._maxCacheSize = 5; // Very small cache
+    this._chunkSize = 1000; // Very small chunks
+
+    // Clear existing caches
+    this.clearCaches();
+
+    // Force garbage collection
+    this.forceGarbageCollection();
+  }
+
+  // Memory monitoring and automatic optimization
+  static monitorMemoryUsage() {
+    const memory = this.getMemoryUsage();
+    if (memory && memory.usagePercent > 80) {
+      console.warn('High memory usage detected, clearing caches');
+      this.clearCaches();
+      this.forceGarbageCollection();
+    }
+  }
+
+  // Optimized image processing with memory limits
+  static async reduceImageColorOptimized(params: {
+    url: string;
+    limit?: number;
+    minDensity?: number;
+    colorsToRemove?: number[][];
+    maxMemoryMB?: number;
+  }) {
+    const { maxMemoryMB = 50, ...otherParams } = params;
+
+    // Check memory before processing
+    this.monitorMemoryUsage();
+
+    // Process with memory limits
+    const result = await this.reduceImageColor(otherParams);
+
+    // Clear caches after processing
+    this.clearCaches();
+    this.forceGarbageCollection();
+
+    return result;
+  }
+
+  // Batch processing with memory management
+  static async processImagesInBatches(
+    images: Array<{ url: string; params: any }>,
+    batchSize: number = 2,
+  ) {
+    const results = [];
+
+    for (let i = 0; i < images.length; i += batchSize) {
+      const batch = images.slice(i, i + batchSize);
+
+      // Process batch
+      const batchResults = await Promise.all(
+        batch.map((img) => this.reduceImageColorOptimized(img.params)),
+      );
+
+      results.push(...batchResults);
+
+      // Clear memory between batches
+      this.clearCaches();
+      this.forceGarbageCollection();
+
+      // Small delay to allow garbage collection
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+
+    return results;
+  }
 }

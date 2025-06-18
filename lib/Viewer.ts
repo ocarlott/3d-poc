@@ -17,6 +17,7 @@ import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader';
 import _ from 'underscore';
 import { FrameRateController, FrameRateMonitor } from './core/FrameRateHelper';
 import Stats from 'stats.js';
+import { MemoryOptimizer } from './core/MemoryOptimizer';
 
 const strMime = 'image/webp';
 const MIN_PIXEL_RATIO = 0.7;
@@ -61,6 +62,7 @@ export class Viewer3D {
   private _apdaptiveResolutionEnabled = false;
   private _stats = stats.dom;
   private _currentStatPanel = 0;
+  private _isLoadingModel = false;
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -116,6 +118,9 @@ export class Viewer3D {
 
     this._scene.add(this._lightManager.getLightGroup(), this._lightManager.getLightGroupHelper());
     this.show();
+
+    // Initialize memory optimization
+    MemoryOptimizer.initialize();
   }
 
   private _onCanvasSizeUpdated = ({
@@ -443,11 +448,15 @@ export class Viewer3D {
   };
 
   loadModel = (url: string, onProgress: (percent: number) => void): Promise<void> => {
+    this._isLoadingModel = true;
     this._model = undefined;
     this._scene.remove(this._groupManager.modelGroup);
     this._groupManager.reinit({ isInDeveloperMode: this._isInDeveloperMode });
     this._boundaryManager.resetBoundaryList();
     this._layerManager.clearLayerMap();
+
+    // Force memory cleanup before loading new model
+    MemoryOptimizer.forceCleanup();
 
     return new Promise((resolve, reject) => {
       this._loader.load(
@@ -492,11 +501,13 @@ export class Viewer3D {
           if (firstLayer) {
             firstLayer.onAfterRender = () => {
               onProgress(100);
+              this._isLoadingModel = false;
               resolve();
               firstLayer.onAfterRender = () => {};
             };
           } else {
             onProgress(100);
+            this._isLoadingModel = false;
             resolve();
           }
           this.markDirty();
@@ -557,12 +568,25 @@ export class Viewer3D {
     colorMap.forEach((colorConfig) => {
       this.changeColor(colorConfig.layerName, colorConfig.color);
     });
-    await Promise.all(
-      artworkMap.map(
-        async ({
+    // Convert this to for of loop
+    for (const artwork of artworkMap) {
+      const {
+        artworkUrl,
+        textureApplication = [],
+        boundaryName,
+        xRatio,
+        yRatio,
+        rotation,
+        sizeRatio,
+        sizeRatioLimit,
+        shouldShowOriginalArtwork,
+        sensitivity,
+        colorLimit,
+      } = artwork;
+      await this.changeArtwork(
+        {
           artworkUrl,
-          textureApplication = [],
-          boundaryName,
+          boundary: boundaryName,
           xRatio,
           yRatio,
           rotation,
@@ -571,30 +595,51 @@ export class Viewer3D {
           shouldShowOriginalArtwork,
           sensitivity,
           colorLimit,
-        }) => {
-          await this.changeArtwork(
-            {
-              artworkUrl,
-              boundary: boundaryName,
-              xRatio,
-              yRatio,
-              rotation,
-              sizeRatio,
-              sizeRatioLimit,
-              shouldShowOriginalArtwork,
-              sensitivity,
-              colorLimit,
-            },
-            disableEditing,
-          );
-          return await Promise.all(
-            textureApplication.map(async (app) => {
-              return this.changeArtworkTexture(boundaryName, app.color, app.textureOption);
-            }),
-          );
         },
-      ),
-    );
+        disableEditing,
+      );
+      for (const app of textureApplication) {
+        await this.changeArtworkTexture(boundaryName, app.color, app.textureOption);
+      }
+    }
+    // await Promise.all(
+    //   artworkMap.map(
+    //     async ({
+    //       artworkUrl,
+    //       textureApplication = [],
+    //       boundaryName,
+    //       xRatio,
+    //       yRatio,
+    //       rotation,
+    //       sizeRatio,
+    //       sizeRatioLimit,
+    //       shouldShowOriginalArtwork,
+    //       sensitivity,
+    //       colorLimit,
+    //     }) => {
+    //       await this.changeArtwork(
+    //         {
+    //           artworkUrl,
+    //           boundary: boundaryName,
+    //           xRatio,
+    //           yRatio,
+    //           rotation,
+    //           sizeRatio,
+    //           sizeRatioLimit,
+    //           shouldShowOriginalArtwork,
+    //           sensitivity,
+    //           colorLimit,
+    //         },
+    //         disableEditing,
+    //       );
+    //       return await Promise.all(
+    //         textureApplication.map(async (app) => {
+    //           return this.changeArtworkTexture(boundaryName, app.color, app.textureOption);
+    //         }),
+    //       );
+    //     },
+    //   ),
+    // );
     this.markDirty();
   };
 
