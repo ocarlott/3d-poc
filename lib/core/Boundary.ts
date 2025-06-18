@@ -480,6 +480,7 @@ export class Boundary {
     });
     this._techPackCanvasList.forEach((c) => {
       c.removeFromParent();
+      Utils3D.disposeHierarchy(c);
     });
     this._canvasList = [];
     this._techPackCanvasList = [];
@@ -1008,7 +1009,8 @@ export class Boundary {
     bumpTexture.wrapT = THREE.RepeatWrapping;
     bumpTexture.repeat.set(Math.sign(this._normalUV.x) * 7, -Math.sign(this._normalUV.y) * 7);
     const existingMaterial = geo.material as THREE.MeshPhysicalMaterial;
-    const material = new THREE.MeshPhysicalMaterial({
+    const material = this._canvasMaterial.clone();
+    material.setValues({
       bumpMap: bumpTexture,
       bumpScale: 0.5,
       metalness: 0.6,
@@ -1088,7 +1090,6 @@ export class Boundary {
     bumpMap.wrapT = THREE.RepeatWrapping;
     bumpMap.repeat.set(Math.sign(this._normalUV.x) * 10, -Math.sign(this._normalUV.y) * 10);
     const material = this._canvasMaterial.clone();
-    const existingMaterial = geo.material as THREE.MeshPhysicalMaterial;
     material.setValues({
       opacity: 1,
       color: `#${color}`,
@@ -1103,6 +1104,7 @@ export class Boundary {
       emissive: `#${color}`,
       emissiveIntensity: 0.3,
     });
+    const existingMaterial = geo.material as THREE.MeshPhysicalMaterial;
     geo.material = material;
     if (existingMaterial) {
       Utils3D.disposeMaps(existingMaterial);
@@ -1118,6 +1120,8 @@ export class Boundary {
   resetBoundary = async () => {
     this.resetTextureApplication();
     this._artworkUrl = '';
+    this._internalImage = undefined;
+    this._workingImage = undefined;
     Utils3D.disposeMaps(this._canvasMaterial);
     this._canvasMaterial.setValues({
       map: null,
@@ -1129,7 +1133,15 @@ export class Boundary {
   };
 
   disposeCanvas2D = async () => {
+    // Clear and dispose of fabric canvases
     this._internalWorkingCanvas2D.clear();
+    this._workingCanvas2D.clear();
+    this._internalWorkingCanvas2D.dispose();
+    this._workingCanvas2D.dispose();
+
+    // Clear references
+    this._internalImage = undefined;
+    this._workingImage = undefined;
   };
 
   hasArtwork = () => {
@@ -1191,5 +1203,21 @@ export class Boundary {
 
   get workingColors() {
     return this._workingColors;
+  }
+
+  private _disposeTextures() {
+    if (this._canvasMaterial) {
+      Utils3D.disposeMaps(this._canvasMaterial);
+    }
+    this._canvasList.forEach((canvas) => {
+      if (canvas.material) {
+        Utils3D.disposeMaps(canvas.material);
+      }
+    });
+    this._techPackCanvasList.forEach((canvas) => {
+      if (canvas.material) {
+        Utils3D.disposeMaps(canvas.material);
+      }
+    });
   }
 }

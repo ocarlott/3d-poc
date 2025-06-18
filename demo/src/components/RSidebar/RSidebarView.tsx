@@ -53,6 +53,7 @@ export function RSidebarView(props: ReturnType<typeof RSidebarViewModel>) {
       <Button onClick={() => props.setAdaptiveResolution(!props.adaptiveResolution)}>
         Toggle Adaptive Resolution
       </Button>
+      <Button onClick={props.nextStatPanel}>Next Stat Panel</Button>
       <Button
         onClick={props.selectNextColor()}
         style={{

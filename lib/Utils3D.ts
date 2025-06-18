@@ -32,6 +32,7 @@ export class Utils3D {
   static disposeHierarchy = (node: THREE.Object3D) => {
     for (var i = node.children.length - 1; i >= 0; i--) {
       var child = node.children[i];
+      Utils3D.disposeMaps(child);
       Utils3D.disposeHierarchy(child);
       Utils3D.disposeNode(child);
     }

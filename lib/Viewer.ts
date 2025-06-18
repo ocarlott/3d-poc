@@ -16,10 +16,15 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader';
 import _ from 'underscore';
 import { FrameRateController, FrameRateMonitor } from './core/FrameRateHelper';
+import Stats from 'stats.js';
+
 const strMime = 'image/webp';
 const MIN_PIXEL_RATIO = 0.7;
 const BUFFER_TIME_TO_FLUSH_FRAME_CHANGE = 100;
 const SCREENSHOT_PIXEL_RATIO = window.devicePixelRatio;
+
+const stats = new Stats();
+stats.showPanel(0);
 
 export class Viewer3D {
   private _rFID = -1;
@@ -54,6 +59,8 @@ export class Viewer3D {
   private _frameRateMonitor: FrameRateMonitor = new FrameRateMonitor();
   private _frameRateController: FrameRateController = new FrameRateController(60, true);
   private _apdaptiveResolutionEnabled = false;
+  private _stats = stats.dom;
+  private _currentStatPanel = 0;
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -331,12 +338,13 @@ export class Viewer3D {
     const renderLoop = () => {
       // Always request the next animation frame first
       this._rFID = requestAnimationFrame(renderLoop);
-
+      stats.begin();
       // Check if we should render this frame based on our target FPS
       if (this._frameRateController.shouldRenderFrame()) {
         // Render a frame
         this._renderFrame();
       }
+      stats.end();
     };
 
     // Start the loop
@@ -1019,5 +1027,15 @@ export class Viewer3D {
 
   clearOnFpsUpdate = () => {
     this._frameRateMonitor.clearOnFpsUpdate();
+  };
+
+  get statsView() {
+    return this._stats;
+  }
+
+  nextStatPanel = () => {
+    const nextPanel = (this._currentStatPanel + 1) % 3;
+    stats.showPanel(nextPanel);
+    this._currentStatPanel = nextPanel;
   };
 }

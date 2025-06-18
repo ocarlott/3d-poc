@@ -302,6 +302,10 @@ export function RSidebarViewModel({
     viewer?.setAdaptiveResolution(enabled);
   };
 
+  const nextStatPanel = () => {
+    viewer?.nextStatPanel();
+  };
+
   return {
     boundaryActive: model.boundaryActive,
     fileRef: model.fileRef,
@@ -338,5 +342,6 @@ export function RSidebarViewModel({
     setAdaptiveResolution,
     currentFps: model.currentFps,
     adaptiveResolution: model.adaptiveResolution,
+    nextStatPanel,
   };
 }

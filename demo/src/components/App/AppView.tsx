@@ -15,6 +15,13 @@ export function AppView(props: {
 }) {
   return (
     <Container>
+      <div
+        ref={(ref) => {
+          if (ref && props.viewer?.statsView) {
+            ref.appendChild(props.viewer.statsView);
+          }
+        }}
+      />
       <RModal
         workingModel={props.workingModel}
         validationResults={props.validationResults}
