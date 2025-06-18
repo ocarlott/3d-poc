@@ -10,11 +10,14 @@ import glitterNormal from '../assets/glitter_normal.webp';
 import glitterBump from '../assets/glitter_bump.webp';
 import { Utils3D } from '../Utils3D';
 import { Viewer3D } from '../Viewer';
+import { MemoryOptimizer } from './MemoryOptimizer';
 
 const InternalCanvasSize = 1200;
 const CanvasSize = 300;
 const IMAGE_MIN_SIZE_IN_PIXEL = 50;
 const MINIMUM_VISIBILITY = 0.3; // 30% visibility requirement
+const LOW_SPEC_MAX_IMAGE_DIMENSION = 1200;
+const HIGH_SPEC_MAX_IMAGE_DIMENSION = 2000;
 
 export class Boundary {
   readonly group = new THREE.Group();
@@ -373,11 +376,41 @@ export class Boundary {
     this._isReadyForScreenshot = false;
     await this.resetBoundary();
     this._onArtworkChanged = onArtworkChanged;
-    let computedArtworkUrl = artworkUrl;
+
+    // Set max dimension based on device specs
+    const isLowSpec = MemoryOptimizer.getMemoryStatus().isLowMemoryMode;
+    const maxDimension = isLowSpec ? LOW_SPEC_MAX_IMAGE_DIMENSION : HIGH_SPEC_MAX_IMAGE_DIMENSION;
+
+    // Ensure image is never bigger than maxDimension to reduce memory usage
+    let processedArtworkUrl = artworkUrl;
+    try {
+      const img = new Image();
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = reject;
+        img.crossOrigin = 'anonymous';
+        img.src = artworkUrl;
+      });
+
+      if (img.width > maxDimension || img.height > maxDimension) {
+        const scale = maxDimension / Math.max(img.width, img.height);
+        const newWidth = Math.round(img.width * scale);
+        const newHeight = Math.round(img.height * scale);
+        processedArtworkUrl = await ImageHelper.resize(artworkUrl, newWidth, newHeight);
+        console.log(
+          `Image resized from ${img.width}x${img.height} to ${newWidth}x${newHeight} to reduce memory usage (maxDimension=${maxDimension})`,
+        );
+      }
+    } catch (error) {
+      console.warn('Failed to resize image, using original:', error);
+      processedArtworkUrl = artworkUrl;
+    }
+
+    let computedArtworkUrl = processedArtworkUrl;
     this._shouldShowOriginalArtwork = shouldShowOriginalArtwork;
     if (!shouldShowOriginalArtwork) {
       const { computed, colorList } = await this._reduceImageColor(
-        artworkUrl,
+        processedArtworkUrl,
         sensitivity,
         colorLimit,
       );
